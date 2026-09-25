@@ -20,7 +20,7 @@ Las siguientes capacidades permanecen **NOT_INTEGRATED**:
 - Autenticación Google y gestión de sesiones invitadas persistentes (CMP-IDENTITY, FR-010, FR-011, V-004).
 - Flujo completo de análisis invitado (FR-002, AC-001, V-005, V-038); la selección local de archivos es sólo un paso inicial.
 - Gestión y persistencia de proyectos en Cloud Firestore (CMP-PROJECTS, V-006, V-007).
-- Integración con Google Drive y Google Picker (CMP-DRIVE, FR-020–022, V-008–010).
+- **FR-020 (documentos locales):** parcialmente integrado sólo para seleccionar y mantener referencias temporales a PDFs locales en la página invitada; carga al servidor y procesamiento del contenido siguen fuera de alcance. **Google Drive y Picker** (CMP-DRIVE, FR-021, V-008–010) y almacenamiento persistente en Drive (FR-022) permanecen **NOT_INTEGRATED**.
 - Configuración y consulta de proveedores LLM (Gemini, OpenAI, Anthropic, OpenRouter) y claves de API (CMP-AI, FR-030–035, V-011–019).
 - Esquema ejecutable de Estudio de Títulos y validación de JSON Schema (FR-048, V-020–022).
 - Generación y descarga de informes DOCX (CMP-REPORTS, FR-050–054, V-026–030).
@@ -28,14 +28,17 @@ Las siguientes capacidades permanecen **NOT_INTEGRATED**:
 
 ## 3. Evidencia producida
 
-Evidencia local producida en la baseline:
+Evidencia local producida en la baseline del Work Item #1:
 - **V-001 (Build):** `PASS`. `npm run build` compila `server.ts` a `dist/server.js`, comprueba tipos de cliente con `tsc` y genera el cliente en `dist/client`.
 - **V-002 (Production startup):** `PASS`. `npm start` (`node dist/server.js`) levanta el servidor Express sirviendo el frontend estático compilado en `0.0.0.0` usando `PORT`.
 - **V-003 (Health endpoint):** `PASS`. `GET /api/health` responde HTTP 200 con `{ status: "ok", uptime: <number>, timestamp: <string> }`.
 - **V-042 (Health semantics):** `PASS`. `GET /api/health` no consulta ni afirma el estado de Drive, Firestore ni proveedores LLM.
-- **V-033 (Main navigation):** `PASS`. La navegación lateral expone las secciones de SRS §4 (Inicio, Proyectos, Informes, IA, Documentos, Configuración) y es plegable.
-- **V-035 (Responsive use):** `PASS`. La interfaz opera en resolución desktop y en viewport móvil con cajón lateral desplegable.
-- **Pruebas automatizadas locales:** `PASS` (3/3 pruebas ejecutadas y aprobadas en `tests/*.test.ts`).
-- **Issue #6, pruebas automatizadas de selección local:** `PASS` (3 pruebas de firma/extension PDF, selección múltiple y deduplicación, y eliminación/reselección).
-- **Issue #6, verificación manual desktop/móvil:** `NOT RUN`; el navegador disponible no pudo abrir el servidor local (`net::ERR_BLOCKED_BY_CLIENT`). Las comprobaciones visuales responsive y de interacción real quedan pendientes.
+- **V-033 (Main navigation):** `PASS` para la navegación de la baseline, antes del Issue #6; no verifica manualmente la nueva entrada de documentos locales.
+- **V-035 (Responsive use):** `PASS` para la interfaz de la baseline, antes del Issue #6; no verifica manualmente la nueva página en desktop o móvil.
+- **Pruebas automatizadas locales:** `PASS` (3/3 pruebas de la baseline ejecutadas en `tests/*.test.ts`).
+
+Evidencia local del Work Item #6 (código y pruebas de la rama del PR #7):
+- **Pruebas específicas de selección local:** `PASS` (4 pruebas: firma/extensión PDF, selección múltiple/deduplicación, eliminación/reselección e intercalación de selección con eliminación).
+- **Suite automatizada completa:** `PASS` (7/7 pruebas en `tests/*.test.ts`).
+- **Revisión manual desktop/móvil para el Issue #6:** `NOT RUN`; el navegador disponible no pudo abrir el servidor local (`net::ERR_BLOCKED_BY_CLIENT`). La comprobación visual responsive y de interacción real de la nueva página sigue pendiente.
 - **CI:** `NOT CONFIGURED` (no existe pipeline de CI versionado en el repositorio; la evidencia corresponde a verificación local).
