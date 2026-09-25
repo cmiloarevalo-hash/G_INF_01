@@ -66,6 +66,10 @@ export const GuestDocumentsPage: FC = () => {
   const [statuses, setStatuses] = useState<Record<string, GuestFileEntry>>({});
   const [message, setMessage] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [keySource, setKeySource] = useState<'temporary' | 'alias'>('temporary');
+  const [accessToken, setAccessToken] = useState('');
+  const [aliases, setAliases] = useState<{ id: string; label: string }[]>([]);
+  const [selectedAlias, setSelectedAlias] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [report, setReport] = useState<unknown>(null);
   const [partial, setPartial] = useState(false);
@@ -114,12 +118,16 @@ export const GuestDocumentsPage: FC = () => {
   });
 
   const analyze = async () => {
-    if (!apiKey.trim()) { setMessage('Ingresa tu clave de Gemini para esta sesión.'); return; }
+    if (keySource === 'temporary' && !apiKey.trim()) { setMessage('Ingresa tu clave de Gemini para esta sesión.'); return; }
+    if (keySource === 'alias' && (!accessToken || !selectedAlias)) { setMessage('Autoriza el acceso y selecciona una clave de prueba.'); return; }
     if (files.length === 0) { setMessage('Selecciona al menos un archivo.'); return; }
     setIsAnalyzing(true);
     setReport(null);
     setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'Pendiente' as const }])));
     setMessage('Analizando los archivos uno por uno con Gemini…');
+    const credentialHeaders: Record<string, string> = keySource === 'temporary'
+      ? { 'x-gemini-api-key': apiKey }
+      : { 'x-gemini-key-alias': selectedAlias, 'x-gemini-alias-access-token': accessToken };
     try {
       const outcome = await orchestrateGuestAnalysis<File, { documentId: string; name: string; extraction: unknown }, unknown>(files, {
         getName: (file) => file.name,
@@ -131,14 +139,14 @@ export const GuestDocumentsPage: FC = () => {
         extract: async (file, index) => {
           const data = await fileAsBase64(file);
           const response = await fetch('/api/guest/extract', {
-            method: 'POST', headers: { 'content-type': 'application/json', 'x-gemini-api-key': apiKey },
+            method: 'POST', headers: { 'content-type': 'application/json', ...credentialHeaders },
             body: JSON.stringify({ id: `doc-${index + 1}`, name: file.name, mimeType: file.type, size: file.size, data }),
           });
           return readJsonResponse<{ documentId: string; name: string; extraction: unknown }>(response);
         },
         synthesize: async (extractions) => {
           const response = await fetch('/api/guest/synthesize', {
-            method: 'POST', headers: { 'content-type': 'application/json', 'x-gemini-api-key': apiKey },
+            method: 'POST', headers: { 'content-type': 'application/json', ...credentialHeaders },
             body: JSON.stringify({ extractions }),
           });
           return (await readJsonResponse<{ report: unknown }>(response)).report;
@@ -179,14 +187,36 @@ export const GuestDocumentsPage: FC = () => {
             })}
           </ul>
         )}
-        <label className="guest-api-key-label" htmlFor="guest-gemini-key">Clave Gemini para esta sesión</label>
-        <input id="guest-gemini-key" className="guest-api-key" type="password" autoComplete="off" disabled={isAnalyzing} value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Pega tu clave de API" />
-        <button type="button" className="btn-primary guest-analyze-button" disabled={isAnalyzing || files.length === 0 || !apiKey.trim()} onClick={analyze}>{isAnalyzing ? 'Analizando…' : 'Analizar con Gemini'}</button>
+        <fieldset disabled={isAnalyzing}>
+          <legend>Clave para el análisis</legend>
+          <label><input type="radio" name="guest-key-source" checked={keySource === 'temporary'} onChange={() => setKeySource('temporary')} /> Mi clave temporal</label>
+          <label><input type="radio" name="guest-key-source" checked={keySource === 'alias'} onChange={() => setKeySource('alias')} /> Clave de prueba del propietario</label>
+        </fieldset>
+        {keySource === 'temporary' ? <>
+          <label className="guest-api-key-label" htmlFor="guest-gemini-key">Clave Gemini para esta sesión</label>
+          <input id="guest-gemini-key" className="guest-api-key" type="password" autoComplete="off" disabled={isAnalyzing} value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Pega tu clave de API" />
+        </> : <>
+          <label className="guest-api-key-label" htmlFor="guest-alias-access">Código de acceso del propietario</label>
+          <input id="guest-alias-access" className="guest-api-key" type="password" autoComplete="off" disabled={isAnalyzing} value={accessToken} onChange={(event) => { setAccessToken(event.target.value); setAliases([]); setSelectedAlias(''); }} />
+          <button type="button" className="btn-secondary" disabled={isAnalyzing || !accessToken} onClick={async () => {
+            try {
+              const response = await fetch('/api/guest/key-aliases', { headers: { 'x-gemini-alias-access-token': accessToken }, cache: 'no-store' });
+              const data = await readJsonResponse<{ aliases: { id: string; label: string }[] }>(response);
+              setAliases(data.aliases); setSelectedAlias('');
+              setMessage(data.aliases.length ? 'Selecciona una clave de prueba.' : 'No hay claves de prueba configuradas.');
+            } catch (error) { setAliases([]); setSelectedAlias(''); setMessage(error instanceof Error ? error.message : 'No se pudieron cargar los alias.'); }
+          }}>Consultar claves de prueba</button>
+          {aliases.length > 0 && <><label className="guest-api-key-label" htmlFor="guest-key-alias">Clave de prueba</label>
+            <select id="guest-key-alias" className="guest-api-key" value={selectedAlias} disabled={isAnalyzing} onChange={(event) => setSelectedAlias(event.target.value)}>
+              <option value="">Seleccionar alias</option>{aliases.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
+            </select></>}
+        </>}
+        <button type="button" className="btn-primary guest-analyze-button" disabled={isAnalyzing || files.length === 0 || (keySource === 'temporary' ? !apiKey.trim() : !accessToken || !selectedAlias)} onClick={analyze}>{isAnalyzing ? 'Analizando…' : 'Analizar con Gemini'}</button>
       </section>
 
       <aside className="guest-limit-notice" aria-label="Procesamiento de documentos">
         <strong>Envío temporal a Gemini</strong>
-        <p>Al analizar, los archivos legibles se envían a Google Gemini con el modelo gemini-3.6-flash usando tu clave durante esta sesión. El servidor no guarda la clave ni persiste archivos o resultados; Gemini procesa el contenido según sus condiciones del servicio.</p>
+        <p>Al analizar, los archivos legibles se envían a Google Gemini con el modelo gemini-3.6-flash usando tu clave temporal o un alias autorizado del propietario. El servidor no guarda la clave temporal ni persiste archivos o resultados; Gemini procesa el contenido según sus condiciones del servicio.</p>
         <p>Los archivos se envían de uno en uno. PDF: máximo inline 50 MiB. Otros formatos admitidos: 70 MiB para mantener el payload codificado bajo 100 MB. CSV y XLS/XLSX se conservan, pero quedan sin análisis en este piloto.</p>
       </aside>
       {report !== null && <section className="guest-report-panel" aria-labelledby="guest-report-title">

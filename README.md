@@ -45,6 +45,12 @@ Desde Inicio o la navegación lateral se abre el espacio de documentos invitados
 
 Límites inline del piloto: PDF hasta 50 MiB conforme Gemini; otros tipos hasta 70 MiB para que su codificación Base64 no exceda el límite documentado de 100 MB por payload. La prueba real con clave y documentos propios aún requiere verificación manual en Codespaces; los tests con proveedor simulado no prueban el acceso real a Gemini ni la calidad del análisis.
 
+#### Claves de prueba de AI Studio (piloto #12)
+
+La opción **Mi clave temporal** continúa disponible sin configurar Secrets. Para habilitar **Clave de prueba del propietario**, el propietario crea hasta tres Secrets en **AI Studio → Settings → Secrets**, con nombres `GEMINI_TEST_KEY_1`, `GEMINI_TEST_KEY_2`, `GEMINI_TEST_KEY_3` y valores de claves de prueba; crea también `GEMINI_ALIAS_ACCESS_TOKEN` con un valor aleatorio privado de al menos 32 caracteres, y define `GEMINI_ALIAS_MODE` como `owner-only` en el entorno del servidor. En Codespaces se configuran las mismas variables de manera privada en el proceso servidor. No guardar sus valores en el repositorio, archivos `.env` versionados, ni compartir el código de acceso con visitantes. La interfaz permite introducir temporalmente el código, consultar sólo los nombres «Prueba 1–3» y elegir uno; el servidor obtiene la clave desde el Secret y exige el código para listar alias y para **cada** solicitud de extracción y consolidación. El modo queda deshabilitado si no se define expresamente el modo o falta un código suficientemente largo. La variable automática `GEMINI_API_KEY` de AI Studio nunca se utiliza como alternativa. Publicar únicamente mediante HTTPS; una persona que conozca el código puede consumir la cuota del propietario.
+
+Las pruebas locales usan Secrets simulados: no demuestran inyección efectiva de variables, acceso a Gemini ni controles de publicación del Starter Tier en AI Studio. Antes de habilitar alias en una página pública se debe comprobar en el despliegue real que visitantes sin código obtienen 403 en el listado y en ambas rutas de análisis y que sólo el propietario dispone del código. Mientras esa prueba no se ejecute, el piloto permanece `HOLD` para publicar alias en producción.
+
 ## Proceso de trabajo
 
 - [Workflow simplificado](WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md)
