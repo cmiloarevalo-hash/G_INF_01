@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { fileIdentity, isPdfFile, removeSelectedFile, validateAndMergeFiles } from '../src/pages/GuestDocumentsPage.js';
+import {
+  fileIdentity,
+  isPdfFile,
+  removeSelectedFile,
+  serializeSelectionUpdate,
+  validateAndMergeFiles,
+} from '../src/pages/GuestDocumentsPage.js';
 
 function makeFile(name: string, contents: string, lastModified = 1): File {
   return new File([contents], name, { type: name.endsWith('.pdf') ? 'application/pdf' : 'text/plain', lastModified });
@@ -33,4 +39,33 @@ test('removing an existing selection permits adding it again', async () => {
   const remaining = removeSelectedFile(result.files, fileIdentity(file));
   assert.deepEqual(remaining, []);
   assert.deepEqual((await validateAndMergeFiles(remaining, [file])).files, [file]);
+});
+
+test('a removal queued during async validation is applied after selection without restoring the removed file', async () => {
+  const existing = makeFile('existente.pdf', '%PDF-1.7 existente');
+  const incoming = makeFile('nuevo.pdf', '%PDF-1.7 nuevo');
+  let selected = [existing];
+  let releaseValidation!: () => void;
+  const validationGate = new Promise<void>((resolve) => {
+    releaseValidation = resolve;
+  });
+  const failures: unknown[] = [];
+  const reportError = (error: unknown) => failures.push(error);
+  let pending = Promise.resolve();
+
+  pending = serializeSelectionUpdate(pending, async () => {
+    const current = selected;
+    await validationGate;
+    const result = await validateAndMergeFiles(current, [incoming]);
+    selected = result.files;
+  }, reportError);
+  pending = serializeSelectionUpdate(pending, async () => {
+    selected = removeSelectedFile(selected, fileIdentity(existing));
+  }, reportError);
+
+  releaseValidation();
+  await pending;
+
+  assert.deepEqual(failures, []);
+  assert.deepEqual(selected, [incoming]);
 });

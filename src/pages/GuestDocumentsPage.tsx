@@ -20,6 +20,14 @@ export function removeSelectedFile(files: File[], identity: string): File[] {
   return files.filter((file) => fileIdentity(file) !== identity);
 }
 
+export function serializeSelectionUpdate(
+  pending: Promise<void>,
+  update: () => Promise<void>,
+  onError: (error: unknown) => void,
+): Promise<void> {
+  return pending.then(update).catch(onError);
+}
+
 export async function validateAndMergeFiles(
   current: File[],
   incoming: File[],
@@ -62,8 +70,18 @@ function formatFileSize(bytes: number): string {
 
 export const GuestDocumentsPage: FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const filesRef = useRef<File[]>([]);
+  const pendingUpdateRef = useRef<Promise<void>>(Promise.resolve());
   const [files, setFiles] = useState<File[]>([]);
   const [message, setMessage] = useState('');
+
+  const enqueueUpdate = (update: () => Promise<void>) => {
+    pendingUpdateRef.current = serializeSelectionUpdate(
+      pendingUpdateRef.current,
+      update,
+      () => setMessage('No se pudo actualizar la selección local. Intenta de nuevo.'),
+    );
+  };
 
   const handleFileSelection = async (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.currentTarget;
@@ -71,30 +89,41 @@ export const GuestDocumentsPage: FC = () => {
     input.value = '';
     if (incoming.length === 0) return;
 
-    const result = await validateAndMergeFiles(files, incoming);
-    setFiles(result.files);
-    const notices = [
-      ...(result.rejected.length > 0
-        ? [`No se reconocieron como PDF (revisa su extensión y firma): ${result.rejected.join(', ')}.`]
-        : []),
-      ...(result.duplicates.length > 0
-        ? [`Ya estaban seleccionados y no se duplicaron: ${result.duplicates.join(', ')}.`]
-        : []),
-      ...(result.files.length > files.length
-        ? [`Se agregaron ${result.files.length - files.length} archivo(s) PDF.`]
-        : []),
-    ];
-    setMessage(notices.join(' '));
+    enqueueUpdate(async () => {
+      const current = filesRef.current;
+      const result = await validateAndMergeFiles(current, incoming);
+      filesRef.current = result.files;
+      setFiles(result.files);
+      const notices = [
+        ...(result.rejected.length > 0
+          ? [`No se reconocieron como PDF (revisa su extensión y firma): ${result.rejected.join(', ')}.`]
+          : []),
+        ...(result.duplicates.length > 0
+          ? [`Ya estaban seleccionados y no se duplicaron: ${result.duplicates.join(', ')}.`]
+          : []),
+        ...(result.files.length > current.length
+          ? [`Se agregaron ${result.files.length - current.length} archivo(s) PDF.`]
+          : []),
+      ];
+      setMessage(notices.join(' '));
+    });
   };
 
   const removeFile = (identity: string) => {
-    setFiles((current) => removeSelectedFile(current, identity));
-    setMessage('Se quitó el documento de la selección local.');
+    enqueueUpdate(async () => {
+      const next = removeSelectedFile(filesRef.current, identity);
+      filesRef.current = next;
+      setFiles(next);
+      setMessage('Se quitó el documento de la selección local.');
+    });
   };
 
   const clearFiles = () => {
-    setFiles([]);
-    setMessage('Se quitaron todos los documentos de la selección local.');
+    enqueueUpdate(async () => {
+      filesRef.current = [];
+      setFiles([]);
+      setMessage('Se quitaron todos los documentos de la selección local.');
+    });
   };
 
   return (
