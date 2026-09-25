@@ -1,6 +1,10 @@
 import type { FC } from 'react';
 
-export const HomePage: FC = () => {
+interface HomePageProps {
+  onOpenGuestDocuments: () => void;
+}
+
+export const HomePage: FC<HomePageProps> = ({ onOpenGuestDocuments }) => {
   return (
     <div className="home-page">
       <div className="hero-card">
@@ -10,6 +14,17 @@ export const HomePage: FC = () => {
           Aplicación web para la revisión sistemática de antecedentes inmobiliarios y asistencia en la generación de informes jurídicos. El primer tipo de informe objetivo corresponde al <strong>Estudio de Títulos</strong>.
         </p>
       </div>
+
+      <section className="guest-entry-card" aria-labelledby="guest-entry-title">
+        <div>
+          <span className="hero-tag">Disponible sin iniciar sesión</span>
+          <h3 id="guest-entry-title">Selecciona documentos PDF locales</h3>
+          <p>Elige archivos de tu dispositivo para mantener una selección temporal en esta página.</p>
+        </div>
+        <button type="button" className="btn-primary" onClick={onOpenGuestDocuments}>
+          Abrir documentos del invitado
+        </button>
+      </section>
 
       <div className="section-grid">
         <div className="info-card">

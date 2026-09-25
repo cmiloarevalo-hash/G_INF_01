@@ -39,6 +39,10 @@ Las obligaciones y la evidencia esperada se describen en [Verification Specifica
 - **V-033 (Main navigation):** Navegación lateral plegable con las secciones previstas en SRS §4.
 - **V-035 (Responsive use):** Interfaz adaptable a pantallas desktop y viewports móviles.
 
+## Capacidad de invitado disponible
+
+Desde Inicio o la navegación lateral se puede abrir **PDF locales (invitado)** para seleccionar varios archivos PDF del dispositivo, ver su nombre y tamaño, y quitarlos individualmente o todos. La página conserva referencias a los archivos sólo mientras permanece abierta; valida la extensión y la firma PDF en un máximo de 1 KiB inicial. Los bytes no se envían al servidor y no se guardan en Drive ni en proyectos persistentes. El procesamiento del contenido, el análisis con IA y la generación de informes siguen sin estar integrados (V-005 y V-038).
+
 ## Proceso de trabajo
 
 - [Workflow simplificado](WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md)
