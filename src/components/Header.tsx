@@ -31,7 +31,7 @@ export const Header: FC<HeaderProps> = ({
 
       <div className="header-badge">
         <span className="status-dot" style={{ backgroundColor: isHealthOk ? '#10b981' : '#f59e0b' }} />
-        <span>{isHealthOk ? 'Servidor HTTP activo' : 'Verificando salud'}</span>
+        <span>{isHealthOk ? 'En línea' : 'Conectando...'}</span>
       </div>
     </header>
   );

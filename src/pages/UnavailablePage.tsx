@@ -18,17 +18,17 @@ export const UnavailablePage: FC<UnavailablePageProps> = ({
           <line x1="12" y1="8" x2="12" y2="12" />
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
-        Función No Disponible · Work Item #1
+        Función no integrada
       </div>
 
       <h2 className="unavailable-title">{sectionTitle}</h2>
 
       <p className="unavailable-description">
-        Esta sección pertenece a los módulos previstos en la arquitectura (SRS §4), pero <strong>no se encuentra integrada en esta versión inicial</strong>. Su desarrollo se realizará en posteriores Work Items conforme al plan de trabajo.
+        Esta sección corresponde a una capacidad prevista en la plataforma, pero <strong>no se encuentra integrada en esta versión inicial</strong>. Su habilitación se realizará en etapas posteriores de desarrollo.
       </p>
 
       <div className="unavailable-note">
-        <strong>Cumplimiento de UIR-008:</strong> De acuerdo con los requisitos canónicos de interfaz, no se presentan controles, botones ficticios ni datos simulados que aparenten operar. Las capacidades aún no implementadas se declaran explícitamente como no disponibles.
+        Para mantener la transparencia operativa y evitar confusión, en esta vista no se muestran formularios ficticios ni controles interactivos simulados.
       </div>
 
       <button type="button" className="btn-primary" onClick={onReturnToHome}>
@@ -36,7 +36,7 @@ export const UnavailablePage: FC<UnavailablePageProps> = ({
           <line x1="19" y1="12" x2="5" y2="12" />
           <polyline points="12 19 5 12 12 5" />
         </svg>
-        Volver a la vista Inicio
+        Volver al Inicio
       </button>
     </div>
   );

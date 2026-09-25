@@ -1,94 +1,13 @@
-import { useState, useEffect, type FC } from 'react';
+import type { FC } from 'react';
 
-interface HealthData {
-  status: string;
-  uptime: number;
-  timestamp: string;
-}
-
-interface HomePageProps {
-  onNavigateToSection: (sectionId: string) => void;
-}
-
-export const HomePage: FC<HomePageProps> = ({ onNavigateToSection }) => {
-  const [healthData, setHealthData] = useState<HealthData | null>(null);
-  const [loadingHealth, setLoadingHealth] = useState<boolean>(false);
-  const [healthError, setHealthError] = useState<string | null>(null);
-
-  const checkHealth = async () => {
-    setLoadingHealth(true);
-    setHealthError(null);
-    try {
-      const res = await fetch('/api/health');
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      setHealthData(data);
-    } catch (err: unknown) {
-      setHealthError(err instanceof Error ? err.message : 'Error desconocido al consultar salud');
-    } finally {
-      setLoadingHealth(false);
-    }
-  };
-
-  useEffect(() => {
-    checkHealth();
-  }, []);
-
+export const HomePage: FC = () => {
   return (
     <div className="home-page">
       <div className="hero-card">
-        <span className="hero-tag">Línea base ejecutable inicial · Work Item #1</span>
+        <span className="hero-tag">Plataforma de Análisis Documental</span>
         <h2 className="hero-title">Análisis Documental Inmobiliario</h2>
         <p className="hero-desc">
-          Aplicación web ligera de análisis documental asistido por LLM. El primer tipo de informe objetivo es el <strong>Estudio de Títulos</strong>, con extracción estructurada, validación rigurosa de esquema y renderizado DOCX profesional.
-        </p>
-      </div>
-
-      <div className="status-box">
-        <div className="status-box-header">
-          <div className="status-box-title">Estado del Proceso HTTP (V-003, V-042, NFR-024)</div>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={checkHealth}
-            disabled={loadingHealth}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-            </svg>
-            {loadingHealth ? 'Consultando...' : 'Revisar /api/health'}
-          </button>
-        </div>
-
-        <div className="status-metrics">
-          <div className="metric-item">
-            <div className="metric-label">Endpoint</div>
-            <div className="metric-value">GET /api/health</div>
-          </div>
-          <div className="metric-item">
-            <div className="metric-label">Respuesta HTTP</div>
-            <div className="metric-value" style={{ color: healthError ? '#ef4444' : '#10b981' }}>
-              {healthError ? healthError : healthData ? 'HTTP 200 OK' : 'Consultando...'}
-            </div>
-          </div>
-          <div className="metric-item">
-            <div className="metric-label">Estado del proceso</div>
-            <div className="metric-value">
-              {healthData?.status === 'ok' ? 'Activo (ok)' : 'En espera'}
-            </div>
-          </div>
-          <div className="metric-item">
-            <div className="metric-label">Tiempo activo (uptime)</div>
-            <div className="metric-value">
-              {healthData?.uptime ? `${Math.round(healthData.uptime)} s` : '-'}
-            </div>
-          </div>
-        </div>
-
-        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          * De conformidad con NFR-024 y V-042, <code>/api/health</code> representa únicamente la disponibilidad del proceso HTTP y no consulta ni afirma la disponibilidad de servicios externos (Drive, Firestore o proveedores LLM).
+          Aplicación web para la revisión sistemática de antecedentes inmobiliarios y asistencia en la generación de informes jurídicos. El primer tipo de informe objetivo corresponde al <strong>Estudio de Títulos</strong>.
         </p>
       </div>
 
@@ -106,7 +25,7 @@ export const HomePage: FC<HomePageProps> = ({ onNavigateToSection }) => {
             <div className="info-card-title">Estudio de Títulos</div>
           </div>
           <p className="info-card-text">
-            Primer tipo de informe objetivo del producto (<code>TITLE_STUDY</code>). Permite analizar escrituras públicas, inscripciones de dominio, certificados de gravámenes y antecedentes inmobiliarios.
+            Análisis de escrituras públicas, títulos de dominio e inscripciones de gravámenes para verificar la vigencia de derechos y detectar eventuales contingencias o reparos jurídicos.
           </p>
         </div>
 
@@ -114,15 +33,13 @@ export const HomePage: FC<HomePageProps> = ({ onNavigateToSection }) => {
           <div className="info-card-header">
             <div className="info-card-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="3" width="20" height="14" rx="2" />
-                <line x1="8" y1="21" x2="16" y2="21" />
-                <line x1="12" y1="17" x2="12" y2="21" />
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
               </svg>
             </div>
-            <div className="info-card-title">Arquitectura Ligera</div>
+            <div className="info-card-title">Estructura por Proyectos</div>
           </div>
           <p className="info-card-text">
-            Servidor Express 5 compilado con TypeScript, Vite integrado en desarrollo y servidor estático en producción. Sin sobreingeniería ni infraestructura prematura (NFR-001, NFR-002).
+            Organización del trabajo por proyectos que integran antecedentes documentales, extracción estructurada validada con esquema y generación de informes exportables.
           </p>
         </div>
 
@@ -130,60 +47,34 @@ export const HomePage: FC<HomePageProps> = ({ onNavigateToSection }) => {
           <div className="info-card-header">
             <div className="info-card-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="3" y1="9" x2="21" y2="9" />
+                <line x1="9" y1="21" x2="9" y2="9" />
               </svg>
             </div>
-            <div className="info-card-title">Disciplina de Alcance</div>
+            <div className="info-card-title">Navegación del Sistema</div>
           </div>
           <p className="info-card-text">
-            Este Work Item #1 establece estrictamente la primera aplicación ejecutable. Las funciones futuras de autenticación, Drive, proveedores LLM y DOCX se integrarán en sus respectivos Work Items.
+            Acceso a través del menú lateral a las áreas principales del sistema: Proyectos, Informes, Modelos de IA, Documentos y Configuración.
           </p>
         </div>
       </div>
 
-      <div className="info-card" style={{ marginTop: '1.5rem' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-main)' }}>
-          Estructura de Secciones según SRS §4 y Estado Actual
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem' }}>
-          {[
-            { name: 'Inicio', id: 'inicio', status: 'INTEGRADA (ACTIVA)', isOk: true },
-            { name: 'Proyectos: Nuevo proyecto', id: 'nuevo-proyecto', status: 'NO_INTEGRADA (FUTURA)', isOk: false },
-            { name: 'Proyectos: Mis proyectos', id: 'mis-proyectos', status: 'NO_INTEGRADA (FUTURA)', isOk: false },
-            { name: 'Informes: Mis informes', id: 'mis-informes', status: 'NO_INTEGRADA (FUTURA)', isOk: false },
-            { name: 'IA: APIs y modelos', id: 'apis-modelos', status: 'NO_INTEGRADA (FUTURA)', isOk: false },
-            { name: 'Documentos: Google Drive', id: 'google-drive', status: 'NO_INTEGRADA (FUTURA)', isOk: false },
-            { name: 'Configuración', id: 'configuracion', status: 'NO_INTEGRADA (FUTURA)', isOk: false },
-          ].map((sec) => (
-            <div
-              key={sec.id}
-              onClick={() => onNavigateToSection(sec.id)}
-              style={{
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                backgroundColor: 'var(--bg-surface)',
-                border: '1px solid var(--border-subtle)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-main)' }}>{sec.name}</span>
-              <span
-                style={{
-                  fontSize: '0.6875rem',
-                  padding: '0.2rem 0.5rem',
-                  borderRadius: '4px',
-                  backgroundColor: sec.isOk ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                  color: sec.isOk ? '#10b981' : '#fbbf24',
-                  fontWeight: 600,
-                }}
-              >
-                {sec.status}
-              </span>
-            </div>
-          ))}
+      <div className="notice-card">
+        <div className="notice-card-header">
+          <div className="notice-card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="notice-card-title">Disponibilidad en la versión inicial</h3>
+            <p className="notice-card-desc">
+              Esta versión establece la base de la aplicación y la estructura de navegación principal. Para preservar la transparencia y usabilidad, no se muestran formularios ficticios ni controles interactivos simulados: las áreas de gestión de proyectos, integración con almacenamiento, modelos de lenguaje y generación de informes se incorporarán progresivamente en sus correspondientes etapas.
+            </p>
+          </div>
         </div>
       </div>
     </div>

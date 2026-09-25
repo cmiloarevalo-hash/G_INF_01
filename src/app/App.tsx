@@ -48,7 +48,7 @@ export function App() {
 
         <main className="main-content">
           {currentSection === 'inicio' ? (
-            <HomePage onNavigateToSection={(id) => setCurrentSection(id)} />
+            <HomePage />
           ) : (
             <UnavailablePage
               sectionId={activeItem.id}

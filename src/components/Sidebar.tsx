@@ -135,7 +135,7 @@ export const Sidebar: FC<SidebarProps> = ({
                 </svg>
               </div>
               <div>
-                <div className="brand-text">DocAnálisis</div>
+                <div className="brand-text">Análisis Documental</div>
                 <div className="brand-subtext">Estudio de Títulos</div>
               </div>
             </div>
