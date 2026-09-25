@@ -165,10 +165,17 @@ body {
   border-radius: 6px;
   cursor: pointer;
   padding: 0.375rem;
-  display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
+}
+
+.collapse-btn {
+  display: flex;
+}
+
+.mobile-menu-btn {
+  display: none;
 }
 
 .collapse-btn:hover,
@@ -490,6 +497,14 @@ body {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  .collapse-btn {
+    display: none;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;

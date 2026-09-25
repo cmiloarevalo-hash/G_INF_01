@@ -193,10 +193,6 @@ export const Sidebar: FC<SidebarProps> = ({
             </div>
           ))}
         </nav>
-
-        <div className="sidebar-footer">
-          {!isCollapsed && <div>Línea base v0.1.0 · Issue #1</div>}
-        </div>
       </aside>
     </>
   );
