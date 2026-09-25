@@ -41,7 +41,9 @@ Las obligaciones y la evidencia esperada se describen en [Verification Specifica
 
 ## Capacidad de invitado disponible
 
-Desde Inicio o la navegación lateral se puede abrir **PDF locales (invitado)** para seleccionar varios archivos PDF del dispositivo, ver su nombre y tamaño, y quitarlos individualmente o todos. La página conserva referencias a los archivos sólo mientras permanece abierta; valida la extensión y la firma PDF en un máximo de 1 KiB inicial. Los bytes no se envían al servidor y no se guardan en Drive ni en proyectos persistentes. El procesamiento del contenido, el análisis con IA y la generación de informes siguen sin estar integrados (V-005 y V-038).
+Desde Inicio o la navegación lateral se abre el espacio de documentos invitados. Conserva y muestra los archivos seleccionados, incluso si no están admitidos, y permite quitar uno o todos. El piloto del Issue #12 analiza secuencialmente con Gemini `gemini-3.6-flash` los PDF con firma válida, PNG/JPEG con firma correspondiente y TXT/Markdown UTF-8. CSV, XLS/XLSX y otros formatos siguen visibles como “No analizado” con causa. Cada archivo legible se envía a Google Gemini usando una clave que el usuario introduce sólo durante la sesión; no se guarda ni persiste en el navegador, GitHub, logs, Drive o proyectos. El JSON `TITLE_STUDY` validado se muestra como resultado preliminar sujeto a revisión humana; no genera DOCX ni constituye un estudio jurídicamente válido.
+
+Límites inline del piloto: PDF hasta 50 MiB conforme Gemini; otros tipos hasta 70 MiB para que su codificación Base64 no exceda el límite documentado de 100 MB por payload. La prueba real con clave y documentos propios aún requiere verificación manual en Codespaces; los tests con proveedor simulado no prueban el acceso real a Gemini ni la calidad del análisis.
 
 ## Proceso de trabajo
 

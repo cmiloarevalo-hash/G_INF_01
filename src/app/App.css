@@ -409,6 +409,53 @@ body {
 .guest-file-size {
   color: var(--text-muted);
   font-size: 0.75rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.guest-api-key-label {
+  display: block;
+  margin-top: 1.25rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.guest-api-key {
+  width: min(100%, 32rem);
+  min-height: 2.75rem;
+  padding: 0.7rem 0.85rem;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.guest-analyze-button {
+  display: block;
+  margin-top: 0.8rem;
+}
+
+.guest-analyze-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.guest-report-panel {
+  margin-top: 1rem;
+  padding: 1.25rem 1.5rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+
+.guest-report-panel pre {
+  max-height: 36rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 .guest-remove-button {

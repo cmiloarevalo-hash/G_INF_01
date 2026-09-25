@@ -124,6 +124,14 @@ El usuario debe poder:
 - procesar documentos relacionados con bienes raíces;
 - analizar planos cuando estén en PDF.
 
+#### Política de admisión y piloto invitado (decisión humana registrada en Issue #6; implementación Issue #12)
+
+La selección conserva todos los archivos elegidos, aunque la extensión, MIME o firma no coincida con el formato que el piloto pueda procesar. El sistema diagnostica por archivo y distingue claramente “no analizado” de un resultado de IA; una incompatibilidad no impide procesar otros documentos. Este reemplaza para los flujos futuros la política de rechazo temprano del Issue #6.
+
+El piloto Gemini procesa PDF cuya firma sea legible, imágenes PNG/JPEG con firma correspondiente y TXT/Markdown UTF-8. Los archivos CSV, XLS/XLSX y otros formatos siguen seleccionables pero no se envían ni se convierten. Los planos admitidos continúan siendo PDF (FR-025). Cada archivo compatible se envía secuencialmente a Gemini; los PDFs inline respetan el máximo oficial de 50 MiB. Para los demás archivos, el límite de 70 MiB resulta del límite oficial de 100 MB por payload y la expansión de Base64 usada por el transporte inline ([Gemini File input methods](https://ai.google.dev/gemini-api/docs/file-input-methods), [Document understanding](https://ai.google.dev/gemini-api/docs/document-processing)). Una salida intermedia de hechos se consolida en `TITLE_STUDY`, que se valida con Zod; JSON Schema del proveedor no expresa las reglas referenciales entre elementos, por lo que no reemplaza la validación Zod. La conversión a schema Gemini elimina la declaración Draft y convierte `const` en `enum`; no modifica el validador Zod de aplicación.
+
+La clave Gemini es aportada por el usuario, permanece en el estado de la página durante esta sesión y viaja como cabecera del navegador al servidor y de allí al proveedor. No se guarda en el repositorio, almacenamiento del navegador, logs o almacenamiento persistente. Las solicitudes al proveedor tienen timeout de 120 segundos; fallos, cuota, respuestas truncadas o JSON inválido producen error sin resultado ficticio. El usuario recibe aviso de que el contenido legible se envía a Google Gemini para procesamiento temporal. El resultado es preliminar y requiere revisión humana; no es asesoría legal ni un Estudio de Títulos jurídicamente válido.
+
 ### Modo autenticado
 
 El usuario autenticado debe disponer de:
