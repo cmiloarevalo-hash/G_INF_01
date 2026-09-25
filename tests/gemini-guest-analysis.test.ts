@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { extractGuestDocument, GEMINI_INTERACTIONS_URL, GEMINI_MODEL, synthesizeTitleStudy, toGeminiJsonSchema } from '../src/services/ai/gemini.js';
+import { extractGuestDocument, extractInteractionOutputText, GEMINI_INTERACTIONS_URL, GEMINI_MODEL, synthesizeTitleStudy, toGeminiJsonSchema } from '../src/services/ai/gemini.js';
 
 const b64 = (text: string) => Buffer.from(text, 'utf8').toString('base64');
 const report = {
@@ -111,4 +111,76 @@ test('rejects malformed structured output and surfaces provider quota failures w
 
 test('converts JSON Schema constants to Gemini enum and removes the draft declaration', () => {
   assert.deepEqual(toGeminiJsonSchema({ $schema: 'draft', properties: { state: { const: 'ok' } } }), { properties: { state: { enum: ['ok'] } } });
+});
+
+test('consumes representative REST Interactions response extracting final model_output and ignoring thoughts', async () => {
+  const representativeRestResponse = {
+    status: 'completed',
+    steps: [
+      {
+        type: 'thought',
+        signature: 'mock-thought-signature-xyz',
+      },
+      {
+        type: 'model_output',
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              documentType: 'Escritura Pública',
+              findings: [{ statement: 'Compraventa celebrada en 2021.' }],
+            }),
+          },
+        ],
+      },
+    ],
+  };
+
+  const mockedFetch: typeof fetch = async () => Response.json(representativeRestResponse);
+  const result = await extractGuestDocument('mock-key', {
+    id: 'doc-rest',
+    name: 'escritura.txt',
+    mimeType: 'text/plain',
+    size: 5,
+    data: b64('texto'),
+  }, mockedFetch);
+
+  assert.equal(result.extraction.documentType, 'Escritura Pública');
+  assert.equal(result.extraction.findings[0]?.statement, 'Compraventa celebrada en 2021.');
+});
+
+test('rejects incomplete, missing, or invalid REST step structures without fake success', () => {
+  assert.throws(
+    () => extractInteractionOutputText({ status: 'incomplete', steps: [] }),
+    /Gemini no entregó una respuesta completa/
+  );
+
+  assert.throws(
+    () => extractInteractionOutputText({
+      status: 'completed',
+      steps: [{ type: 'thought', signature: 'some-thought' }],
+    }),
+    /Gemini no devolvió texto estructurado completo/
+  );
+
+  assert.throws(
+    () => extractInteractionOutputText({
+      status: 'completed',
+      steps: [{ type: 'model_output', content: [] }],
+    }),
+    /Gemini no devolvió texto estructurado completo/
+  );
+
+  assert.throws(
+    () => extractInteractionOutputText({
+      status: 'completed',
+      steps: [{ type: 'model_output', content: [{ type: 'text', text: '   \n  ' }] }],
+    }),
+    /Gemini no devolvió texto estructurado completo/
+  );
+
+  assert.throws(
+    () => extractInteractionOutputText({ status: 'completed', steps: [] }),
+    /Gemini no devolvió texto estructurado completo/
+  );
 });

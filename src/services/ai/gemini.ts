@@ -1,7 +1,11 @@
 import * as z from 'zod';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { titleStudySchema, toTitleStudyJsonSchema, type TitleStudy } from '../../report-types/title-study/schema.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const GEMINI_MODEL = 'gemini-3.6-flash';
 export const GEMINI_INTERACTIONS_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
@@ -59,6 +63,36 @@ export function toGeminiJsonSchema(schema: unknown): unknown {
   return converted;
 }
 
+export function extractInteractionOutputText(body: Record<string, unknown>): string {
+  if (body.status !== 'completed') {
+    throw new Error(`Gemini no entregó una respuesta completa (estado ${String(body.status)}).`);
+  }
+  if (Array.isArray(body.steps)) {
+    const modelOutputs = body.steps.filter((step): step is Record<string, unknown> =>
+      Boolean(step && typeof step === 'object' && (step as Record<string, unknown>).type === 'model_output')
+    );
+    if (modelOutputs.length === 0) {
+      throw new Error('Gemini no devolvió texto estructurado completo.');
+    }
+    const finalOutput = modelOutputs[modelOutputs.length - 1];
+    const content = Array.isArray(finalOutput.content) ? finalOutput.content : [];
+    const textParts = content
+      .filter((item): item is Record<string, unknown> =>
+        Boolean(item && typeof item === 'object' && (item as Record<string, unknown>).type === 'text' && typeof (item as Record<string, unknown>).text === 'string')
+      )
+      .map((item) => item.text as string);
+    const combined = textParts.join('').trim();
+    if (!combined) {
+      throw new Error('Gemini no devolvió texto estructurado completo.');
+    }
+    return combined;
+  }
+  if (typeof body.output_text === 'string' && body.output_text.trim()) {
+    return body.output_text.trim();
+  }
+  throw new Error('Gemini no devolvió texto estructurado completo.');
+}
+
 async function callGemini(apiKey: string, input: GeminiInputPart[], schema: unknown, fetchImpl: GeminiFetch): Promise<unknown> {
   let response: Response;
   try {
@@ -82,12 +116,9 @@ async function callGemini(apiKey: string, input: GeminiInputPart[], schema: unkn
     const errorBody = body.error as { message?: unknown } | undefined;
     throw userFacingProviderError(response.status, typeof errorBody?.message === 'string' ? errorBody.message : 'Error del proveedor.', apiKey);
   }
-  if (body.status === 'incomplete' || body.status === 'failed' || body.status === 'cancelled') {
-    throw new Error(`Gemini no entregó una respuesta completa (estado ${String(body.status)}).`);
-  }
-  if (typeof body.output_text !== 'string') throw new Error('Gemini no devolvió texto estructurado completo.');
+  const rawText = extractInteractionOutputText(body);
   try {
-    return JSON.parse(body.output_text) as unknown;
+    return JSON.parse(rawText) as unknown;
   } catch {
     throw new Error('Gemini devolvió JSON inválido o truncado; no se muestra como resultado.');
   }
@@ -150,7 +181,7 @@ export async function synthesizeTitleStudy(
 ): Promise<TitleStudy> {
   if (!apiKey.trim()) throw new Error('Ingresa tu clave de Gemini para esta sesión.');
   if (extractions.length === 0) throw new Error('No hay documentos legibles para consolidar.');
-  const prompt = await readFile(path.resolve(process.cwd(), 'src/report-types/title-study/prompt.md'), 'utf8');
+  const prompt = await readFile(path.resolve(__dirname, '../../report-types/title-study/prompt.md'), 'utf8');
   const documents = extractions.map(({ documentId, name, extraction }) => ({
     document: { id: documentId, name, documentType: extraction.documentType },
     findings: extraction.findings.map((finding, index) => ({
