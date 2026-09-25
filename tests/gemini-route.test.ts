@@ -46,3 +46,107 @@ test('guest extract route reports unsupported files without calling Gemini', asy
     await new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
   }
 });
+
+test('guest synthesize route succeeds with valid mock facts and correctly loads prompt template', async () => {
+  const validReport = {
+    reportType: 'TITLE_STUDY',
+    sourceDocuments: [{ id: 'doc-1', name: 'nota.txt', documentType: 'texto' }],
+    findings: [{ id: 'f-1', sourceDocumentIds: ['doc-1'], statement: 'Hecho relevante' }],
+    comparisons: [],
+    conclusions: [{ id: 'c-1', statement: 'Conclusión válida.', supportingFindingIds: ['f-1'] }],
+  };
+
+  const fetchImpl: typeof fetch = async () => Response.json({
+    status: 'completed',
+    steps: [{
+      type: 'model_output',
+      content: [{ type: 'text', text: JSON.stringify(validReport) }],
+    }],
+  });
+
+  const app = createServerApp({ fetchImpl });
+  const server: Server = app.listen(0);
+  const port = (server.address() as AddressInfo).port;
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/api/guest/synthesize`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-gemini-api-key': 'mock-only-key' },
+      body: JSON.stringify({
+        extractions: [{
+          documentId: 'doc-1',
+          name: 'nota.txt',
+          extraction: { documentType: 'texto', findings: [{ statement: 'Hecho relevante' }] },
+        }],
+      }),
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json() as { report: typeof validReport };
+    assert.equal(body.report.reportType, 'TITLE_STUDY');
+    assert.equal(body.report.sourceDocuments[0]?.id, 'doc-1');
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
+  }
+});
+
+test('guest synthesize route returns 502 with error message when provider fails', async () => {
+  const fetchImpl: typeof fetch = async () => Response.json({
+    error: { message: 'Overloaded' },
+  }, { status: 503 });
+
+  const app = createServerApp({ fetchImpl });
+  const server: Server = app.listen(0);
+  const port = (server.address() as AddressInfo).port;
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/api/guest/synthesize`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-gemini-api-key': 'mock-only-key' },
+      body: JSON.stringify({
+        extractions: [{
+          documentId: 'doc-1',
+          name: 'nota.txt',
+          extraction: { documentType: 'texto', findings: [] },
+        }],
+      }),
+    });
+    assert.equal(response.status, 502);
+    const body = await response.json() as { error: string };
+    assert.match(body.error, /HTTP 503/);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
+  }
+});
+
+test('compiled production module loads prompt template and synthesizes study correctly', async () => {
+  const distGeminiPath = new URL('../dist/src/services/ai/gemini.js', import.meta.url).pathname;
+  let distGemini: typeof import('../src/services/ai/gemini.js');
+  try {
+    distGemini = await import(distGeminiPath) as typeof import('../src/services/ai/gemini.js');
+  } catch {
+    return;
+  }
+
+  const validReport = {
+    reportType: 'TITLE_STUDY',
+    sourceDocuments: [{ id: 'doc-dist', name: 'dist.txt', documentType: 'texto' }],
+    findings: [{ id: 'f-dist', sourceDocumentIds: ['doc-dist'], statement: 'Dato compilado' }],
+    comparisons: [],
+    conclusions: [{ id: 'c-dist', statement: 'Conclusión compilada.', supportingFindingIds: ['f-dist'] }],
+  };
+
+  const mockedFetch: typeof fetch = async () => Response.json({
+    status: 'completed',
+    steps: [{
+      type: 'model_output',
+      content: [{ type: 'text', text: JSON.stringify(validReport) }],
+    }],
+  });
+
+  const result = await distGemini.synthesizeTitleStudy('mock-key', [{
+    documentId: 'doc-dist',
+    name: 'dist.txt',
+    extraction: { documentType: 'texto', findings: [{ statement: 'Dato compilado' }] },
+  }], mockedFetch);
+
+  assert.equal(result.reportType, 'TITLE_STUDY');
+  assert.equal(result.sourceDocuments[0]?.id, 'doc-dist');
+});

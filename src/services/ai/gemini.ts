@@ -7,6 +7,23 @@ import { titleStudySchema, toTitleStudyJsonSchema, type TitleStudy } from '../..
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+export async function loadTitleStudyPrompt(): Promise<string> {
+  const candidatePaths = [
+    path.resolve(__dirname, '../../report-types/title-study/prompt.md'),
+    path.resolve(__dirname, '../../../../src/report-types/title-study/prompt.md'),
+    path.resolve(process.cwd(), 'src/report-types/title-study/prompt.md'),
+    path.resolve(process.cwd(), 'dist/src/report-types/title-study/prompt.md'),
+  ];
+  for (const candidate of candidatePaths) {
+    try {
+      return await readFile(candidate, 'utf8');
+    } catch {
+      // try next candidate
+    }
+  }
+  throw new Error('No se pudo encontrar la plantilla prompt.md del estudio de títulos.');
+}
+
 export const GEMINI_MODEL = 'gemini-3.6-flash';
 export const GEMINI_INTERACTIONS_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 export const MAX_INLINE_FILE_BYTES = 70 * 1024 * 1024;
@@ -181,7 +198,7 @@ export async function synthesizeTitleStudy(
 ): Promise<TitleStudy> {
   if (!apiKey.trim()) throw new Error('Ingresa tu clave de Gemini para esta sesión.');
   if (extractions.length === 0) throw new Error('No hay documentos legibles para consolidar.');
-  const prompt = await readFile(path.resolve(__dirname, '../../report-types/title-study/prompt.md'), 'utf8');
+  const prompt = await loadTitleStudyPrompt();
   const documents = extractions.map(({ documentId, name, extraction }) => ({
     document: { id: documentId, name, documentType: extraction.documentType },
     findings: extraction.findings.map((finding, index) => ({
