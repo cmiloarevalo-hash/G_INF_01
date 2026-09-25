@@ -4,7 +4,7 @@ Aplicación web ligera de análisis documental asistido por LLM. El primer tipo 
 
 ## Mapa del repositorio
 
-La estructura de código propuesta se encuentra en [Technical Specification](docs/engineering/TECHNICAL_SPECIFICATION.md#3-repository-and-module-structure). El proyecto está en preimplementación; la estructura propuesta no describe archivos de código existentes.
+La estructura de código implementada corresponde a la baseline inicial definida en [Technical Specification](docs/engineering/TECHNICAL_SPECIFICATION.md#3-repository-and-module-structure). Contiene el servidor HTTP Express (`server.ts`), la interfaz web inicial React con Vite (`src/app/`, `src/components/`, `src/pages/`), pruebas automatizadas (`tests/`) y artefactos de compilación (`dist/`).
 
 ## Documentos de ingeniería
 
@@ -17,11 +17,27 @@ La estructura de código propuesta se encuentra en [Technical Specification](doc
 
 ## Entorno y comienzo
 
-Target de desarrollo/publicación: Google AI Studio y mecanismo compatible con Cloud Run. Fuente versionada: GitHub. La [Technical Specification](docs/engineering/TECHNICAL_SPECIFICATION.md#4-build-run-and-test-commands) fija los scripts iniciales para el primer Work Item de implementación. Cuando existan `package.json` y lockfile, el inicio mínimo será `npm ci` y `npm run dev`. Todavía no hay aplicación ni comandos ejecutables.
+Target de desarrollo/publicación: Google AI Studio y mecanismo compatible con Cloud Run. Fuente versionada: GitHub.
+
+Comandos ejecutables soportados por la baseline (`package.json`):
+
+- **Instalación reproducible:** `npm ci` (o `npm install`).
+- **Modo desarrollo:** `npm run dev` (ejecuta `tsx watch server.ts` con Vite integrado como middleware).
+- **Compilación de producción:** `npm run build` (compila `server.ts` a `dist/server.js`, valida tipos con `tsc` y genera el cliente en `dist/client`).
+- **Ejecución en producción:** `npm start` (ejecuta `node dist/server.js` sirviendo el frontend estático compilado desde `dist/client` y escuchando en `0.0.0.0` mediante `PORT`).
+- **Pruebas automatizadas:** `npm test` (ejecuta el runner nativo de pruebas TypeScript con `node --import tsx --test tests/*.test.ts`).
+
+Endpoint de salud:
+- `GET /api/health`: Responde HTTP 200 con el estado del proceso HTTP (`{"status":"ok", ...}`). No consulta ni afirma el estado de servicios externos.
 
 ## Verificación
 
-Las obligaciones y la evidencia esperada están en [Verification Specification](docs/engineering/VERIFICATION_SPECIFICATION.md). No existen resultados de verificación.
+Las obligaciones y la evidencia esperada se describen en [Verification Specification](docs/engineering/VERIFICATION_SPECIFICATION.md). Con la integración de la baseline inicial (Work Item #1), se cuenta con evidencia local para:
+- **V-001 (Build):** `npm run build` compila servidor y cliente sin errores.
+- **V-002 (Production startup):** `npm start` inicia el servidor Express en producción.
+- **V-003 / V-042 (Health endpoint & semantics):** `GET /api/health` responde HTTP 200 limitándose a la salud del proceso.
+- **V-033 (Main navigation):** Navegación lateral plegable con las secciones previstas en SRS §4.
+- **V-035 (Responsive use):** Interfaz adaptable a pantallas desktop y viewports móviles.
 
 ## Proceso de trabajo
 
