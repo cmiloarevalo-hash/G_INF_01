@@ -685,20 +685,18 @@ Antes del merge se confirma que:
 
 # 24. Merge
 
-Quién ejecuta el merge depende del proyecto.
+En este proyecto, **Chat Web GPT, como Supervisor técnico, ejecuta el merge del PR mediante la integración disponible**. La decisión humana vigente asigna esa autoridad a Chat Web GPT; no queda como una lista de actores posibles.
 
-Puede ser:
+Antes de ejecutar el merge, Chat Web GPT verifica que:
 
-- humano;
-- Chat Web GPT mediante integración disponible;
-- GitHub automático;
-- otro actor autorizado.
+- el HEAD del PR sigue siendo exactamente el SHA con `SEMANTIC_ACCEPTED`;
+- la rama destino está vigente y el PR no tiene conflictos;
+- no hay impedimentos ni blockers nuevos;
+- el CI requerido, cuando exista, está válido para ese SHA.
 
-La regla importante es:
+`SEMANTIC_ACCEPTED` confirma que el cambio satisface el Work Item para el SHA revisado, pero no declara por sí solo que el PR está `MERGE_ELIGIBLE` ni autoriza al Agente implementador a ejecutarlo. `MERGE_ELIGIBLE` registra que se comprobaron las condiciones de integración. La decisión humana registrada en este workflow autoriza a Chat Web GPT a ejecutar el merge únicamente después de esas comprobaciones.
 
-> **SEMANTIC_ACCEPTED no concede por sí solo autoridad para hacer merge.**
-
-Sólo se hace merge cuando el cambio está listo según la política del repositorio.
+El Agente implementador no se autoaprueba ni ejecuta el merge.
 
 ---
 
