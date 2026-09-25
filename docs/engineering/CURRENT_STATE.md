@@ -47,7 +47,7 @@ Evidencia local del Work Item #9:
 - **Instalación reproducible:** `npm ci` pasa con el lockfile actualizado y resuelve Zod `4.6.5`.
 - **Contrato `TITLE_STUDY`:** pruebas automatizadas verifican payload mínimo sin campos opcionales irrelevantes, rechazo de estructura inválida, preservación de valor original/normalizado, aceptación de diferencias documentales y los cinco resultados posibles.
 - **JSON Schema derivado:** prueba automatizada comprueba que se conservan el discriminador, campos requeridos, mínimo de documentos y valores de comparación, enum, propiedades opcionales y prohibición de propiedades adicionales.
-- **Límite del contrato:** los identificadores de documentos y hallazgos se representan como referencias estructurales, pero el schema no comprueba que cada referencia resuelva dentro del mismo payload. Los consumidores no deben tratar esa integridad referencial como validada.
+- **Diferencia entre Zod y JSON Schema:** Zod rechaza referencias a documentos/hallazgos inexistentes y evita identificadores duplicados para documentos y hallazgos. `z.toJSONSchema()` conserva la estructura de esos campos como arrays de strings, pero no representa estas reglas entre elementos del payload. Para validar integridad referencial hay que validar con `titleStudySchema`; JSON Schema derivado por sí solo no equivale a esa validación.
 - **Alcance de la evidencia:** las pruebas locales verifican el schema Zod y su JSON Schema derivado; no verifican una respuesta de LLM ni constituyen evidencia de análisis completo. No se marca V-020, V-021 o V-022 como PASS por estas pruebas aisladas.
-- **Build y pruebas locales:** `npm run build` pasa; `npm test` pasa con 12/12 pruebas en total (5 pruebas para `TITLE_STUDY`).
+- **Build y pruebas locales:** `npm run build` pasa; `npm test` pasa con 14/14 pruebas en total (7 pruebas para `TITLE_STUDY`).
 - **CI:** `NOT CONFIGURED` (sin workflow de GitHub Actions).
