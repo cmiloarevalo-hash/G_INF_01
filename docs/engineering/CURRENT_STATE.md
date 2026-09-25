@@ -22,7 +22,7 @@ Las siguientes capacidades permanecen **NOT_INTEGRATED**:
 - Gestión y persistencia de proyectos en Cloud Firestore (CMP-PROJECTS, V-006, V-007).
 - **FR-020 (documentos locales):** parcialmente integrado sólo para seleccionar y mantener referencias temporales a PDFs locales en la página invitada; carga al servidor y procesamiento del contenido siguen fuera de alcance. **Google Drive y Picker** (CMP-DRIVE, FR-021, V-008–010) y almacenamiento persistente en Drive (FR-022) permanecen **NOT_INTEGRATED**.
 - Configuración y consulta de proveedores LLM (Gemini, OpenAI, Anthropic, OpenRouter) y claves de API (CMP-AI, FR-030–035, V-011–019).
-- Esquema ejecutable de Estudio de Títulos y validación de JSON Schema (FR-048, V-020–022).
+- **Contrato ejecutable inicial `TITLE_STUDY` (Issue #9):** schema Zod 4 en `src/report-types/title-study/schema.ts`, con tipo TypeScript derivado y función que produce JSON Schema Draft 2020-12 desde el mismo schema. Incluye documentos fuente con tipo abierto, hallazgos con referencias a documentos, valores originales y normalizados opcionales, comparaciones con los cinco resultados de SRS §10.7 y conclusiones con referencias a hallazgos. No incluye prompt, análisis LLM, renderer ni DOCX.
 - Generación y descarga de informes DOCX (CMP-REPORTS, FR-050–054, V-026–030).
 - Las restricciones `CON-*` se mantienen como restricciones TARGET cuya verificación integral requiere el entorno desplegado pertinente.
 
@@ -42,3 +42,12 @@ Evidencia local del Work Item #6 (código y pruebas de la rama del PR #7):
 - **Suite automatizada completa:** `PASS` (7/7 pruebas en `tests/*.test.ts`).
 - **Revisión manual desktop/móvil para el Issue #6:** `NOT RUN`; el navegador disponible no pudo abrir el servidor local (`net::ERR_BLOCKED_BY_CLIENT`). La comprobación visual responsive y de interacción real de la nueva página sigue pendiente.
 - **CI:** `NOT CONFIGURED` (no existe pipeline de CI versionado en el repositorio; la evidencia corresponde a verificación local).
+
+Evidencia local del Work Item #9:
+- **Instalación reproducible:** `npm ci` pasa con el lockfile actualizado y resuelve Zod `4.6.5`.
+- **Contrato `TITLE_STUDY`:** pruebas automatizadas verifican payload mínimo sin campos opcionales irrelevantes, rechazo de estructura inválida, preservación de valor original/normalizado, aceptación de diferencias documentales y los cinco resultados posibles.
+- **JSON Schema derivado:** prueba automatizada comprueba que se conservan el discriminador, campos requeridos, mínimo de documentos y valores de comparación, enum, propiedades opcionales y prohibición de propiedades adicionales.
+- **Diferencia entre Zod y JSON Schema:** Zod rechaza referencias a documentos/hallazgos inexistentes y evita identificadores duplicados para documentos y hallazgos. `z.toJSONSchema()` conserva la estructura de esos campos como arrays de strings, pero no representa estas reglas entre elementos del payload. Para validar integridad referencial hay que validar con `titleStudySchema`; JSON Schema derivado por sí solo no equivale a esa validación.
+- **Alcance de la evidencia:** las pruebas locales verifican el schema Zod y su JSON Schema derivado; no verifican una respuesta de LLM ni constituyen evidencia de análisis completo. No se marca V-020, V-021 o V-022 como PASS por estas pruebas aisladas.
+- **Build y pruebas locales:** `npm run build` pasa; `npm test` pasa con 14/14 pruebas en total (7 pruebas para `TITLE_STUDY`).
+- **CI:** `NOT CONFIGURED` (sin workflow de GitHub Actions).
