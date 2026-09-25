@@ -13,6 +13,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { id: 'mis-proyectos', label: 'Mis proyectos', group: 'Proyectos', isAvailable: false },
   { id: 'mis-informes', label: 'Mis informes', group: 'Informes', isAvailable: false },
   { id: 'apis-modelos', label: 'APIs y modelos', group: 'IA', isAvailable: false },
+  { id: 'documentos-invitado', label: 'PDF locales (invitado)', group: 'Documentos', isAvailable: true },
   { id: 'google-drive', label: 'Google Drive', group: 'Documentos', isAvailable: false },
   { id: 'configuracion', label: 'Configuración', group: 'Configuración', isAvailable: false },
 ];
@@ -78,6 +79,14 @@ function renderIcon(id: string) {
           <path d="M12 2L2 7l10 5 10-5-10-5z" />
           <path d="M2 17l10 5 10-5" />
           <path d="M2 12l10 5 10-5" />
+        </svg>
+      );
+    case 'documentos-invitado':
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <path d="M8 13h8M8 17h5" />
         </svg>
       );
     case 'configuracion':

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Sidebar, NAV_ITEMS } from '../components/Sidebar.js';
 import { Header } from '../components/Header.js';
 import { HomePage } from '../pages/HomePage.js';
+import { GuestDocumentsPage } from '../pages/GuestDocumentsPage.js';
 import { UnavailablePage } from '../pages/UnavailablePage.js';
 import './App.css';
 
@@ -48,7 +49,9 @@ export function App() {
 
         <main className="main-content">
           {currentSection === 'inicio' ? (
-            <HomePage />
+            <HomePage onOpenGuestDocuments={() => setCurrentSection('documentos-invitado')} />
+          ) : currentSection === 'documentos-invitado' ? (
+            <GuestDocumentsPage />
           ) : (
             <UnavailablePage
               sectionId={activeItem.id}
