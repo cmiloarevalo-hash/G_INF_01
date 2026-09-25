@@ -117,13 +117,8 @@ test('guest synthesize route returns 502 with error message when provider fails'
 });
 
 test('compiled production module loads prompt template and synthesizes study correctly', async () => {
-  const distGeminiPath = new URL('../dist/src/services/ai/gemini.js', import.meta.url).pathname;
-  let distGemini: typeof import('../src/services/ai/gemini.js');
-  try {
-    distGemini = await import(distGeminiPath) as typeof import('../src/services/ai/gemini.js');
-  } catch {
-    return;
-  }
+  const distGeminiPath = new URL('../dist/src/services/ai/gemini.js', import.meta.url).href;
+  const distGemini = await import(distGeminiPath) as typeof import('../src/services/ai/gemini.js');
 
   const validReport = {
     reportType: 'TITLE_STUDY',
