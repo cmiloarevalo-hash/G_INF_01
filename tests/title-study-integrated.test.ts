@@ -117,7 +117,7 @@ test('review generator command creates the ignored DOCX review file with ZIP sig
   const xml = readDocxDocumentXml(bytes);
   assert.match(xml, /documento-sintetico-a\.pdf/);
   assert.match(xml, /El fixture sintético conserva la relación/);
-  assert.match(xml, /w:instrText[^>]*>TOC[^<]*\\h[^<]*\\o "1-2"/);
+  assert.match(xml, /w:instrText[^>]*>TOC[^<]*\\h[^<]*\\o (?:&quot;|")1-2(?:&quot;|")/);
   assert.match(xml, /w:fldChar[^>]*w:fldCharType="begin"/);
   assert.match(xml, /w:fldChar[^>]*w:fldCharType="separate"/);
   assert.match(xml, /w:fldChar[^>]*w:fldCharType="end"/);
