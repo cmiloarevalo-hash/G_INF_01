@@ -65,21 +65,11 @@ function heading(text: string, level: HeadingLevel): Paragraph {
   });
 }
 
-function body(text: string, options: { muted?: boolean; boldLabel?: string } = {}): Paragraph {
-  const children = options.boldLabel
-    ? [
-        new TextRun({ text: options.boldLabel, bold: true }),
-        new TextRun(text),
-      ]
-    : [new TextRun(text)];
+function body(text: string): Paragraph {
   return new Paragraph({
     spacing: { after: 120, line: 276 },
     widowControl: true,
-    children: children.map((run) =>
-      run instanceof TextRun && options.muted
-        ? new TextRun({ text: (run as unknown as { options?: { text?: string } }).options?.text ?? '', color: COLORS.muted })
-        : run,
-    ),
+    children: [new TextRun(text)],
   });
 }
 
