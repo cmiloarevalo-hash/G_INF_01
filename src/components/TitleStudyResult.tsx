@@ -1,5 +1,8 @@
-import type { FC, ReactNode } from 'react';
+import React, { type FC, type ReactNode } from 'react';
 import type { TitleStudy } from '../report-types/title-study/schema.js';
+
+// Keep a runtime React binding for the direct tsx test runner's JSX transform.
+void React;
 
 type Finding = NonNullable<TitleStudy['findings']>[number];
 type Comparison = NonNullable<TitleStudy['comparisons']>[number];
