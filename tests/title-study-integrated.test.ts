@@ -130,7 +130,7 @@ test('review generator command creates the ignored DOCX review file with ZIP sig
   assert.ok(numberingXml);
   const conclusionLevel = [...numberingXml.matchAll(/<w:lvl\b[\s\S]*?<\/w:lvl>/g)]
     .map((match) => match[0])
-    .find((level) => /w:numFmt[^>]*w:val="decimal"/.test(level) && /w:lvlText[^>]*w:val="%1\\."/.test(level));
+    .find((level) => /w:numFmt[^>]*w:val="decimal"/.test(level) && /w:lvlText[^>]*w:val="%1\."/.test(level));
   assert.ok(conclusionLevel);
   assert.match(conclusionLevel, /w:suff[^>]*w:val="space"/);
 
