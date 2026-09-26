@@ -14,6 +14,7 @@ La estructura de código implementada corresponde a la baseline inicial definida
 - [Current State](docs/engineering/CURRENT_STATE.md)
 - [Verification Specification](docs/engineering/VERIFICATION_SPECIFICATION.md)
 - [Development Plan](docs/engineering/DEVELOPMENT_PLAN.md)
+- [Report Presentation Specification](docs/engineering/REPORT_PRESENTATION_SPECIFICATION.md)
 
 ## Entorno y comienzo
 
