@@ -57,7 +57,9 @@ function documentName(report: TitleStudy, documentId: string): string {
   return report.sourceDocuments.find((document) => document.id === documentId)?.name ?? documentId;
 }
 
-function heading(text: string, level: HeadingLevel): Paragraph {
+type HeadingLevelValue = (typeof HeadingLevel)[keyof typeof HeadingLevel];
+
+function heading(text: string, level: HeadingLevelValue): Paragraph {
   return new Paragraph({
     heading: level,
     keepNext: true,
