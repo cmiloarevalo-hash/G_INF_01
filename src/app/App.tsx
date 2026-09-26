@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Sidebar, NAV_ITEMS } from '../components/Sidebar.js';
 import { Header } from '../components/Header.js';
+import { RoadmapStatusPanel } from '../components/RoadmapStatusPanel.js';
 import { HomePage } from '../pages/HomePage.js';
 import { GuestDocumentsPage } from '../pages/GuestDocumentsPage.js';
 import { UnavailablePage } from '../pages/UnavailablePage.js';
@@ -48,17 +49,22 @@ export function App() {
         />
 
         <main className="main-content">
-          {currentSection === 'inicio' ? (
-            <HomePage onOpenGuestDocuments={() => setCurrentSection('documentos-invitado')} />
-          ) : currentSection === 'documentos-invitado' ? (
-            <GuestDocumentsPage />
-          ) : (
-            <UnavailablePage
-              sectionId={activeItem.id}
-              sectionTitle={activeItem.label}
-              onReturnToHome={() => setCurrentSection('inicio')}
-            />
-          )}
+          <div className="main-content-grid">
+            <div className="main-content-primary">
+              {currentSection === 'inicio' ? (
+                <HomePage onOpenGuestDocuments={() => setCurrentSection('documentos-invitado')} />
+              ) : currentSection === 'documentos-invitado' ? (
+                <GuestDocumentsPage />
+              ) : (
+                <UnavailablePage
+                  sectionId={activeItem.id}
+                  sectionTitle={activeItem.label}
+                  onReturnToHome={() => setCurrentSection('inicio')}
+                />
+              )}
+            </div>
+            <RoadmapStatusPanel />
+          </div>
         </main>
       </div>
     </div>
