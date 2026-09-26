@@ -948,3 +948,16 @@ body {
     padding: 0.55rem 0.6rem;
   }
 }
+
+.guest-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .guest-report-actions .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+}

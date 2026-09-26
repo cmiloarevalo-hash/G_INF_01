@@ -4,6 +4,12 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { analyzeGuestDocuments, type GeminiFetch, type GuestDocumentInput } from './src/services/ai/gemini.js';
 import { selectionLimitError } from './src/shared/guest-limits.js';
+import {
+  InvalidTitleStudyReportError,
+  renderTitleStudyDocx,
+  TITLE_STUDY_DOCX_FILENAME,
+  TITLE_STUDY_DOCX_MIME,
+} from './src/report-types/title-study/renderer.js';
 import * as z from 'zod';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -59,6 +65,21 @@ export function createServerApp(options: { fetchImpl?: GeminiFetch; env?: AliasE
     res.setHeader('Cache-Control', 'no-store');
     if (!authorizedAlias(req, env)) return res.status(403).json({ error: 'Acceso a los alias no autorizado.' });
     return res.json({ aliases: aliasSlots.filter((item) => env[item.secret]?.trim()).map(({ id, label }) => ({ id, label })) });
+  });
+
+  app.post('/api/guest/report-docx', express.json({ limit: '5mb' }), async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const bytes = await renderTitleStudyDocx(req.body?.report);
+      res.setHeader('Content-Type', TITLE_STUDY_DOCX_MIME);
+      res.setHeader('Content-Disposition', `attachment; filename="${TITLE_STUDY_DOCX_FILENAME}"`);
+      return res.status(200).send(bytes);
+    } catch (error) {
+      if (error instanceof InvalidTitleStudyReportError) {
+        return res.status(400).json({ error: error.message });
+      }
+      return res.status(500).json({ error: 'No fue posible generar el informe DOCX.' });
+    }
   });
 
   app.post('/api/guest/analyze', express.json({ limit: '70mb' }), async (req, res) => {
