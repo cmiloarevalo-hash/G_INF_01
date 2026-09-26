@@ -632,7 +632,28 @@ D debe revisarse nuevamente.
 
 # 22. CI
 
-Cuando exista CI:
+El proyecto adopta **GitHub Actions como CI mínimo persistente** mediante Issue #26. El workflow canónico está en:
+
+```text
+.github/workflows/ci.yml
+```
+
+Su objetivo es producir evidencia mecánica reproducible asociada al SHA verificado. Ejecuta los comandos canónicos del repositorio:
+
+```text
+npm ci
+npm run build
+npm test
+git diff --check <base>...<HEAD>
+```
+
+El workflow se ejecuta automáticamente para Pull Requests cuyo target es `main`. Para PR, la verificación debe corresponder al **HEAD exacto del PR** y usar como base la revisión de `main` indicada por el evento.
+
+También define `workflow_dispatch` para verificación manual por `ref`/SHA y base de comparación, con `main` como base por defecto. GitHub sólo permite recibir `workflow_dispatch` cuando el archivo de workflow existe en la rama por defecto; por ello esta capacidad manual queda disponible después de integrar el workflow en `main`. Una ejecución manual contra otro PR no modifica el HEAD de ese PR.
+
+El CI mínimo usa únicamente un runner GitHub-hosted Linux estándar, sin secrets del proyecto, caché, artefactos, deploy ni larger runners. Cualquier ampliación requiere un Work Item separado.
+
+Estados de CI:
 
 ```text
 PASS
@@ -641,9 +662,9 @@ PENDING
 NOT CONFIGURED
 ```
 
-`PASS` es evidencia automática.
+`PASS` es evidencia automática para el SHA indicado.
 
-No significa aprobación.
+No significa aprobación ni equivale a `SEMANTIC_ACCEPTED`.
 
 Si el proyecto requiere CI y está:
 
