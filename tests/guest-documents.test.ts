@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { fileIdentity, mergeSelectedFiles, removeSelectedFile, serializeSelectionUpdate } from '../src/pages/GuestDocumentsPage.js';
+import { fileIdentity, mergeSelectedFiles, removeSelectedFile, requestTitleStudyDocx, serializeSelectionUpdate } from '../src/pages/GuestDocumentsPage.js';
 
 function makeFile(name: string, contents: string, type = 'application/octet-stream', lastModified = 1): File {
   return new File([contents], name, { type, lastModified });
@@ -42,4 +42,42 @@ test('a removal queued during async selection update runs after it and does not 
   await pending;
   assert.deepEqual(errors, []);
   assert.deepEqual(selected, [incoming]);
+});
+
+
+test('DOCX download helper sends only the validated report and no Gemini credentials', async () => {
+  const report = {
+    reportType: 'TITLE_STUDY' as const,
+    sourceDocuments: [{ id: 'doc-1', name: 'titulo.pdf', documentType: 'Documento' }],
+  };
+  let capturedUrl = '';
+  let capturedInit: RequestInit | undefined;
+  const fetchImpl: typeof fetch = async (input, init) => {
+    capturedUrl = String(input);
+    capturedInit = init;
+    return new Response(new Uint8Array([0x50, 0x4b, 0x03, 0x04]), {
+      status: 200,
+      headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+    });
+  };
+
+  const blob = await requestTitleStudyDocx(report, fetchImpl);
+  assert.equal(capturedUrl, '/api/guest/report-docx');
+  assert.equal(capturedInit?.method, 'POST');
+  const headers = new Headers(capturedInit?.headers);
+  assert.equal(headers.get('content-type'), 'application/json');
+  assert.equal(headers.has('x-gemini-api-key'), false);
+  assert.equal(headers.has('x-gemini-key-alias'), false);
+  assert.equal(headers.has('x-gemini-alias-access-token'), false);
+  assert.deepEqual(JSON.parse(String(capturedInit?.body)), { report });
+  assert.equal(blob.type, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+});
+
+test('DOCX download helper reports server failure instead of simulating a file', async () => {
+  const report = {
+    reportType: 'TITLE_STUDY' as const,
+    sourceDocuments: [{ id: 'doc-1', name: 'titulo.pdf', documentType: 'Documento' }],
+  };
+  const fetchImpl: typeof fetch = async () => Response.json({ error: 'No fue posible generar el informe DOCX.' }, { status: 500 });
+  await assert.rejects(() => requestTitleStudyDocx(report, fetchImpl), /No fue posible generar el informe DOCX/);
 });
