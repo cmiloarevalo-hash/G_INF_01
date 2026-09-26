@@ -1,44 +1,19 @@
-import React, { type CSSProperties, type FC } from 'react';
+import * as React from 'react';
+import {
+  FALLBACK_ROADMAP_SNAPSHOT,
+  loadRoadmapSnapshot,
+  type RoadmapLoadResult,
+  type RoadmapMetaSnapshot,
+  type RoadmapSnapshot,
+  type RoadmapStatus,
+} from '../shared/roadmapStatus.js';
 
-// node:test via tsx uses the classic JSX runtime for this module.
-void React;
+let roadmapSnapshotRequest: Promise<RoadmapLoadResult> | null = null;
 
-type RoadmapStatus = 'OK' | 'EN PROCESO' | 'PENDIENTE';
-
-interface RoadmapItem {
-  id: string;
-  label?: string;
-  status: RoadmapStatus;
-  children?: RoadmapItem[];
+function loadRoadmapSnapshotOnce() {
+  roadmapSnapshotRequest ??= loadRoadmapSnapshot();
+  return roadmapSnapshotRequest;
 }
-
-const ROADMAP_ITEMS: RoadmapItem[] = [
-  { id: 'M1', label: 'Análisis invitado de una llamada', status: 'OK' },
-  {
-    id: 'M2',
-    label: 'Publicación comprobada del piloto',
-    status: 'EN PROCESO',
-    children: [
-      { id: 'M2.1', label: 'Preparar la versión', status: 'EN PROCESO' },
-      { id: 'M2.2', label: 'Configurar acceso seguro', status: 'PENDIENTE' },
-      { id: 'M2.3', label: 'Publicar y probar', status: 'PENDIENTE' },
-      { id: 'M2.4', label: 'Registrar y decidir', status: 'PENDIENTE' },
-    ],
-  },
-  {
-    id: 'M3',
-    label: 'Resultado e informe para invitado',
-    status: 'OK',
-    children: [
-      { id: 'M3.1', status: 'OK' },
-      { id: 'M3.2', status: 'OK' },
-      { id: 'M3.3', status: 'OK' },
-      { id: 'M3.4', status: 'OK' },
-    ],
-  },
-  { id: 'M4', label: 'Trabajo persistente y capacidades completas', status: 'PENDIENTE' },
-  { id: 'M5', label: 'Integración del producto completo', status: 'PENDIENTE' },
-];
 
 function statusClass(status: RoadmapStatus) {
   return status === 'OK'
@@ -48,16 +23,22 @@ function statusClass(status: RoadmapStatus) {
       : 'roadmap-status roadmap-status-pending';
 }
 
-const RoadmapNode: FC<{ item: RoadmapItem; child?: boolean }> = ({ item, child = false }) => (
+const RoadmapNode: React.FC<{ item: RoadmapMetaSnapshot | NonNullable<RoadmapMetaSnapshot['children']>[number]; child?: boolean }> = ({
+  item,
+  child = false,
+}) => (
   <li className={child ? 'roadmap-node roadmap-node-child' : 'roadmap-node'}>
     <div className="roadmap-node-row">
       <div className="roadmap-node-copy">
         <strong>{item.id}</strong>
         {item.label && <span> · {item.label}</span>}
+        {'pointsEarned' in item && (
+          <span className="roadmap-node-points"> · {item.pointsEarned}/{item.pointsMax} pts</span>
+        )}
       </div>
       <span className={statusClass(item.status)}>{item.status}</span>
     </div>
-    {item.children && (
+    {'children' in item && item.children && (
       <ul className="roadmap-children">
         {item.children.map((childItem) => (
           <RoadmapNode key={childItem.id} item={childItem} child />
@@ -67,37 +48,68 @@ const RoadmapNode: FC<{ item: RoadmapItem; child?: boolean }> = ({ item, child =
   </li>
 );
 
-export const RoadmapStatusPanel: FC = () => (
+interface RoadmapStatusViewProps {
+  snapshot: RoadmapSnapshot;
+  live: boolean;
+}
+
+export const RoadmapStatusView: React.FC<RoadmapStatusViewProps> = ({ snapshot, live }) => (
   <aside className="roadmap-status-panel" aria-labelledby="roadmap-status-title">
     <div className="roadmap-panel-heading">
-      <span className="roadmap-kicker">Roadmap</span>
-      <h2 id="roadmap-status-title">Avance del proyecto</h2>
+      <div>
+        <span className="roadmap-kicker">Roadmap</span>
+        <h2 id="roadmap-status-title">Avance del proyecto</h2>
+      </div>
+      <span className={live ? 'roadmap-source roadmap-source-live' : 'roadmap-source roadmap-source-stale'}>
+        {live ? 'GitHub · live' : 'Fallback · stale/no-live'}
+      </span>
     </div>
 
     <div className="roadmap-progress-summary">
       <div className="roadmap-progress-copy">
         <span>Avance acumulado</span>
-        <strong>40%</strong>
+        <strong>{snapshot.overallPercent}%</strong>
       </div>
       <div
         className="roadmap-progress-track"
         role="progressbar"
-        aria-label="Avance administrativo acumulado"
+        aria-label="Avance ponderado acumulado"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={40}
+        aria-valuenow={snapshot.overallPercent}
       >
-        <span style={{ width: '40%' } as CSSProperties} />
+        <span style={{ width: `${snapshot.overallPercent}%` }} />
       </div>
-      <p>2 metas cerradas de 5</p>
+      <p>{snapshot.summary}</p>
     </div>
 
     <ul className="roadmap-tree">
-      {ROADMAP_ITEMS.map((item) => (
+      {snapshot.metas.map((item) => (
         <RoadmapNode key={item.id} item={item} />
       ))}
     </ul>
 
-    <p className="roadmap-metric-note">La métrica suma sólo metas completamente cerradas.</p>
+    <p className="roadmap-metric-note">
+      Cada meta conserva 20 puntos; cuando tiene subtareas canónicas, esos puntos se reparten entre ellas.
+    </p>
   </aside>
 );
+
+export const RoadmapStatusPanel: React.FC = () => {
+  const [result, setResult] = React.useState<RoadmapLoadResult>({
+    snapshot: FALLBACK_ROADMAP_SNAPSHOT,
+    live: false,
+  });
+
+  React.useEffect(() => {
+    let active = true;
+    loadRoadmapSnapshotOnce().then((next) => {
+      if (active) setResult(next);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return <RoadmapStatusView snapshot={result.snapshot} live={result.live} />;
+};
