@@ -879,6 +879,31 @@ El contrato de ejecución residente es [`AI_STUDIO_OPERATOR.md`](AI_STUDIO_OPERA
 
 `PULL / SYNC` nunca autoriza sincronización de cambios de vuelta al repositorio. Para repositorios públicos, la vía preferida es clone/fetch HTTPS anónimo, sin token, preservando `.git` y verificando `origin`, HEAD exacto y worktree limpio. Esto no exige integración GitHub nativa ni sync bidireccional.
 
+### 29.1.1 Permiso técnico != autoridad del workflow
+
+Los scopes OAuth/GitHub App describen capacidad técnica de la integración; no sustituyen Issue, Semantic Scope, Path Scope, decisión humana ni autoridad del Supervisor.
+
+Regla canónica:
+
+```text
+TECHNICAL PERMISSION != WORKFLOW AUTHORITY
+AI_STUDIO_ALLOWED_REPOSITORY_WRITES = NONE
+```
+
+Por tanto, aunque la GitHub App disponga técnicamente de permisos de escritura, AI Studio sólo puede usar GitHub para consumo autorizado `GitHub → AI Studio` mediante lectura/import/pull. Quedan prohibidos `Push Changes`, `Stage and commit`, commit directo, creación/modificación de branches o PR, edición de workflows, escritura directa a `main` y cualquier otro write/sync-back.
+
+La instalación de AI Studio debe mantenerse restringida al repositorio `cmiloarevalo-hash/G_INF_01` salvo decisión humana explícita en contrario.
+
+Una allowlist escrita sólo en prompt o documentación no es enforcement técnico suficiente frente a scopes amplios. Cualquier futura excepción de escritura exige decisión humana + Work Item separado + allowlist exacta + no escritura directa a `main` + control GitHub-side verificable antes de afirmar enforcement.
+
+El namespace `docs/ai-studio-evidence/**` se registra únicamente como posibilidad futura:
+
+```text
+NOT AUTHORIZED
+NOT ACTIVE
+ALLOWED WRITE PATHS: NONE
+```
+
 ## 29.2 Inicio: AI_STUDIO_REQUEST
 
 Toda intervención usada como evidencia del workflow comienza por solicitud explícita del Supervisor y un Work Item existente.
