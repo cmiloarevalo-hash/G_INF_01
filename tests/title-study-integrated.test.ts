@@ -124,7 +124,7 @@ test('review generator command creates the ignored DOCX review file with ZIP sig
 
   const settingsXml = entries.get('word/settings.xml')?.toString('utf8');
   assert.ok(settingsXml);
-  assert.match(settingsXml, /w:updateFields[^>]*w:val="true"/);
+  assert.match(settingsXml, /<w:updateFields(?:\s+w:val="(?:true|1)")?\s*\/>/);
 
   const numberingXml = entries.get('word/numbering.xml')?.toString('utf8');
   assert.ok(numberingXml);
