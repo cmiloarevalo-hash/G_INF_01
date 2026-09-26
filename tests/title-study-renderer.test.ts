@@ -189,4 +189,3 @@ test('conclusion numbering OOXML uses an explicit space suffix after the number'
   assert.ok(conclusionLevel, 'conclusion decimal numbering level not found');
   assert.match(conclusionLevel, /w:suff[^>]*w:val="space"/);
 });
-
