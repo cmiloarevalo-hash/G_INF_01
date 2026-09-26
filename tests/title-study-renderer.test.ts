@@ -122,7 +122,7 @@ test('V-026: valid TITLE_STUDY produces a non-empty DOCX with structured report 
   assert.match(documentXml, /<w:tbl>/);
   assert.match(documentXml, /TOC/);
   assert.match(documentXml, /w:fldChar[^>]*w:fldCharType="begin"/);
-  assert.match(documentXml, /w:instrText[^>]*>TOC[^<]*\\h[^<]*\\o "1-2"/);
+  assert.match(documentXml, /w:instrText[^>]*>TOC[^<]*\\h[^<]*\\o (?:&quot;|")1-2(?:&quot;|")/);
   assert.match(documentXml, /w:fldChar[^>]*w:fldCharType="separate"/);
   assert.match(documentXml, /w:fldChar[^>]*w:fldCharType="end"/);
 
