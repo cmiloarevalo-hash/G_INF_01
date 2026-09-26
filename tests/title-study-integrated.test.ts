@@ -128,7 +128,7 @@ test('review generator command creates the ignored DOCX review file with ZIP sig
 
   const numberingXml = entries.get('word/numbering.xml')?.toString('utf8');
   assert.ok(numberingXml);
-  const conclusionLevel = [...numberingXml.matchAll(/<w:lvl\\b[\\s\\S]*?<\\/w:lvl>/g)]
+  const conclusionLevel = [...numberingXml.matchAll(/<w:lvl\b[\s\S]*?<\/w:lvl>/g)]
     .map((match) => match[0])
     .find((level) => /w:numFmt[^>]*w:val="decimal"/.test(level) && /w:lvlText[^>]*w:val="%1\\."/.test(level));
   assert.ok(conclusionLevel);
