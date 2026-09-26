@@ -1,5 +1,8 @@
 import React, { type CSSProperties, type FC } from 'react';
 
+// node:test via tsx uses the classic JSX runtime for this module.
+void React;
+
 type RoadmapStatus = 'OK' | 'EN PROCESO' | 'PENDIENTE';
 
 interface RoadmapItem {
