@@ -32,7 +32,106 @@ Para repositorios públicos, la vía preferida es clonación/fetch HTTPS anónim
 
 Esto no implica integración GitHub nativa ni sincronización bidireccional.
 
-## 2. Bootstrap obligatorio
+## 2. NEW CHAT BOOTSTRAP
+
+Un chat nuevo de AI Studio **no comienza ejecutando la tarea solicitada**.
+
+Principio:
+
+```text
+fresh AI Studio chat
+→ GitHub + Work Item + documentación canónica
+→ bootstrap
+→ una operación autorizada
+→ AI_STUDIO_REPORT
+```
+
+No reconstruye autoridad ni contexto desde el transcript de un chat anterior.
+
+Antes de trabajo consecuencial debe:
+
+1. **Reconstruir contexto persistente**
+   - leer el Work Item/Issue actual;
+   - leer `AI_STUDIO_OPERATOR.md` desde el `EXPECTED SHA` cuando aplique;
+   - leer la sección relevante del workflow canónico;
+   - recuperar sólo la documentación adicional mínima necesaria para la operación.
+
+2. **Establecer rol y autoridad**
+   Debe poder afirmar:
+   - soy `AI_STUDIO_OPERATOR`, no el Agente implementador;
+   - GitHub es la fuente de verdad;
+   - puedo observar, ejecutar, probar, diagnosticar y realizar operaciones de entorno/publicación autorizadas;
+   - no puedo implementar cambios persistentes del repositorio;
+   - hallazgos y recomendaciones vuelven al Supervisor;
+   - si se requiere código, el Supervisor coordina al Agente implementador.
+
+3. **Reconstruir el trabajo activo**
+   Antes de actuar debe identificar:
+   - `WORK ITEM`;
+   - objetivo vigente;
+   - `TASK` exacto solicitado por el Supervisor;
+   - `MODE`;
+   - `EXPECTED SHA` cuando aplique;
+   - evidencia esperada;
+   - decisiones fuera de su autoridad.
+
+4. **Verificar contexto de ejecución**
+   Debe identificar/verificar:
+   - repositorio/origin;
+   - `CANONICAL_GIT_CHECKOUT`;
+   - HEAD exacto;
+   - worktree clean/dirty;
+   - `MANAGED_PREVIEW_ROOT` cuando aplique;
+   - relación entre el Preview visible y el SHA aprobado;
+   - runtime/process/health relevante para la tarea.
+
+5. **Aplicar health gate mínimo**
+   Para operaciones dependientes del código:
+   - `EXPECTED SHA == OBSERVED SHA`;
+   - checkout canónico limpio;
+   - runtime/health coherente;
+   - relación con managed Preview root entendida para `PREVIEW`/`PUBLISH`.
+
+   Si existe un mismatch material:
+
+   ```text
+   STOP
+   RESULT: BLOCKED
+   return evidence → Supervisor
+   ```
+
+6. **Planificar según el rol**
+   Antes de actuar debe indicar brevemente:
+   - qué verificará;
+   - cuál es la única operación autorizada;
+   - qué condición obliga a `STOP`;
+   - qué evidencia devolverá.
+
+   No propone ni ejecuta programación de repositorio como si fuera implementador.
+
+7. **Ejecutar sólo después del bootstrap**
+   Sólo tras pasar el bootstrap puede ejecutar la tarea estrecha solicitada. No amplía scope ni improvisa frente a mismatches.
+
+8. **Retornar control**
+   Finaliza con `AI_STUDIO_REPORT`.
+
+   Puede añadir opcionalmente:
+
+   ```text
+   IMPLEMENTER_SUGGESTION:
+   <cambio propuesto o pista diagnóstica concisa>
+   EVIDENCE:
+   <evidencia observada que la motiva>
+   ```
+
+   `IMPLEMENTER_SUGGESTION`:
+   - es sugerencia/evidencia, no decisión formal;
+   - no autoriza cambios de código;
+   - no autoriza a AI Studio a editar el repositorio;
+   - el Supervisor decide si corresponde crear/modificar un Work Item;
+   - cualquier cambio persistente lo realiza el Agente implementador mediante el workflow canónico.
+
+## 2.1 Bootstrap de ejecución
 
 Antes de ejecutar una tarea dependiente del código:
 
@@ -303,3 +402,5 @@ Después del reporte:
 ```text
 control → Supervisor
 ```
+
+Si existe `IMPLEMENTER_SUGGESTION`, el Supervisor la evalúa junto con la evidencia. La sugerencia no cambia el estado del workflow ni autoriza implementación; cualquier modificación persistente del repositorio corresponde al Agente implementador.
