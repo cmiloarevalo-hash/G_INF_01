@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { TitleStudy } from '../src/report-types/title-study/schema.js';
 import { TitleStudyResult, comparisonLabel, resolveDocumentName } from '../src/components/TitleStudyResult.js';
@@ -43,7 +44,7 @@ const fullReport: TitleStudy = {
 };
 
 test('renders the validated result with readable references, original and normalized values', () => {
-  const html = renderToStaticMarkup(<TitleStudyResult report={fullReport} partial={true} />);
+  const html = renderToStaticMarkup(createElement(TitleStudyResult, { report: fullReport, partial: true }));
 
   assert.match(html, /Resultado preliminar \(parcial\)/);
   assert.match(html, /requiere revisión humana/i);
@@ -71,7 +72,7 @@ test('omits optional sections and normalized column when the validated collectio
     reportType: 'TITLE_STUDY',
     sourceDocuments: [{ id: 'doc-only', name: 'titulo.pdf', documentType: 'Documento' }],
   };
-  const html = renderToStaticMarkup(<TitleStudyResult report={minimal} partial={false} />);
+  const html = renderToStaticMarkup(createElement(TitleStudyResult, { report: minimal, partial: false }));
 
   assert.match(html, /Documentos fuente/);
   assert.match(html, /titulo\.pdf/);
