@@ -150,7 +150,12 @@ export const GuestDocumentsPage: FC = () => {
       })));
       const parsedReport = outcome.report === undefined ? null : titleStudySchema.safeParse(outcome.report);
       if (!response.ok || !parsedReport?.success) {
-        if (!outcome.statuses) setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'No analizado' as const, reason: 'No se confirmó un resultado validado.' }])));
+        if (response.ok && !parsedReport?.success) {
+          const reason = 'La respuesta no cumple el contrato TITLE_STUDY; no se confirmó un resultado validado.';
+          setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'No analizado' as const, reason }])));
+        } else if (!outcome.statuses) {
+          setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'No analizado' as const, reason: 'No se confirmó un resultado validado.' }])));
+        }
         setMessage(outcome.error ?? (response.ok ? 'La respuesta no cumple el contrato TITLE_STUDY; no se mostrará como informe.' : `Error HTTP ${response.status}`)); return;
       }
       setReport(parsedReport.data);
