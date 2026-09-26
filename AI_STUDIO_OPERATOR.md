@@ -32,6 +32,59 @@ Para repositorios públicos, la vía preferida es clonación/fetch HTTPS anónim
 
 Esto no implica integración GitHub nativa ni sincronización bidireccional.
 
+## 1.1 Permiso técnico != autoridad del workflow
+
+Los permisos OAuth o GitHub App son capacidades técnicas de la integración; **no conceden autoridad operacional por sí mismos**.
+
+Regla vigente:
+
+```text
+TECHNICAL PERMISSION != WORKFLOW AUTHORITY
+AI_STUDIO_ALLOWED_REPOSITORY_WRITES = NONE
+```
+
+Aunque la GitHub App de Google AI Studio tenga técnicamente scopes de escritura sobre `G_INF_01`, AI Studio sólo puede usar la integración para consumo autorizado:
+
+```text
+GitHub → AI Studio
+read / import / pull
+```
+
+Siguen expresamente prohibidos:
+
+- `Push Changes`;
+- `Stage and commit`;
+- commit directo;
+- crear o modificar branches;
+- crear o modificar Pull Requests;
+- modificar workflows;
+- escritura directa a `main`;
+- cualquier otra escritura o sync-back hacia el repositorio.
+
+La instalación de la GitHub App debe permanecer restringida a `cmiloarevalo-hash/G_INF_01` salvo decisión humana explícita que autorice ampliar el conjunto de repositorios.
+
+Una allowlist descrita sólo en prompts o documentación **no constituye enforcement técnico** si la App conserva permisos más amplios. Cualquier futura excepción de escritura requiere, antes de activarse:
+
+1. decisión humana explícita;
+2. Work Item independiente y delimitado;
+3. allowlist exacta;
+4. prohibición de escritura directa a `main`;
+5. un control GitHub-side verificable —por ejemplo ruleset, branch protection, check/gate equivalente u otro mecanismo efectivo— antes de afirmar que la restricción está técnicamente aplicada.
+
+El namespace potencial:
+
+```text
+docs/ai-studio-evidence/**
+```
+
+es únicamente una propuesta futura y permanece:
+
+```text
+NOT AUTHORIZED
+NOT ACTIVE
+ALLOWED WRITE PATHS: NONE
+```
+
 ## 2. NEW CHAT BOOTSTRAP
 
 Un chat nuevo de AI Studio **no comienza ejecutando la tarea solicitada**.
