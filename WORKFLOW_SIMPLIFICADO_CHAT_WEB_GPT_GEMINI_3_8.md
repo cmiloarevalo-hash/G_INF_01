@@ -853,6 +853,8 @@ GitHub continúa siendo la fuente persistente de verdad. AI Studio no crea una r
 
 El contrato de ejecución residente es [`AI_STUDIO_OPERATOR.md`](AI_STUDIO_OPERATOR.md). AI Studio debe leerlo desde el mismo SHA que está verificando antes de ejecutar una tarea dependiente del código. Ese archivo es subordinado a este workflow: no puede ampliar permisos, scope, autoridad ni estados formales. Ante contradicción, prevalece este workflow.
 
+**NEW CHAT BOOTSTRAP:** un chat nuevo de AI Studio reconstruye contexto desde GitHub + Work Item + documentación canónica, no desde el transcript previo. Antes de trabajo consecuencial debe completar el bootstrap residente: establecer rol/autoridad, objetivo, TASK, MODE, EXPECTED SHA, evidencia esperada y límites; verificar checkout/HEAD/worktree y managed Preview root/runtime cuando aplique; y declarar la única operación, STOP conditions y evidencia a retornar. Sólo después puede actuar.
+
 ## 29.1 Permission Matrix
 
 | Capacidad | AI_STUDIO_OPERATOR |
@@ -1105,6 +1107,8 @@ control → Supervisor
 ```
 
 La evidencia sólo adquiere persistencia para el workflow cuando se registra en el Issue o PR correspondiente, asociada al Work Item, modo, SHA aplicable, resultado, clasificación y evidencia concreta. Cuando sea relevante debe incluir cwd real, checkout Git, managed Preview root, evidencia de materialización, comando/acción exacta, proceso/respawn y estado HTTP observable.
+
+AI Studio puede incluir una sección opcional `IMPLEMENTER_SUGGESTION` con una propuesta o pista diagnóstica sustentada en evidencia. Esa sugerencia no es una decisión formal ni autoriza código. El Supervisor decide si requiere un Work Item y coordina al Agente implementador, que sigue siendo la única autoridad de cambios persistentes de repositorio.
 
 ---
 
