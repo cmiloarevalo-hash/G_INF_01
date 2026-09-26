@@ -121,6 +121,15 @@ test('V-026: valid TITLE_STUDY produces a non-empty DOCX with structured report 
   assert.match(documentXml, /Heading2/);
   assert.match(documentXml, /<w:tbl>/);
   assert.match(documentXml, /TOC/);
+  assert.match(documentXml, /w:fldChar[^>]*w:fldCharType="begin"/);
+  assert.match(documentXml, /w:instrText[^>]*>TOC[^<]*\\h[^<]*\\o (?:&quot;|")1-2(?:&quot;|")/);
+  assert.match(documentXml, /w:fldChar[^>]*w:fldCharType="separate"/);
+  assert.match(documentXml, /w:fldChar[^>]*w:fldCharType="end"/);
+
+  const settingsXml = entries.get('word/settings.xml')?.toString('utf8');
+  assert.ok(settingsXml);
+  assert.match(settingsXml, /<w:updateFields(?:\s+w:val="(?:true|1)")?\s*\/>/);
+
   assert.doesNotMatch(documentXml, /doc-a|doc-b|finding-a/);
   assert.doesNotMatch(documentXml, /No informado|Sin datos|N\/A/);
 
@@ -163,4 +172,20 @@ test('V-027: invalid input is rejected before DOCX bytes are produced', async ()
     () => renderTitleStudyDocx({ reportType: 'TITLE_STUDY', sourceDocuments: [{ id: 'a', name: 'a', documentType: 'x' }], findings: [{ id: 'f', statement: 'x', sourceDocumentIds: ['missing'] }] }),
     InvalidTitleStudyReportError,
   );
+});
+
+test('conclusion numbering OOXML uses an explicit space suffix after the number', async () => {
+  const entries = readDocxEntries(await renderTitleStudyDocx(fullReport));
+  const numberingXml = entries.get('word/numbering.xml')?.toString('utf8');
+  assert.ok(numberingXml);
+
+  const levels = [...numberingXml.matchAll(/<w:lvl\b[\s\S]*?<\/w:lvl>/g)].map((match) => match[0]);
+  const conclusionLevel = levels.find(
+    (level) =>
+      /w:numFmt[^>]*w:val="decimal"/.test(level) &&
+      /w:lvlText[^>]*w:val="%1\."/.test(level),
+  );
+
+  assert.ok(conclusionLevel, 'conclusion decimal numbering level not found');
+  assert.match(conclusionLevel, /w:suff[^>]*w:val="space"/);
 });
