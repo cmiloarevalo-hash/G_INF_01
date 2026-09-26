@@ -128,7 +128,7 @@ test('V-026: valid TITLE_STUDY produces a non-empty DOCX with structured report 
 
   const settingsXml = entries.get('word/settings.xml')?.toString('utf8');
   assert.ok(settingsXml);
-  assert.match(settingsXml, /w:updateFields[^>]*w:val="true"/);
+  assert.match(settingsXml, /<w:updateFields(?:\s+w:val="(?:true|1)")?\s*\/>/);
 
   assert.doesNotMatch(documentXml, /doc-a|doc-b|finding-a/);
   assert.doesNotMatch(documentXml, /No informado|Sin datos|N\/A/);
