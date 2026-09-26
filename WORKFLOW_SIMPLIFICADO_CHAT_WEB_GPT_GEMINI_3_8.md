@@ -851,6 +851,10 @@ Humano → Supervisor → GitHub
 
 GitHub continúa siendo la fuente persistente de verdad. AI Studio no crea una ruta paralela `AI Studio → code → GitHub`.
 
+El contrato de ejecución residente es [`AI_STUDIO_OPERATOR.md`](AI_STUDIO_OPERATOR.md). AI Studio debe leerlo desde el mismo SHA que está verificando antes de ejecutar una tarea dependiente del código. Ese archivo es subordinado a este workflow: no puede ampliar permisos, scope, autoridad ni estados formales. Ante contradicción, prevalece este workflow.
+
+**NEW CHAT BOOTSTRAP:** un chat nuevo de AI Studio reconstruye contexto desde GitHub + Work Item + documentación canónica, no desde el transcript previo. Antes de trabajo consecuencial debe completar el bootstrap residente: establecer rol/autoridad, objetivo, TASK, MODE, EXPECTED SHA, evidencia esperada y límites; verificar checkout/HEAD/worktree y managed Preview root/runtime cuando aplique; y declarar la única operación, STOP conditions y evidencia a retornar. Sólo después puede actuar.
+
 ## 29.1 Permission Matrix
 
 | Capacidad | AI_STUDIO_OPERATOR |
@@ -873,11 +877,15 @@ GitHub continúa siendo la fuente persistente de verdad. AI Studio no crea una r
 | CHANGE REPOSITORY SECRETS | NO |
 | ADOPT INTEGRATION | NO sin decisión humana + Issue |
 
-`PULL / SYNC` nunca autoriza sincronización de cambios de vuelta al repositorio.
+`PULL / SYNC` nunca autoriza sincronización de cambios de vuelta al repositorio. Para repositorios públicos, la vía preferida es clone/fetch HTTPS anónimo, sin token, preservando `.git` y verificando `origin`, HEAD exacto y worktree limpio. Esto no exige integración GitHub nativa ni sync bidireccional.
 
 ## 29.2 Inicio: AI_STUDIO_REQUEST
 
-Toda intervención usada como evidencia del workflow comienza por solicitud explícita del Supervisor y un Work Item existente:
+Toda intervención usada como evidencia del workflow comienza por solicitud explícita del Supervisor y un Work Item existente.
+
+Antes de una tarea dependiente del código, AI Studio debe obtener/refrescar la copia Git read-only, verificar `origin`, `EXPECTED SHA`, worktree limpio, leer `AI_STUDIO_OPERATOR.md` desde ese mismo SHA e identificar explícitamente `CANONICAL_GIT_CHECKOUT` y, cuando aplique, `MANAGED_PREVIEW_ROOT`. Sólo entonces puede ejecutar el `TASK`.
+
+El checkout Git usado para verificar SHA y la raíz administrada que alimenta el Preview pueden ser distintos. Verificar un clone exacto **no prueba** que el Preview visible use ese árbol.
 
 ```text
 AI_STUDIO_REQUEST
@@ -886,7 +894,11 @@ WORK ITEM: #<issue>
 MODE: OBSERVE | PREVIEW | TEST | DIAGNOSE | PUBLISH | SPIKE_READ_ONLY
 EXPECTED SHA: <sha> | N/A (platform-only)
 TARGET: <preview / route / deployment / platform capability>
+CANONICAL_GIT_CHECKOUT: <absolute path when code-dependent>
+MANAGED_PREVIEW_ROOT: <absolute path when Preview/Publish-dependent>
 TASK: <una sola operación concreta>
+PRECONDITIONS: <observable conditions>
+STOP CONDITIONS: <conditions that force BLOCKED/return>
 
 FORBIDDEN:
 - edit code/files
@@ -914,7 +926,7 @@ RETURN:
 - `PUBLISH`: publicar exclusivamente el SHA autorizado por el Supervisor.
 - `SPIKE_READ_ONLY`: estudiar una capacidad/integración sin adoptarla.
 
-Una operación por prompt. No usar tareas abiertas como “arregla todo” o “actualiza la interfaz”. `Fix` permanece prohibido.
+Una operación real que cambie estado por prompt. Puede incluir verificación antes/después, pero no combinar diagnose + repair + publish. No usar tareas abiertas como “arregla todo” o “actualiza la interfaz”. `Fix` permanece prohibido.
 
 Plantillas mínimas:
 
@@ -960,6 +972,8 @@ REASON: SHA_MISMATCH
 
 No se continúa la operación ni se declara defecto de código.
 
+Para `PREVIEW` y `PUBLISH`, el SHA Gate no termina en el checkout: también debe identificarse el `MANAGED_PREVIEW_ROOT` y demostrarse, por una vía soportada, que el árbol aprobado fue materializado unidireccionalmente allí. No se inventan/sustituyen archivos ni se sincroniza de vuelta a GitHub. Un HTTP 200 por sí solo no prueba que el Preview visible corresponda al SHA autorizado.
+
 ## 29.5 Ventanas de intervención
 
 - **Antes/durante implementación:** `OBSERVE`, `SPIKE_READ_ONLY` o diagnóstico de plataforma/capacidad. AI Studio no implementa.
@@ -993,6 +1007,14 @@ confirm SHA → reproduce → capture exact error → classify → report → no
 
 La clasificación es evidencia provisional. El Supervisor aplica las decisiones `REWORK / HOLD / ESCALATE` según las reglas generales ya existentes. Un problema de entorno/plataforma no se convierte automáticamente en `REWORK` de código.
 
+Reglas operativas verificadas, detalladas en `AI_STUDIO_OPERATOR.md`:
+
+- **cwd:** toda operación dependiente del proyecto usa path absoluto, `cd <absolute-path> && ...` o equivalente; si el launcher ejecuta desde otra raíz, `BLOCKED / AI_STUDIO_ENVIRONMENT`.
+- **process safety:** identificar PID/comando/cwd exactos, preferir cierre graceful, no usar listas amplias de PID ni loops de takeover de puerto; respawn administrado implica `STOP / BLOCKED`.
+- **recovery:** ante `Canceled`, `An internal error occurred`, respuesta stale/repetida o fallo de tool/workspace: salir/volver atrás → reingresar al proyecto → `NEW CHAT` → comprobar únicamente `git rev-parse HEAD`, `git status --short` y `GET /api/health`; continuar sólo con SHA correcto, worktree limpio y health válido.
+- si la recuperación falla, puede probarse sesión fresca/privada o Remix/workspace fresco como recuperación de entorno; sin evidencia de defecto de aplicación no se clasifica automáticamente como `CODE`.
+- `BLOCKED` significa detenerse, no improvisar y devolver control al Supervisor.
+
 ## 29.7 Protocolo PUBLISH
 
 ```text
@@ -1000,6 +1022,8 @@ approved GitHub SHA
 → AI_STUDIO_REQUEST MODE=PUBLISH
 → pull/sync/import desde GitHub
 → SHA Gate
+→ identificar CANONICAL_GIT_CHECKOUT y MANAGED_PREVIEW_ROOT
+→ demostrar materialización one-way del árbol aprobado en el managed root
 → preview smoke test
 → publish
 → public smoke test
@@ -1048,7 +1072,7 @@ AI Studio may not write product code or repository state.
 
 Prohibido: editar archivos; aplicar `Fix`; commit; branch; PR; push; merge; cambiar dependencias, schema, prompts, workflow o repository secrets.
 
-La preparación efímera interna para ejecutar Preview sólo es admisible si no modifica ni sincroniza archivos de vuelta a GitHub.
+La preparación efímera interna para ejecutar Preview sólo es admisible si no modifica ni sincroniza archivos de vuelta a GitHub. Puede instalar dependencias ya declaradas desde el lockfile/manifiestos del SHA aprobado, iniciar/reiniciar servicios permitidos y materializar unidireccionalmente el árbol aprobado al workspace administrado por una vía soportada. Eso no concede autoridad para cambiar dependencias ni archivos canónicos.
 
 `WRITE_SANDBOX: NO AUTORIZADO`.
 
@@ -1082,7 +1106,9 @@ Después del reporte:
 control → Supervisor
 ```
 
-La evidencia sólo adquiere persistencia para el workflow cuando se registra en el Issue o PR correspondiente, asociada al Work Item, modo, SHA aplicable, resultado, clasificación y evidencia concreta.
+La evidencia sólo adquiere persistencia para el workflow cuando se registra en el Issue o PR correspondiente, asociada al Work Item, modo, SHA aplicable, resultado, clasificación y evidencia concreta. Cuando sea relevante debe incluir cwd real, checkout Git, managed Preview root, evidencia de materialización, comando/acción exacta, proceso/respawn y estado HTTP observable.
+
+AI Studio puede incluir una sección opcional `IMPLEMENTER_SUGGESTION` con una propuesta o pista diagnóstica sustentada en evidencia. Esa sugerencia no es una decisión formal ni autoriza código. El Supervisor decide si requiere un Work Item y coordina al Agente implementador, que sigue siendo la única autoridad de cambios persistentes de repositorio.
 
 ---
 
