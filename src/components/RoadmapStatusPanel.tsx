@@ -1,4 +1,4 @@
-import type { CSSProperties, FC } from 'react';
+import React, { type CSSProperties, type FC } from 'react';
 
 type RoadmapStatus = 'OK' | 'EN PROCESO' | 'PENDIENTE';
 
