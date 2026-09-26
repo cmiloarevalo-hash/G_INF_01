@@ -1,71 +1,45 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  fileIdentity,
-  isPdfFile,
-  removeSelectedFile,
-  serializeSelectionUpdate,
-  validateAndMergeFiles,
-} from '../src/pages/GuestDocumentsPage.js';
+import { fileIdentity, mergeSelectedFiles, removeSelectedFile, serializeSelectionUpdate } from '../src/pages/GuestDocumentsPage.js';
 
-function makeFile(name: string, contents: string, lastModified = 1): File {
-  return new File([contents], name, { type: name.endsWith('.pdf') ? 'application/pdf' : 'text/plain', lastModified });
+function makeFile(name: string, contents: string, type = 'application/octet-stream', lastModified = 1): File {
+  return new File([contents], name, { type, lastModified });
 }
 
-test('accepts a PDF signature within the bounded header and rejects other files', async () => {
-  assert.equal(await isPdfFile(makeFile('escritura.pdf', '%PDF-1.7\ncontenido')), true);
-  assert.equal(await isPdfFile(makeFile('plano.PDF', `${' '.repeat(100)}%PDF-1.4`)), true);
-  assert.equal(await isPdfFile(makeFile('notas.txt', '%PDF-1.7')), false);
-  assert.equal(await isPdfFile(makeFile('falso.pdf', 'texto sin cabecera PDF')), false);
+test('retains multiple files regardless of extension or PDF signature and reports duplicates', () => {
+  const pdf = makeFile('titulo.pdf', '%PDF-1.7 titulo', 'application/pdf');
+  const falsePdf = makeFile('falso.pdf', 'texto sin cabecera', 'application/pdf');
+  const sheet = makeFile('planilla.xlsx', 'not a real workbook');
+  const result = mergeSelectedFiles([], [pdf, falsePdf, sheet]);
+  assert.deepEqual(result.files, [pdf, falsePdf, sheet]);
+  assert.deepEqual(result.duplicates, []);
+  const merged = mergeSelectedFiles(result.files, [makeFile('falso.pdf', 'texto sin cabecera', 'application/pdf')]);
+  assert.deepEqual(merged.files, result.files);
+  assert.deepEqual(merged.duplicates, ['falso.pdf']);
 });
 
-test('merges multiple valid PDFs and reports invalid files and repeated selections', async () => {
-  const first = makeFile('titulo.pdf', '%PDF-1.7 titulo');
-  const second = makeFile('plano.pdf', '%PDF-1.7 plano');
-  const sameSelection = makeFile('titulo.pdf', '%PDF-1.7 titulo');
-  const invalid = makeFile('notas.txt', 'texto');
-
-  const result = await validateAndMergeFiles([], [first, second, sameSelection, invalid]);
-
-  assert.deepEqual(result.files, [first, second]);
-  assert.deepEqual(result.duplicates, ['titulo.pdf']);
-  assert.deepEqual(result.rejected, ['notas.txt']);
+test('removing one or all selections permits selecting the same file again', () => {
+  const first = makeFile('titulo.pdf', '%PDF-1.7', 'application/pdf');
+  const second = makeFile('notas.txt', 'texto', 'text/plain');
+  const selected = mergeSelectedFiles([], [first, second]).files;
+  assert.deepEqual(removeSelectedFile(selected, fileIdentity(first)), [second]);
+  assert.deepEqual(mergeSelectedFiles([], [first]).files, [first]);
+  assert.deepEqual(removeSelectedFile(selected, fileIdentity(first)), [second]);
+  assert.deepEqual(removeSelectedFile([second], fileIdentity(second)), []);
 });
 
-test('removing an existing selection permits adding it again', async () => {
-  const file = makeFile('titulo.pdf', '%PDF-1.7');
-  const result = await validateAndMergeFiles([], [file]);
-  assert.deepEqual((await validateAndMergeFiles(result.files, [file])).duplicates, ['titulo.pdf']);
-  const remaining = removeSelectedFile(result.files, fileIdentity(file));
-  assert.deepEqual(remaining, []);
-  assert.deepEqual((await validateAndMergeFiles(remaining, [file])).files, [file]);
-});
-
-test('a removal queued during async validation is applied after selection without restoring the removed file', async () => {
-  const existing = makeFile('existente.pdf', '%PDF-1.7 existente');
-  const incoming = makeFile('nuevo.pdf', '%PDF-1.7 nuevo');
+test('a removal queued during async selection update runs after it and does not restore the removed file', async () => {
+  const existing = makeFile('existente.pdf', '%PDF-1.7');
+  const incoming = makeFile('nuevo.pdf', '%PDF-1.7');
   let selected = [existing];
-  let releaseValidation!: () => void;
-  const validationGate = new Promise<void>((resolve) => {
-    releaseValidation = resolve;
-  });
-  const failures: unknown[] = [];
-  const reportError = (error: unknown) => failures.push(error);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const errors: unknown[] = [];
   let pending = Promise.resolve();
-
-  pending = serializeSelectionUpdate(pending, async () => {
-    const current = selected;
-    await validationGate;
-    const result = await validateAndMergeFiles(current, [incoming]);
-    selected = result.files;
-  }, reportError);
-  pending = serializeSelectionUpdate(pending, async () => {
-    selected = removeSelectedFile(selected, fileIdentity(existing));
-  }, reportError);
-
-  releaseValidation();
+  pending = serializeSelectionUpdate(pending, async () => { const current = selected; await gate; selected = mergeSelectedFiles(current, [incoming]).files; }, (e) => errors.push(e));
+  pending = serializeSelectionUpdate(pending, async () => { selected = removeSelectedFile(selected, fileIdentity(existing)); }, (e) => errors.push(e));
+  release();
   await pending;
-
-  assert.deepEqual(failures, []);
+  assert.deepEqual(errors, []);
   assert.deepEqual(selected, [incoming]);
 });

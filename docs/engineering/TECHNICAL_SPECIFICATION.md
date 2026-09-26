@@ -176,6 +176,8 @@ Por defecto, la clave se mantiene únicamente durante la sesión.
 
 Se pueden persistir proveedor y modelo preferidos, pero no la credencial.
 
+**Excepción acotada al piloto #12:** el propietario puede almacenar hasta tres claves de prueba en **AI Studio Settings → Secrets** como `GEMINI_TEST_KEY_1`, `GEMINI_TEST_KEY_2`, `GEMINI_TEST_KEY_3`. El backend acepta únicamente alias `test-1`–`test-3`, devuelve sólo nombres al navegador y resuelve el valor dentro del servidor. Las rutas de listado, extracción y consolidación comprueban un código de acceso privado `GEMINI_ALIAS_ACCESS_TOKEN` (al menos 32 caracteres), con `GEMINI_ALIAS_MODE=owner-only` explícito, en cada petición que usa alias; sin esos ajustes el modo falla cerrado. La ruta con clave temporal sigue separada. No se usa automáticamente `GEMINI_API_KEY` de AI Studio y no se persisten códigos en navegador o aplicación. Este control de acceso es una capacidad del propietario, no autenticación de usuarios; debe comprobarse contra visitantes anónimos en el entorno público Starter Tier antes de habilitarlo allí.
+
 ---
 
 ### Regla principal
