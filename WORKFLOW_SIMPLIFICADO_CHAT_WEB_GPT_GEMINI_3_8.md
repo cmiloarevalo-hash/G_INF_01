@@ -831,6 +831,472 @@ El workflow simplificado puede resumirse en diez reglas:
 
 ---
 
+
+# 29. AI_STUDIO_OPERATOR — protocolo subordinado de operación externa
+
+Esta sección **añade** un rol operativo externo al workflow vigente. No reemplaza, simplifica ni modifica la autoridad definida en las secciones anteriores.
+
+Principios de no regresión:
+
+- GitHub sigue siendo la memoria persistente y fuente de verdad del código y de la evidencia.
+- El GitHub Issue sigue siendo la unidad formal de trabajo.
+- `Semantic Scope` y `Path Scope` siguen siendo obligatorios.
+- Chat Web GPT sigue siendo el Supervisor técnico.
+- El agente implementador/Codespaces sigue siendo el canal normal de implementación.
+- La revisión y las decisiones siguen ligadas al SHA exacto revisado.
+- `SEMANTIC_ACCEPTED`, `REWORK`, `HOLD`, `ESCALATE`, `CI`, `MERGE_ELIGIBLE` y merge conservan exactamente su significado.
+- `SEMANTIC_ACCEPTED` no equivale a merge.
+- El implementador no se autoaprueba ni ejecuta merge.
+- El Humano conserva intención, permisos y decisiones excepcionales.
+
+## 29.1 Rol y regla de subordinación
+
+`AI_STUDIO_OPERATOR` usa Google AI Studio como entorno externo para observación, preview, prueba, diagnóstico, experimentación read-only y publicación autorizada.
+
+> **AI Studio es un entorno operativo externo. No es una segunda fuente de verdad del código.**
+
+Su autoridad está subordinada al workflow:
+
+```text
+Humano
+↓
+Chat Web GPT — Supervisor
+↓
+GitHub — fuente de verdad
+↓
+Agente implementador / Codespaces
+↓
+AI_STUDIO_OPERATOR — observe/preview/test/diagnose/publish/spike read-only
+```
+
+El diagrama no concede a AI Studio autoridad sobre el Supervisor, el Issue, el scope, la revisión por SHA ni el repositorio.
+
+Toda intervención es una subrutina temporal:
+
+```text
+workflow normal
+→ Supervisor solicita intervención AI Studio
+→ AI Studio ejecuta sólo el modo autorizado
+→ AI Studio devuelve evidencia
+→ control vuelve obligatoriamente al Supervisor
+→ Supervisor decide el siguiente estado del workflow
+```
+
+AI Studio no emite ni sustituye:
+
+- `SEMANTIC_ACCEPTED`;
+- `REWORK`;
+- `HOLD`;
+- `ESCALATE`;
+- `MERGE_ELIGIBLE`;
+- `MERGED`.
+
+Sólo puede devolver resultados operativos `PASS / FAIL / BLOCKED`, clasificación y evidencia.
+
+## 29.2 Permission Matrix
+
+| Capacidad | AI_STUDIO_OPERATOR |
+|---|---|
+| READ / OBSERVE | YES |
+| PULL / SYNC FROM GITHUB | YES, sólo para consumir una versión identificada |
+| PREVIEW | YES |
+| TEST | YES |
+| DIAGNOSE | YES |
+| PUBLISH | YES, sólo bajo protocolo de publicación |
+| SPIKE_READ_ONLY | YES |
+| WRITE CODE / FILES | NO |
+| WRITE CANONICAL | NO |
+| PUSH | NO |
+| CREATE / MODIFY BRANCH | NO |
+| CREATE / MODIFY PR | NO |
+| MERGE | NO |
+| FIX / APPLY FIX | NO |
+| CHANGE DEPENDENCIES | NO |
+| CHANGE SCHEMA | NO |
+| CHANGE PROMPTS | NO |
+| CHANGE WORKFLOW | NO |
+| CHANGE REPOSITORY SECRETS | NO |
+| ADOPT INTEGRATION | NO, salvo decisión humana + Issue + implementación canónica posterior |
+
+`PULL / SYNC FROM GITHUB` significa cargar o sincronizar una versión para observarla o ejecutarla. No autoriza cambios de vuelta hacia GitHub.
+
+## 29.3 Inicio: AI_STUDIO_REQUEST
+
+Toda intervención que pretenda producir evidencia para el workflow comienza por una orden explícita del Supervisor asociada a un Work Item existente.
+
+Formato mínimo:
+
+```text
+AI_STUDIO_REQUEST
+
+WORK ITEM: #<issue>
+MODE: OBSERVE | PREVIEW | TEST | DIAGNOSE | PUBLISH | SPIKE_READ_ONLY
+EXPECTED SHA: <sha>
+TARGET: <preview / route / deployment / integration capability>
+TASK: <una sola operación concreta>
+
+FORBIDDEN:
+- edit code/files
+- Fix
+- commit
+- branch
+- PR
+- push
+- merge
+- dependency changes
+- schema changes
+- prompt changes
+- workflow changes
+- repository secret changes
+
+RETURN:
+- OBSERVED SHA
+- RESULT: PASS | FAIL | BLOCKED
+- CLASSIFICATION
+- EVIDENCE
+- ERROR exacto si existe
+```
+
+Sin `WORK ITEM`, `MODE` y `EXPECTED SHA`, AI Studio no produce evidencia válida para una decisión del workflow, salvo una consulta puramente informativa que no pretenda verificar una versión concreta.
+
+## 29.4 Modos autorizados
+
+- `OBSERVE`: inspeccionar estado visible sin modificarlo.
+- `PREVIEW`: abrir/ejecutar preview del SHA autorizado.
+- `TEST`: ejecutar una comprobación concreta contra el SHA autorizado.
+- `DIAGNOSE`: reproducir y aislar un fallo sin aplicar corrección.
+- `PUBLISH`: publicar exclusivamente un SHA autorizado por el Supervisor.
+- `SPIKE_READ_ONLY`: estudiar una capacidad o integración sin adoptar cambios.
+
+Cada prompt debe contener **una sola operación concreta**. No se admiten instrucciones abiertas como “arregla todo”, “actualiza la interfaz” o equivalentes. `Fix` permanece prohibido.
+
+Plantillas mínimas:
+
+```text
+AI_STUDIO_REQUEST
+WORK ITEM: #<issue>
+MODE: TEST
+EXPECTED SHA: <sha>
+TARGET: <route/preview>
+TASK: ejecutar una prueba concreta y reportar resultado/evidencia; no modificar archivos.
+```
+
+```text
+AI_STUDIO_REQUEST
+WORK ITEM: #<issue>
+MODE: DIAGNOSE
+EXPECTED SHA: <sha>
+TARGET: <fallo concreto>
+TASK: reproducir, capturar error exacto, clasificar y reportar; no aplicar Fix.
+```
+
+```text
+AI_STUDIO_REQUEST
+WORK ITEM: #<issue>
+MODE: PUBLISH
+EXPECTED SHA: <approved-sha>
+TARGET: <deployment target>
+TASK: sincronizar ese SHA, confirmar SHA, ejecutar smoke preview, publicar y ejecutar smoke público; no modificar código.
+```
+
+## 29.5 SHA Gate obligatorio
+
+Antes de `PREVIEW`, `TEST`, `DIAGNOSE` sobre código o `PUBLISH`:
+
+```text
+EXPECTED SHA == OBSERVED SHA
+```
+
+Si no coincide:
+
+```text
+STOP
+RESULT: BLOCKED
+CLASSIFICATION: AI_STUDIO_ENVIRONMENT
+REASON: SHA_MISMATCH
+```
+
+No se continúa la operación, no se declara defecto de código y no se usa `Fix`.
+
+La evidencia de una intervención sólo puede atribuirse al SHA observado cuando el gate ha sido satisfecho.
+
+## 29.6 Ventanas de intervención
+
+### A. Antes o durante implementación
+
+Permitido:
+
+- `OBSERVE`;
+- `SPIKE_READ_ONLY`;
+- `DIAGNOSE` de plataforma o capacidad.
+
+Objetivo: resolver dudas de AI Studio o producir información para el Supervisor. AI Studio no implementa la solución.
+
+Si el hallazgo requiere cambiar producto, arquitectura, permisos o scope:
+
+```text
+STOP → ESCALATE → decisión humana
+```
+
+### B. Sobre branch/PR en desarrollo
+
+Sólo por solicitud explícita del Supervisor:
+
+- `PREVIEW`;
+- `TEST`;
+- `DIAGNOSE`.
+
+`EXPECTED SHA` debe ser el HEAD exacto del PR.
+
+Un `PASS` de AI Studio no sustituye CI ni revisión semántica.
+
+### C. Durante revisión del Supervisor
+
+AI Studio puede aportar evidencia adicional de `PREVIEW` o `TEST`.
+
+No puede convertir:
+
+- `PASS` en `SEMANTIC_ACCEPTED`;
+- `FAIL` en `REWORK`.
+
+La decisión sigue perteneciendo al Supervisor para el SHA revisado.
+
+### D. Post-merge / publicación
+
+`PUBLISH` sólo comienza cuando el Supervisor identifica explícitamente el SHA autorizado a publicar.
+
+Publicar puede modificar el estado operativo del entorno externo, pero nunca concede autoridad de escritura sobre código o repositorio.
+
+## 29.7 Clasificación y protocolo de diagnóstico
+
+Toda falla reportada por AI Studio se clasifica provisionalmente como una de:
+
+```text
+CODE
+AI_STUDIO_ENVIRONMENT
+DEPLOYMENT
+EXTERNAL_SERVICE
+UNKNOWN
+```
+
+Definiciones:
+
+- `CODE`: evidencia razonable de que el mismo SHA contiene un defecto del producto.
+- `AI_STUDIO_ENVIRONMENT`: sync, instalación, preview, runtime o estado interno de AI Studio no demostrado fuera de ese entorno.
+- `DEPLOYMENT`: fallo en preparación/publicación/serving cuyo origen aún requiere determinación.
+- `EXTERNAL_SERVICE`: proveedor/API/servicio externo indisponible, limitado o rechazando la operación.
+- `UNKNOWN`: evidencia insuficiente.
+
+Protocolo:
+
+```text
+confirm SHA
+→ reproduce
+→ capture exact error
+→ classify
+→ report
+→ no automatic fix
+```
+
+La clasificación es evidencia provisional; el Supervisor puede reclasificarla.
+
+Tratamiento orientativo:
+
+```text
+CODE + defecto dentro del objetivo
+→ Supervisor puede emitir REWORK
+
+CODE + requiere ampliar scope
+→ ESCALATE
+
+AI_STUDIO_ENVIRONMENT
+→ HOLD o continuar por otro entorno; no REWORK automático
+
+EXTERNAL_SERVICE
+→ HOLD normalmente
+
+DEPLOYMENT
+→ Supervisor determina origen antes de REWORK
+
+UNKNOWN
+→ DIAGNOSE adicional, HOLD o ESCALATE
+```
+
+Problemas de plataforma, cuenta, cuota o Starter Tier no se convierten automáticamente en `REWORK` de código.
+
+## 29.8 Protocolo PUBLISH
+
+Secuencia obligatoria:
+
+```text
+approved GitHub SHA
+→ AI_STUDIO_REQUEST MODE=PUBLISH
+→ pull/sync/import desde GitHub
+→ EXPECTED SHA / OBSERVED SHA gate
+→ preview smoke test
+→ publish
+→ public smoke test
+→ AI_STUDIO_REPORT
+→ evidencia persistida en GitHub
+→ control vuelve al Supervisor
+```
+
+No se pide a AI Studio “arreglar” código durante el publish. Si publicar requiere una modificación de archivos o repositorio:
+
+```text
+STOP → ESCALATE → decisión humana → nuevo Work Item
+```
+
+## 29.9 Protocolo SPIKE_READ_ONLY para integraciones Google
+
+Ver una capacidad o botón de integración no autoriza adoptarlo.
+
+Secuencia:
+
+```text
+SPIKE_READ_ONLY
+→ inspeccionar capacidad/documentación/configuración visible
+→ AI_STUDIO_REPORT
+→ Supervisor review
+→ Human decision
+→ Issue
+→ implementación canónica por el implementador normal
+```
+
+AI Studio puede reportar:
+
+- OAuth/scopes esperados;
+- configuración visible;
+- secretos que previsiblemente serían necesarios, **sin leer ni copiar valores secretos**;
+- archivos que previsiblemente requerirían cambios;
+- limitaciones de despliegue;
+- comportamiento observado de la plataforma.
+
+No puede incorporar la integración al proyecto.
+
+Las credenciales o secrets no pueden migrarse automáticamente al patrón de AI Studio si eso contradice el contrato vigente del producto. Cualquier cambio de ese contrato requiere decisión humana y Work Item propio.
+
+## 29.10 Regla absoluta de no escritura
+
+Dentro de `AI_STUDIO_OPERATOR`:
+
+```text
+AI Studio may read, run, test, diagnose and publish.
+AI Studio may not write product code or repository state.
+```
+
+Queda expresamente prohibido:
+
+- editar código o archivos del proyecto;
+- usar, aceptar o aplicar `Fix`;
+- generar cambios para adoptarlos directamente en el repositorio;
+- commit;
+- crear o modificar branch;
+- crear o modificar PR;
+- push;
+- merge;
+- modificar dependencias;
+- modificar schema;
+- modificar prompts;
+- modificar workflow;
+- modificar repository secrets;
+- editar Issues como autoridad del workflow.
+
+La preparación efímera interna que AI Studio necesite para ejecutar preview no constituye autoridad sobre el repositorio **únicamente si no altera ni sincroniza archivos de vuelta a GitHub**.
+
+### WRITE_SANDBOX
+
+`WRITE_SANDBOX: NO AUTORIZADO`.
+
+No existe excepción de escritura en esta versión, ni siquiera en remix/sandbox.
+
+Si cualquier intervención requiere escritura:
+
+```text
+STOP
+→ ESCALATE
+→ decisión humana explícita
+→ nuevo Work Item de modificación del workflow
+→ sólo después puede evaluarse esa capacidad
+```
+
+## 29.11 Fin: AI_STUDIO_REPORT y retorno de control
+
+Toda intervención termina con:
+
+```text
+AI_STUDIO_REPORT
+
+WORK ITEM: #<issue>
+MODE: <mode>
+EXPECTED SHA: <sha>
+OBSERVED SHA: <sha>
+RESULT: PASS | FAIL | BLOCKED
+CLASSIFICATION: CODE | AI_STUDIO_ENVIRONMENT | DEPLOYMENT | EXTERNAL_SERVICE | UNKNOWN
+EVIDENCE: <mínima y verificable>
+ERROR: <exacto o none>
+CODE/REPOSITORY MODIFIED: NO
+```
+
+Después del reporte:
+
+```text
+control → Supervisor
+```
+
+El Supervisor decide qué ocurre a continuación. AI Studio no modifica el estado formal del workflow por sí mismo.
+
+## 29.12 Persistencia de evidencia
+
+La evidencia de AI Studio es temporal hasta persistirse en GitHub.
+
+Toda evidencia usada por el workflow debe quedar asociada como mínimo a:
+
+- Work Item;
+- modo;
+- `EXPECTED SHA`;
+- `OBSERVED SHA`;
+- `RESULT`;
+- `CLASSIFICATION`;
+- evidencia concreta;
+- error exacto cuando exista.
+
+Debe persistirse en el Issue o PR correspondiente antes de utilizarla como base de una decisión.
+
+Capturas pueden complementar la evidencia, pero no sustituyen la identificación de SHA cuando la operación depende del código.
+
+## 29.13 Ruta canónica preservada
+
+La incorporación de `AI_STUDIO_OPERATOR` no crea la ruta:
+
+```text
+AI Studio → code → GitHub
+```
+
+Esa ruta permanece prohibida.
+
+La ruta válida de cambios canónicos continúa siendo:
+
+```text
+Human intent
+→ Supervisor
+→ Issue
+→ implementer
+→ branch
+→ commit
+→ PR
+→ CI/evidence
+→ Supervisor review
+→ decision by SHA
+→ merge when eligible
+```
+
+AI Studio se inserta únicamente como proveedor de evidencia operacional o como ejecutor de publicación autorizada.
+
+M2 permanece pausada hasta que este protocolo sea revisado e integrado.
+
+---
+
 # Resultado
 
 Este workflow elimina completamente:
