@@ -41,7 +41,8 @@ test('two compatible files use exactly one provider request and retain a validat
   assert.equal(calls, 1);
   assert.equal(result.error, undefined);
   assert.equal(result.report?.comparisons?.[0]?.result, 'DIFFERENT');
-  assert.deepEqual(result.statuses.map((s) => s.status), ['Analizado', 'Analizado']);
+  assert.deepEqual(result.statuses.map((s) => s.status), ['Fuente identificada', 'Fuente identificada']);
+  assert.ok(result.statuses.every((s) => s.submissionAttempted && s.sourceIdentified && !s.contentVerified));
   assert.equal(result.partial, false);
 });
 
@@ -55,9 +56,24 @@ test('only unsupported files cause zero provider requests; a mixed selection cau
   assert.match(none.statuses[0]?.reason ?? '', /Formato aún no procesado/);
   const mixed = await analyzeGuestDocuments('mock', [two[0]!, unsupported], fetchImpl);
   assert.equal(calls, 1);
-  assert.equal(mixed.statuses[0]?.status, 'Analizado');
+  assert.equal(mixed.statuses[0]?.status, 'Fuente identificada');
+  assert.equal(mixed.statuses[0]?.contentVerified, false);
   assert.equal(mixed.statuses[1]?.status, 'No analizado');
+  assert.equal(mixed.statuses[1]?.submissionAttempted, false);
   assert.equal(mixed.partial, true);
+});
+
+test('source identity without findings is not evidence of content analysis', async () => {
+  let calls = 0;
+  const result = await analyzeGuestDocuments('mock', [two[0]!], async () => {
+    calls++;
+    return completed({ reportType: 'TITLE_STUDY', sourceDocuments: [{ id: 'doc-a', name: 'a.txt', documentType: 'texto' }], findings: [], comparisons: [] });
+  });
+  assert.equal(calls, 1);
+  assert.equal(result.report?.findings.length, 0);
+  assert.equal(result.statuses[0]?.status, 'Fuente identificada');
+  assert.deepEqual([result.statuses[0]?.submissionAttempted, result.statuses[0]?.sourceIdentified, result.statuses[0]?.contentVerified], [true, true, false]);
+  assert.match(result.statuses[0]?.reason ?? '', /no demuestra lectura ni verificación/);
 });
 
 test('empty file, renamed PDF, images and Markdown retain MIME and honest causes', async () => {
@@ -86,7 +102,8 @@ test('provider error, invalid JSON and missing source never mark a sent file ana
     assert.equal(result.report, undefined);
     assert.ok(result.error);
     assert.deepEqual(result.statuses.map((s) => s.status), ['No analizado', 'No analizado']);
-    assert.ok(result.statuses.every((s) => /Enviado, sin resultado validado/.test(s.reason ?? '')));
+    assert.ok(result.statuses.every((s) => s.submissionAttempted && !s.sourceIdentified && !s.contentVerified));
+    assert.ok(result.statuses.every((s) => /Se intentó enviar a Gemini; sin resultado validado/.test(s.reason ?? '')));
     assert.equal(JSON.stringify(result).includes('mock-key'), false);
   }
 });

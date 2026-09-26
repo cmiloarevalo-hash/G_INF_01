@@ -74,7 +74,7 @@ export function createServerApp(options: { fetchImpl?: GeminiFetch; env?: AliasE
     const files = parsed.data.files as GuestDocumentInput[];
     if (new Set(files.map((file) => file.id)).size !== files.length) return res.status(400).json({ error: 'La selección contiene identificadores de archivo duplicados.' });
     const limit = selectionLimitError(files);
-    if (limit) return res.status(413).json({ error: limit, statuses: files.map(({ id, name }) => ({ id, name, status: 'No analizado', reason: limit })) });
+    if (limit) return res.status(413).json({ error: limit, statuses: files.map(({ id, name }) => ({ id, name, status: 'No analizado', submissionAttempted: false, sourceIdentified: false, contentVerified: false, reason: limit })) });
     try {
       const result = await analyzeGuestDocuments(credential.key, files, fetchImpl);
       return res.status(result.report ? 200 : result.error === 'Ningún archivo técnicamente legible se envió a Gemini.' ? 422 : 502).json(result);

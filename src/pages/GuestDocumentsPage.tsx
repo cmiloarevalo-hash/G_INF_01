@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import type { ChangeEvent, FC } from 'react';
 import { selectionLimitError, MAX_GUEST_FILES, MAX_GUEST_TOTAL_BYTES } from '../shared/guest-limits.js';
 
-export type GuestFileStatus = 'Pendiente' | 'Analizado' | 'No analizado';
+export type GuestFileStatus = 'Pendiente' | 'Fuente identificada' | 'No analizado';
 export interface GuestFileEntry { file: File; status: GuestFileStatus; reason?: string }
 
 export function fileIdentity(file: File): string {
@@ -216,6 +216,7 @@ export const GuestDocumentsPage: FC = () => {
         <strong>Envío temporal a Gemini</strong>
         <p>Al analizar, los archivos legibles se envían a Google Gemini con el modelo gemini-3.6-flash usando tu clave temporal o un alias autorizado del propietario. El servidor no guarda la clave temporal ni persiste archivos o resultados; Gemini procesa el contenido según sus condiciones del servicio.</p>
         <p>Máximo {MAX_GUEST_FILES} archivos y {MAX_GUEST_TOTAL_BYTES.toLocaleString('es-CL')} bytes originales (50 MB) por selección. Superar un límite bloquea el envío. Los archivos legibles se envían juntos en una solicitud; los incompatibles, como CSV y XLS/XLSX, quedan seleccionados pero no analizados. El proveedor puede aplicar límites técnicos adicionales.</p>
+        <p>«Fuente identificada» indica que un JSON estructuralmente válido menciona ese archivo. No acredita que Gemini leyó su contenido correctamente ni que los hechos fueron cotejados con el original.</p>
       </aside>
       {report !== null && <section className="guest-report-panel" aria-labelledby="guest-report-title">
         <h3 id="guest-report-title">Resultado preliminar {partial ? '(parcial)' : ''} · requiere revisión humana</h3>

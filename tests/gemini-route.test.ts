@@ -25,9 +25,11 @@ test('single route sends supported source once and returns validated report with
   }, async (root) => {
     const response = await send(root, [sample]);
     assert.equal(response.status, 200);
-    const body = await response.json() as { report: typeof report; statuses: Array<{ status: string }> };
+    const body = await response.json() as { report: typeof report; statuses: Array<{ status: string; submissionAttempted: boolean; sourceIdentified: boolean; contentVerified: boolean; reason: string }> };
     assert.equal(body.report.reportType, 'TITLE_STUDY');
-    assert.equal(body.statuses[0]?.status, 'Analizado');
+    assert.equal(body.statuses[0]?.status, 'Fuente identificada');
+    assert.deepEqual([body.statuses[0]?.submissionAttempted, body.statuses[0]?.sourceIdentified, body.statuses[0]?.contentVerified], [true, true, false]);
+    assert.match(body.statuses[0]?.reason ?? '', /no le atribuye hallazgos/);
     assert.equal(JSON.stringify(body).includes('mock-key'), false);
     assert.equal((await fetch(root + '/api/guest/extract', { method: 'POST' })).status, 404);
     assert.equal((await fetch(root + '/api/guest/synthesize', { method: 'POST' })).status, 404);
@@ -60,9 +62,9 @@ test('the allowed boundary of 20 selected compatible files reaches one provider 
   }, async (root) => {
     const response = await send(root, files);
     assert.equal(response.status, 200);
-    const body = await response.json() as { statuses: Array<{ status: string }> };
+    const body = await response.json() as { statuses: Array<{ status: string; contentVerified: boolean; reason: string }> };
     assert.equal(body.statuses.length, 20);
-    assert.ok(body.statuses.every(({ status }) => status === 'Analizado'));
+    assert.ok(body.statuses.every(({ status, contentVerified, reason }) => status === 'Fuente identificada' && !contentVerified && /no le atribuye hallazgos/.test(reason)));
   });
   assert.equal(calls, 1);
 });
@@ -72,9 +74,11 @@ test('provider failure and invalid output cause 502 with no successful file stat
     await withServer(upstream, async (root) => {
       const response = await send(root, [sample]);
       assert.equal(response.status, 502);
-      const body = await response.json() as { report?: unknown; error: string; statuses: Array<{ status: string }> };
+      const body = await response.json() as { report?: unknown; error: string; statuses: Array<{ status: string; sourceIdentified: boolean; contentVerified: boolean }> };
       assert.equal(body.report, undefined);
       assert.equal(body.statuses[0]?.status, 'No analizado');
+      assert.equal(body.statuses[0]?.sourceIdentified, false);
+      assert.equal(body.statuses[0]?.contentVerified, false);
     });
   }
 });
@@ -83,5 +87,6 @@ test('compiled production module loads prompt and validates a one-call result', 
   const distGemini = await import(new URL('../dist/src/services/ai/gemini.js', import.meta.url).href) as typeof import('../src/services/ai/gemini.js');
   const result = await distGemini.analyzeGuestDocuments('mock-key', [sample], async () => reply(report));
   assert.equal(result.report?.reportType, 'TITLE_STUDY');
-  assert.equal(result.statuses[0]?.status, 'Analizado');
+  assert.equal(result.statuses[0]?.status, 'Fuente identificada');
+  assert.equal(result.statuses[0]?.contentVerified, false);
 });

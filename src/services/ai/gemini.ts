@@ -126,7 +126,15 @@ async function callGemini(apiKey: string, input: GeminiInputPart[], schema: unkn
   }
 }
 
-export type DocumentStatus = { id: string; name: string; status: 'Analizado' | 'No analizado'; reason?: string };
+export type DocumentStatus = {
+  id: string;
+  name: string;
+  status: 'Fuente identificada' | 'No analizado';
+  submissionAttempted: boolean;
+  sourceIdentified: boolean;
+  contentVerified: false;
+  reason?: string;
+};
 
 function detectReadableInput(file: GuestDocumentInput): { input: GeminiInputPart; supported: true } | { supported: false; reason: string } {
   const lower = file.name.toLowerCase();
@@ -167,7 +175,7 @@ export async function analyzeGuestDocuments(
   fetchImpl: GeminiFetch = fetch,
 ): Promise<{ report?: TitleStudy; statuses: DocumentStatus[]; partial: boolean; error?: string }> {
   const limit = selectionLimitError(files);
-  if (limit) return { statuses: files.map(({ id, name }) => ({ id, name, status: 'No analizado', reason: limit })), partial: false, error: limit };
+  if (limit) return { statuses: files.map(({ id, name }) => ({ id, name, status: 'No analizado', submissionAttempted: false, sourceIdentified: false, contentVerified: false, reason: limit })), partial: false, error: limit };
   if (!apiKey.trim()) throw new Error('Ingresa tu clave de Gemini para esta sesión.');
   const input: GeminiInputPart[] = [];
   const sent: GuestDocumentInput[] = [];
@@ -175,25 +183,36 @@ export async function analyzeGuestDocuments(
   for (const file of files) {
     const detected = detectReadableInput(file);
     if (!detected.supported) {
-      statuses.push({ id: file.id, name: file.name, status: 'No analizado', reason: detected.reason });
+      statuses.push({ id: file.id, name: file.name, status: 'No analizado', submissionAttempted: false, sourceIdentified: false, contentVerified: false, reason: detected.reason });
       continue;
     }
     sent.push(file);
-    statuses.push({ id: file.id, name: file.name, status: 'No analizado', reason: 'Enviado a Gemini; todavía no hay un resultado validado.' });
+    statuses.push({ id: file.id, name: file.name, status: 'No analizado', submissionAttempted: false, sourceIdentified: false, contentVerified: false, reason: 'Preparado para una solicitud a Gemini; aún no hay resultado.' });
     input.push({ type: 'text', text: `Fuente ${JSON.stringify({ id: file.id, name: file.name })}. Identifica esta fuente por ese ID y nombre en sourceDocuments.` }, detected.input);
   }
   if (sent.length === 0) return { statuses, partial: true, error: 'Ningún archivo técnicamente legible se envió a Gemini.' };
-  const prompt = await loadTitleStudyPrompt();
+  let submissionAttempted = false;
   try {
+    const prompt = await loadTitleStudyPrompt();
+    submissionAttempted = true;
     const response = await callGemini(apiKey, [{ type: 'text', text: prompt }, ...input], toTitleStudyJsonSchema(), fetchImpl);
     const parsed = titleStudySchema.parse(response);
     const expectedDocuments = new Map(sent.map((item) => [item.id, item.name]));
     if (parsed.sourceDocuments.length !== expectedDocuments.size || parsed.sourceDocuments.some((source) => expectedDocuments.get(source.id) !== source.name)) {
       throw new Error('La respuesta de Gemini omitió, agregó o cambió la identidad de un documento fuente; no se muestra como informe válido.');
     }
-    return { report: parsed, statuses: statuses.map((item) => expectedDocuments.has(item.id) ? { id: item.id, name: item.name, status: 'Analizado' } : item), partial: sent.length !== files.length };
+    return { report: parsed, statuses: statuses.map((item): DocumentStatus => {
+      if (!expectedDocuments.has(item.id)) return item;
+      const hasFinding = parsed.findings?.some((finding) => finding.sourceDocumentIds.includes(item.id)) ?? false;
+      return { id: item.id, name: item.name, status: 'Fuente identificada', submissionAttempted: true, sourceIdentified: true, contentVerified: false,
+        reason: hasFinding
+          ? 'El JSON válido identifica esta fuente y le atribuye hallazgos; su contenido no se ha cotejado con el original.'
+          : 'El JSON válido identifica esta fuente, pero no le atribuye hallazgos; esto no demuestra lectura ni verificación de su contenido.' };
+    }), partial: sent.length !== files.length };
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'No se obtuvo un resultado verificable de Gemini.';
-    return { statuses: statuses.map((item) => sent.some((file) => file.id === item.id) ? { ...item, reason: `Enviado, sin resultado validado: ${reason}` } : item), partial: sent.length !== files.length, error: reason };
+    return { statuses: statuses.map((item) => sent.some((file) => file.id === item.id)
+      ? { ...item, submissionAttempted, reason: `${submissionAttempted ? 'Se intentó enviar a Gemini' : 'No se pudo preparar el envío'}; sin resultado validado: ${reason}` }
+      : item), partial: sent.length !== files.length, error: reason };
   }
 }
