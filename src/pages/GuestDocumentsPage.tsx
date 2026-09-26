@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent, FC } from 'react';
-import { orchestrateGuestAnalysis } from '../services/ai/guest-orchestrator.js';
+import { selectionLimitError, MAX_GUEST_FILES, MAX_GUEST_TOTAL_BYTES } from '../shared/guest-limits.js';
 
 export type GuestFileStatus = 'Pendiente' | 'Analizado' | 'No analizado';
 export interface GuestFileEntry { file: File; status: GuestFileStatus; reason?: string }
@@ -118,44 +118,42 @@ export const GuestDocumentsPage: FC = () => {
   });
 
   const analyze = async () => {
+    const limit = selectionLimitError(files);
+    if (limit) { setReport(null); setMessage(limit); setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'No analizado' as const, reason: limit }]))); return; }
     if (keySource === 'temporary' && !apiKey.trim()) { setMessage('Ingresa tu clave de Gemini para esta sesión.'); return; }
     if (keySource === 'alias' && (!accessToken || !selectedAlias)) { setMessage('Autoriza el acceso y selecciona una clave de prueba.'); return; }
     if (files.length === 0) { setMessage('Selecciona al menos un archivo.'); return; }
     setIsAnalyzing(true);
     setReport(null);
     setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'Pendiente' as const }])));
-    setMessage('Analizando los archivos uno por uno con Gemini…');
+    setMessage('Preparando los archivos legibles para una sola solicitud a Gemini…');
     const credentialHeaders: Record<string, string> = keySource === 'temporary'
       ? { 'x-gemini-api-key': apiKey }
       : { 'x-gemini-key-alias': selectedAlias, 'x-gemini-alias-access-token': accessToken };
     try {
-      const outcome = await orchestrateGuestAnalysis<File, { documentId: string; name: string; extraction: unknown }, unknown>(files, {
-        getName: (file) => file.name,
-        getSize: (file) => file.size,
-        onStatus: (file, status, reason) => setStatuses((previous) => ({
-          ...previous, [fileIdentity(file)]: { file, status, ...(reason ? { reason } : {}) },
-        })),
-        stopOnError: (error) => /Gemini no pudo completar el análisis por cuota|Gemini rechazó|HTTP 429|HTTP 401|HTTP 403|HTTP 5\d\d|conexión con Gemini/.test(error instanceof Error ? error.message : ''),
-        extract: async (file, index) => {
-          const data = await fileAsBase64(file);
-          const response = await fetch('/api/guest/extract', {
-            method: 'POST', headers: { 'content-type': 'application/json', ...credentialHeaders },
-            body: JSON.stringify({ id: `doc-${index + 1}`, name: file.name, mimeType: file.type, size: file.size, data }),
-          });
-          return readJsonResponse<{ documentId: string; name: string; extraction: unknown }>(response);
-        },
-        synthesize: async (extractions) => {
-          const response = await fetch('/api/guest/synthesize', {
-            method: 'POST', headers: { 'content-type': 'application/json', ...credentialHeaders },
-            body: JSON.stringify({ extractions }),
-          });
-          return (await readJsonResponse<{ report: unknown }>(response)).report;
-        },
+      const payload = [];
+      for (const [index, file] of files.entries()) {
+        payload.push({ id: `doc-${index + 1}`, name: file.name, mimeType: file.type, size: file.size,
+          data: /\.(pdf|png|jpe?g|txt|md|markdown)$/i.test(file.name) ? await fileAsBase64(file) : '' });
+      }
+      const response = await fetch('/api/guest/analyze', {
+        method: 'POST', headers: { 'content-type': 'application/json', ...credentialHeaders },
+        body: JSON.stringify({ files: payload }),
       });
+      const outcome = await response.json().catch(() => ({ error: `Error HTTP ${response.status}; no se confirmó el análisis.` })) as { report?: unknown; partial?: boolean; error?: string; statuses?: Array<{ id: string; status: GuestFileStatus; reason?: string }> };
+      if (outcome.statuses) setStatuses(Object.fromEntries(outcome.statuses.map((entry, index) => {
+        const file = files[index]!;
+        return [fileIdentity(file), { file, status: entry.status, ...(entry.reason ? { reason: entry.reason } : {}) }];
+      })));
+      if (!response.ok || !outcome.report) {
+        if (!outcome.statuses) setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'No analizado' as const, reason: 'No se confirmó un resultado validado.' }])));
+        setMessage(outcome.error ?? `Error HTTP ${response.status}`); return;
+      }
       setReport(outcome.report);
-      setPartial(outcome.partial);
+      setPartial(Boolean(outcome.partial));
       setMessage(outcome.partial ? 'Resultado preliminar parcial: algunos archivos no se analizaron; revisa su causa antes de interpretar el JSON.' : 'Resultado preliminar validado por el contrato TITLE_STUDY. Requiere revisión humana.');
     } catch (error) {
+      setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'No analizado' as const, reason: 'No se confirmó el envío o resultado; revisa el error de conexión.' }])));
       setMessage(error instanceof Error ? error.message : 'No fue posible completar el análisis.');
     } finally { setIsAnalyzing(false); }
   };
@@ -217,7 +215,7 @@ export const GuestDocumentsPage: FC = () => {
       <aside className="guest-limit-notice" aria-label="Procesamiento de documentos">
         <strong>Envío temporal a Gemini</strong>
         <p>Al analizar, los archivos legibles se envían a Google Gemini con el modelo gemini-3.6-flash usando tu clave temporal o un alias autorizado del propietario. El servidor no guarda la clave temporal ni persiste archivos o resultados; Gemini procesa el contenido según sus condiciones del servicio.</p>
-        <p>Los archivos se envían de uno en uno. PDF: máximo inline 50 MiB. Otros formatos admitidos: 70 MiB para mantener el payload codificado bajo 100 MB. CSV y XLS/XLSX se conservan, pero quedan sin análisis en este piloto.</p>
+        <p>Máximo {MAX_GUEST_FILES} archivos y {MAX_GUEST_TOTAL_BYTES.toLocaleString('es-CL')} bytes originales (50 MB) por selección. Superar un límite bloquea el envío. Los archivos legibles se envían juntos en una solicitud; los incompatibles, como CSV y XLS/XLSX, quedan seleccionados pero no analizados. El proveedor puede aplicar límites técnicos adicionales.</p>
       </aside>
       {report !== null && <section className="guest-report-panel" aria-labelledby="guest-report-title">
         <h3 id="guest-report-title">Resultado preliminar {partial ? '(parcial)' : ''} · requiere revisión humana</h3>

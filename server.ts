@@ -2,7 +2,8 @@ import express, { type Express } from 'express';
 import path from 'node:path';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { extractGuestDocument, guestDocumentFactsSchema, synthesizeTitleStudy, type GeminiFetch, type GuestDocumentInput } from './src/services/ai/gemini.js';
+import { analyzeGuestDocuments, type GeminiFetch, type GuestDocumentInput } from './src/services/ai/gemini.js';
+import { selectionLimitError } from './src/shared/guest-limits.js';
 import * as z from 'zod';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -60,40 +61,25 @@ export function createServerApp(options: { fetchImpl?: GeminiFetch; env?: AliasE
     return res.json({ aliases: aliasSlots.filter((item) => env[item.secret]?.trim()).map(({ id, label }) => ({ id, label })) });
   });
 
-  app.post('/api/guest/extract', express.json({ limit: '101mb' }), async (req, res) => {
+  app.post('/api/guest/analyze', express.json({ limit: '70mb' }), async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     const credential = resolveKey(req, env);
-    const inputSchema = z.strictObject({
+    const fileSchema = z.strictObject({
       id: z.string().min(1), name: z.string().min(1), mimeType: z.string(),
-      size: z.number().int().nonnegative(), data: z.string().min(1),
+      size: z.number().int().nonnegative(), data: z.string(),
     });
-    const parsed = inputSchema.safeParse(req.body);
+    const parsed = z.strictObject({ files: z.array(fileSchema).min(1) }).safeParse(req.body);
     if (!credential.key) return res.status(credential.status ?? 400).json({ error: credential.error });
-    if (!parsed.success) return res.status(400).json({ error: 'La solicitud del archivo no es válida.' });
+    if (!parsed.success) return res.status(400).json({ error: 'La selección de archivos no es válida.' });
+    const files = parsed.data.files as GuestDocumentInput[];
+    if (new Set(files.map((file) => file.id)).size !== files.length) return res.status(400).json({ error: 'La selección contiene identificadores de archivo duplicados.' });
+    const limit = selectionLimitError(files);
+    if (limit) return res.status(413).json({ error: limit, statuses: files.map(({ id, name }) => ({ id, name, status: 'No analizado', reason: limit })) });
     try {
-      const extracted = await extractGuestDocument(credential.key, parsed.data as GuestDocumentInput, fetchImpl);
-      return res.json(extracted);
+      const result = await analyzeGuestDocuments(credential.key, files, fetchImpl);
+      return res.status(result.report ? 200 : result.error === 'Ningún archivo técnicamente legible se envió a Gemini.' ? 422 : 502).json(result);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error de análisis.';
-      const fileProblem = /Formato aún no procesado|firma PDF|extensión de imagen|texto UTF-8|bytes nulos|Supera 70 MiB|máximo técnico de 50 MiB|incompleto/.test(message);
-      return res.status(fileProblem ? 422 : 502).json({ error: message, code: fileProblem ? 'FILE_NOT_ANALYZABLE' : 'GEMINI_ERROR' });
-    }
-  });
-
-  app.post('/api/guest/synthesize', express.json({ limit: '5mb' }), async (req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
-    const credential = resolveKey(req, env);
-    const requestSchema = z.strictObject({ extractions: z.array(z.strictObject({
-      documentId: z.string().min(1), name: z.string().min(1), extraction: guestDocumentFactsSchema,
-    })).min(1) });
-    const parsed = requestSchema.safeParse(req.body);
-    if (!credential.key) return res.status(credential.status ?? 400).json({ error: credential.error });
-    if (!parsed.success) return res.status(400).json({ error: 'No hay extractos válidos para consolidar.' });
-    try {
-      const report = await synthesizeTitleStudy(credential.key, parsed.data.extractions as Parameters<typeof synthesizeTitleStudy>[1], fetchImpl);
-      return res.json({ report });
-    } catch (error) {
-      return res.status(502).json({ error: error instanceof Error ? error.message : 'Gemini no pudo consolidar el análisis.' });
+      return res.status(502).json({ error: error instanceof Error ? error.message : 'Error de análisis.' });
     }
   });
 

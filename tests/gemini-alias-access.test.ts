@@ -5,27 +5,22 @@ import { createServerApp } from '../server.js';
 
 const access = 'test-owner-capability-of-at-least-thirty-two-characters';
 const secret = 'fake-provider-key-never-disclose';
-const env = {
-  GEMINI_ALIAS_MODE: 'owner-only', GEMINI_ALIAS_ACCESS_TOKEN: access,
-  GEMINI_TEST_KEY_1: secret, GEMINI_API_KEY: 'auto-injected-key-must-not-be-used',
-};
-const extract = { id: 'doc-1', name: 'nota.txt', mimeType: 'text/plain', size: 5, data: Buffer.from('texto').toString('base64') };
-const synthesis = { extractions: [{ documentId: 'doc-1', name: 'nota.txt', extraction: { documentType: 'texto', findings: [] } }] };
+const env = { GEMINI_ALIAS_MODE: 'owner-only', GEMINI_ALIAS_ACCESS_TOKEN: access, GEMINI_TEST_KEY_1: secret, GEMINI_API_KEY: 'auto-injected-key-must-not-be-used' };
+const selected = { files: [{ id: 'doc-1', name: 'nota.txt', mimeType: 'text/plain', size: 5, data: Buffer.from('texto').toString('base64') }] };
+const report = { reportType: 'TITLE_STUDY', sourceDocuments: [{ id: 'doc-1', name: 'nota.txt', documentType: 'texto' }], findings: [], comparisons: [] };
+const completed = () => Response.json({ status: 'completed', output_text: JSON.stringify(report) });
+const rootOf = (server: ReturnType<ReturnType<typeof createServerApp>['listen']>) => `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+const send = (root: string, headers: Record<string, string>) => fetch(root + '/api/guest/analyze', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(selected) });
 
-test('public routes cannot list or spend owner secrets without authorization, even with a known alias', async () => {
+test('public requests cannot list or use owner alias, even when alias is known', async () => {
   let calls = 0;
-  const app = createServerApp({ env, fetchImpl: async () => { calls++; return Response.json({}); } });
-  const server = app.listen(0);
-  const root = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const server = createServerApp({ env, fetchImpl: async () => { calls++; return completed(); } }).listen(0);
   try {
-    for (const url of ['/api/guest/key-aliases', '/api/guest/extract', '/api/guest/synthesize']) {
-      for (const provided of ['', 'wrong-access-token']) {
-        const response = await fetch(root + url, {
-          method: url.endsWith('key-aliases') ? 'GET' : 'POST',
-          headers: { 'content-type': 'application/json', 'x-gemini-key-alias': 'test-1', ...(provided ? { 'x-gemini-alias-access-token': provided } : {}) },
-          ...(url.endsWith('key-aliases') ? {} : { body: JSON.stringify(url.endsWith('extract') ? extract : synthesis) }),
-        });
-        assert.equal(response.status, 403, url);
+    const root = rootOf(server);
+    for (const token of ['', 'wrong-access-token']) {
+      const headers = { 'x-gemini-key-alias': 'test-1', ...(token ? { 'x-gemini-alias-access-token': token } : {}) };
+      for (const response of [await fetch(root + '/api/guest/key-aliases', { headers }), await send(root, headers)]) {
+        assert.equal(response.status, 403);
         assert.equal(response.headers.get('cache-control'), 'no-store');
         assert.equal(JSON.stringify(await response.json()).includes(secret), false);
       }
@@ -34,41 +29,29 @@ test('public routes cannot list or spend owner secrets without authorization, ev
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
-test('alias requires explicit enabled mode and strong owner capability, with no automatic GEMINI_API_KEY fallback', async () => {
+test('alias requires explicit owner mode and capability, without automatic key fallback', async () => {
   for (const disabled of [{ ...env, GEMINI_ALIAS_MODE: '' }, { ...env, GEMINI_ALIAS_ACCESS_TOKEN: 'weak' }, { GEMINI_API_KEY: 'auto-injected-key-must-not-be-used' }]) {
-    let called = false;
-    const server = createServerApp({ env: disabled, fetchImpl: async () => { called = true; return Response.json({}); } }).listen(0);
-    try {
-      const root = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-      const response = await fetch(root + '/api/guest/extract', {
-        method: 'POST', headers: { 'content-type': 'application/json', 'x-gemini-key-alias': 'test-1', 'x-gemini-alias-access-token': access }, body: JSON.stringify(extract),
-      });
-      assert.equal(response.status, 403);
-      assert.equal(called, false);
-    } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+    let calls = 0;
+    const server = createServerApp({ env: disabled, fetchImpl: async () => { calls++; return completed(); } }).listen(0);
+    try { assert.equal((await send(rootOf(server), { 'x-gemini-key-alias': 'test-1', 'x-gemini-alias-access-token': access })).status, 403); assert.equal(calls, 0); }
+    finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
   }
 });
 
-test('authorized alias lists names alone, resolves explicit secret server-side, and rejects ambiguous or unknown sources', async () => {
-  const upstream: string[] = [];
-  const server = createServerApp({ env, fetchImpl: async (_input, init) => {
-    upstream.push(new Headers(init?.headers).get('x-goog-api-key') ?? '');
-    return Response.json({ status: 'completed', output_text: JSON.stringify({ documentType: 'texto', findings: [] }) });
-  } }).listen(0);
-  const root = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+test('authorized alias returns names only; temporary key remains independent', async () => {
+  const keys: string[] = [];
+  const server = createServerApp({ env, fetchImpl: async (_url, init) => { keys.push(new Headers(init?.headers).get('x-goog-api-key') ?? ''); return completed(); } }).listen(0);
   try {
+    const root = rootOf(server);
     const listed = await fetch(root + '/api/guest/key-aliases', { headers: { 'x-gemini-alias-access-token': access } });
     assert.deepEqual(await listed.json(), { aliases: [{ id: 'test-1', label: 'Prueba 1' }] });
-    const send = (headers: Record<string, string>) => fetch(root + '/api/guest/extract', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(extract) });
-    const authorized = await send({ 'x-gemini-key-alias': 'test-1', 'x-gemini-alias-access-token': access });
+    const authorized = await send(root, { 'x-gemini-key-alias': 'test-1', 'x-gemini-alias-access-token': access });
     assert.equal(authorized.status, 200);
     assert.equal(JSON.stringify(await authorized.json()).includes(secret), false);
-    assert.deepEqual(upstream, [secret]);
-    assert.equal((await send({ 'x-gemini-key-alias': 'test-4', 'x-gemini-alias-access-token': access })).status, 400);
-    assert.equal((await send({ 'x-gemini-key-alias': 'test-1', 'x-gemini-alias-access-token': access, 'x-gemini-api-key': 'fake-session-key' })).status, 400);
-    assert.deepEqual(upstream, [secret]);
-    const temporary = await send({ 'x-gemini-api-key': 'fake-session-key' });
-    assert.equal(temporary.status, 200);
-    assert.deepEqual(upstream, [secret, 'fake-session-key']);
+    assert.deepEqual(keys, [secret]);
+    assert.equal((await send(root, { 'x-gemini-key-alias': 'test-4', 'x-gemini-alias-access-token': access })).status, 400);
+    assert.equal((await send(root, { 'x-gemini-key-alias': 'test-1', 'x-gemini-alias-access-token': access, 'x-gemini-api-key': 'session-only' })).status, 400);
+    assert.equal((await send(root, { 'x-gemini-api-key': 'session-only' })).status, 200);
+    assert.deepEqual(keys, [secret, 'session-only']);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });

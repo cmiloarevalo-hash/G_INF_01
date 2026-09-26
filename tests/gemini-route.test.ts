@@ -4,144 +4,84 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createServerApp } from '../server.js';
 
-test('guest extract route forwards the session key only as provider header and returns validated mock facts', async () => {
-  let upstreamKey = '';
-  let upstreamBody = '';
-  const fetchImpl: typeof fetch = async (_input, init) => {
-    upstreamKey = new Headers(init?.headers).get('x-goog-api-key') ?? '';
-    upstreamBody = String(init?.body);
-    return Response.json({ status: 'completed', output_text: JSON.stringify({ documentType: 'texto', findings: [] }) });
-  };
-  const app = createServerApp({ fetchImpl });
-  const server: Server = app.listen(0);
-  const port = (server.address() as AddressInfo).port;
-  try {
-    const response = await fetch(`http://127.0.0.1:${port}/api/guest/extract`, {
-      method: 'POST', headers: { 'content-type': 'application/json', 'x-gemini-api-key': 'mock-only-key' },
-      body: JSON.stringify({ id: 'doc-1', name: 'nota.txt', mimeType: 'text/plain', size: 5, data: Buffer.from('texto').toString('base64') }),
-    });
+const file = (id: string, name: string, content: string, size = Buffer.byteLength(content)) => ({ id, name, mimeType: 'text/plain', size, data: Buffer.from(content).toString('base64') });
+const sample = file('doc-1', 'nota.txt', 'texto');
+const report = { reportType: 'TITLE_STUDY', sourceDocuments: [{ id: 'doc-1', name: 'nota.txt', documentType: 'texto' }], findings: [], comparisons: [] };
+const reply = (value: unknown) => Response.json({ status: 'completed', steps: [{ type: 'model_output', content: [{ type: 'text', text: JSON.stringify(value) }] }] });
+async function withServer(fetchImpl: typeof fetch, run: (root: string) => Promise<void>) {
+  const server: Server = createServerApp({ fetchImpl }).listen(0);
+  try { await run(`http://127.0.0.1:${(server.address() as AddressInfo).port}`); }
+  finally { await new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve())); }
+}
+const send = (root: string, files: unknown[]) => fetch(root + '/api/guest/analyze', { method: 'POST', headers: { 'content-type': 'application/json', 'x-gemini-api-key': 'mock-key' }, body: JSON.stringify({ files }) });
+
+test('single route sends supported source once and returns validated report without exposing key', async () => {
+  let calls = 0;
+  await withServer(async (_url, init) => {
+    calls++;
+    assert.equal(new Headers(init?.headers).get('x-goog-api-key'), 'mock-key');
+    assert.equal(String(init?.body).includes('mock-key'), false);
+    return reply(report);
+  }, async (root) => {
+    const response = await send(root, [sample]);
     assert.equal(response.status, 200);
-    assert.equal(upstreamKey, 'mock-only-key');
-    assert.equal(upstreamBody.includes('mock-only-key'), false);
-    assert.deepEqual(await response.json(), { documentId: 'doc-1', name: 'nota.txt', extraction: { documentType: 'texto', findings: [] } });
-  } finally {
-    await new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
-  }
-});
-
-test('guest extract route reports unsupported files without calling Gemini', async () => {
-  let called = false;
-  const fetchImpl: typeof fetch = async () => { called = true; return Response.json({}); };
-  const server = createServerApp({ fetchImpl }).listen(0);
-  const port = (server.address() as AddressInfo).port;
-  try {
-    const response = await fetch(`http://127.0.0.1:${port}/api/guest/extract`, {
-      method: 'POST', headers: { 'content-type': 'application/json', 'x-gemini-api-key': 'mock-only-key' },
-      body: JSON.stringify({ id: 'doc-1', name: 'modelo.xlsx', mimeType: 'application/xlsx', size: 5, data: Buffer.from('sheet').toString('base64') }),
-    });
-    assert.equal(response.status, 422);
-    assert.equal((await response.json() as { code: string }).code, 'FILE_NOT_ANALYZABLE');
-    assert.equal(called, false);
-  } finally {
-    await new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
-  }
-});
-
-test('guest synthesize route succeeds with valid mock facts and correctly loads prompt template', async () => {
-  const validReport = {
-    reportType: 'TITLE_STUDY',
-    sourceDocuments: [{ id: 'doc-1', name: 'nota.txt', documentType: 'texto' }],
-    findings: [{ id: 'f-1', sourceDocumentIds: ['doc-1'], statement: 'Hecho relevante' }],
-    comparisons: [],
-    conclusions: [{ id: 'c-1', statement: 'Conclusión válida.', supportingFindingIds: ['f-1'] }],
-  };
-
-  const fetchImpl: typeof fetch = async () => Response.json({
-    status: 'completed',
-    steps: [{
-      type: 'model_output',
-      content: [{ type: 'text', text: JSON.stringify(validReport) }],
-    }],
-  });
-
-  const app = createServerApp({ fetchImpl });
-  const server: Server = app.listen(0);
-  const port = (server.address() as AddressInfo).port;
-  try {
-    const response = await fetch(`http://127.0.0.1:${port}/api/guest/synthesize`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-gemini-api-key': 'mock-only-key' },
-      body: JSON.stringify({
-        extractions: [{
-          documentId: 'doc-1',
-          name: 'nota.txt',
-          extraction: { documentType: 'texto', findings: [{ statement: 'Hecho relevante' }] },
-        }],
-      }),
-    });
-    assert.equal(response.status, 200);
-    const body = await response.json() as { report: typeof validReport };
+    const body = await response.json() as { report: typeof report; statuses: Array<{ status: string }> };
     assert.equal(body.report.reportType, 'TITLE_STUDY');
-    assert.equal(body.report.sourceDocuments[0]?.id, 'doc-1');
-  } finally {
-    await new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
-  }
-});
-
-test('guest synthesize route returns 502 with error message when provider fails', async () => {
-  const fetchImpl: typeof fetch = async () => Response.json({
-    error: { message: 'Overloaded' },
-  }, { status: 503 });
-
-  const app = createServerApp({ fetchImpl });
-  const server: Server = app.listen(0);
-  const port = (server.address() as AddressInfo).port;
-  try {
-    const response = await fetch(`http://127.0.0.1:${port}/api/guest/synthesize`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-gemini-api-key': 'mock-only-key' },
-      body: JSON.stringify({
-        extractions: [{
-          documentId: 'doc-1',
-          name: 'nota.txt',
-          extraction: { documentType: 'texto', findings: [] },
-        }],
-      }),
-    });
-    assert.equal(response.status, 502);
-    const body = await response.json() as { error: string };
-    assert.match(body.error, /HTTP 503/);
-  } finally {
-    await new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
-  }
-});
-
-test('compiled production module loads prompt template and synthesizes study correctly', async () => {
-  const distGeminiPath = new URL('../dist/src/services/ai/gemini.js', import.meta.url).href;
-  const distGemini = await import(distGeminiPath) as typeof import('../src/services/ai/gemini.js');
-
-  const validReport = {
-    reportType: 'TITLE_STUDY',
-    sourceDocuments: [{ id: 'doc-dist', name: 'dist.txt', documentType: 'texto' }],
-    findings: [{ id: 'f-dist', sourceDocumentIds: ['doc-dist'], statement: 'Dato compilado' }],
-    comparisons: [],
-    conclusions: [{ id: 'c-dist', statement: 'Conclusión compilada.', supportingFindingIds: ['f-dist'] }],
-  };
-
-  const mockedFetch: typeof fetch = async () => Response.json({
-    status: 'completed',
-    steps: [{
-      type: 'model_output',
-      content: [{ type: 'text', text: JSON.stringify(validReport) }],
-    }],
+    assert.equal(body.statuses[0]?.status, 'Analizado');
+    assert.equal(JSON.stringify(body).includes('mock-key'), false);
+    assert.equal((await fetch(root + '/api/guest/extract', { method: 'POST' })).status, 404);
+    assert.equal((await fetch(root + '/api/guest/synthesize', { method: 'POST' })).status, 404);
   });
+  assert.equal(calls, 1);
+});
 
-  const result = await distGemini.synthesizeTitleStudy('mock-key', [{
-    documentId: 'doc-dist',
-    name: 'dist.txt',
-    extraction: { documentType: 'texto', findings: [{ statement: 'Dato compilado' }] },
-  }], mockedFetch);
+test('server rejects count and size overages before provider call, preserving causes', async () => {
+  let calls = 0;
+  await withServer(async () => { calls++; return reply(report); }, async (root) => {
+    const many = await send(root, Array.from({ length: 21 }, (_, index) => file(`doc-${index}`, 'x.txt', 'x')));
+    assert.equal(many.status, 413);
+    assert.match((await many.json() as { error: string }).error, /20 archivos/);
+    const tooBig = await send(root, [file('big', 'x.txt', 'x', 50_000_001)]);
+    assert.equal(tooBig.status, 413);
+    assert.match((await tooBig.json() as { error: string }).error, /50000000 bytes/);
+    const unsupported = await send(root, [file('sheet', 'sheet.xlsx', 'x')]);
+    assert.equal(unsupported.status, 422);
+    assert.match((await unsupported.json() as { statuses: Array<{ reason: string }> }).statuses[0]?.reason ?? '', /Formato aún no procesado/);
+    assert.equal(calls, 0);
+  });
+});
 
-  assert.equal(result.reportType, 'TITLE_STUDY');
-  assert.equal(result.sourceDocuments[0]?.id, 'doc-dist');
+test('the allowed boundary of 20 selected compatible files reaches one provider call', async () => {
+  const files = Array.from({ length: 20 }, (_, index) => file(`doc-${index + 1}`, `doc-${index + 1}.txt`, 'x'));
+  let calls = 0;
+  await withServer(async () => {
+    calls++;
+    return reply({ reportType: 'TITLE_STUDY', sourceDocuments: files.map(({ id, name }) => ({ id, name, documentType: 'texto' })), findings: [], comparisons: [] });
+  }, async (root) => {
+    const response = await send(root, files);
+    assert.equal(response.status, 200);
+    const body = await response.json() as { statuses: Array<{ status: string }> };
+    assert.equal(body.statuses.length, 20);
+    assert.ok(body.statuses.every(({ status }) => status === 'Analizado'));
+  });
+  assert.equal(calls, 1);
+});
+
+test('provider failure and invalid output cause 502 with no successful file states', async () => {
+  for (const upstream of [async () => Response.json({ error: { message: 'Unavailable' } }, { status: 503 }), async () => reply({ reportType: 'TITLE_STUDY', sourceDocuments: [] })] as Array<typeof fetch>) {
+    await withServer(upstream, async (root) => {
+      const response = await send(root, [sample]);
+      assert.equal(response.status, 502);
+      const body = await response.json() as { report?: unknown; error: string; statuses: Array<{ status: string }> };
+      assert.equal(body.report, undefined);
+      assert.equal(body.statuses[0]?.status, 'No analizado');
+    });
+  }
+});
+
+test('compiled production module loads prompt and validates a one-call result', async () => {
+  const distGemini = await import(new URL('../dist/src/services/ai/gemini.js', import.meta.url).href) as typeof import('../src/services/ai/gemini.js');
+  const result = await distGemini.analyzeGuestDocuments('mock-key', [sample], async () => reply(report));
+  assert.equal(result.report?.reportType, 'TITLE_STUDY');
+  assert.equal(result.statuses[0]?.status, 'Analizado');
 });

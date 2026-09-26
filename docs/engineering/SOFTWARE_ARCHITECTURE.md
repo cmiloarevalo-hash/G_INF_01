@@ -111,24 +111,19 @@ Las diferencias documentales pertenecen al análisis, no al sistema de excepcion
 ### Procesamiento
 
 ```text
-Documento 1 → extracción estructurada
-Documento 2 → extracción estructurada
-Documento 3 → extracción estructurada
-```
-
-Después:
-
-```text
-resultados documentales
+documentos técnicamente legibles con identidad de fuente
 +
 prompt de informe
 +
 instrucción del usuario
 +
 schema final
-→ consolidación LLM
+→ máximo una solicitud LLM por acción «Analizar» (cero si ninguno es legible)
 → JSON final
+→ validación con schema ejecutable e integridad referencial
 ```
+
+En el piloto invitado, la selección de hasta 20 archivos y 50.000.000 bytes originales totales se comprueba antes del envío; exceder cualquiera bloquea el análisis completo. Los formatos no legibles conservan estado individual «No analizado» y causa, sin descartar los legibles dentro del límite. La respuesta del proveedor no equivale por sí sola a lectura correcta de cada documento. Si falla la solicitud o la validación, no se confirma análisis ni se inventa resultado. Los límites técnicos reales del proveedor se comprueban por separado de estos límites de producto.
 
 ---
 
