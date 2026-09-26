@@ -179,9 +179,14 @@ test('conclusion numbering OOXML uses an explicit space suffix after the number'
   const numberingXml = entries.get('word/numbering.xml')?.toString('utf8');
   assert.ok(numberingXml);
 
-  const conclusionLevel = numberingXml.match(
-    /<w:lvl[^>]*w:ilvl="0"[^>]*>[\s\S]*?<w:numFmt[^>]*w:val="decimal"[^>]*\/>[\s\S]*?<w:suff[^>]*w:val="space"[^>]*\/>[\s\S]*?<w:lvlText[^>]*w:val="%1\."[^>]*\/>[\s\S]*?<\/w:lvl>/,
+  const levels = [...numberingXml.matchAll(/<w:lvl\b[\s\S]*?<\/w:lvl>/g)].map((match) => match[0]);
+  const conclusionLevel = levels.find(
+    (level) =>
+      /w:numFmt[^>]*w:val="decimal"/.test(level) &&
+      /w:lvlText[^>]*w:val="%1\."/.test(level),
   );
-  assert.ok(conclusionLevel, 'conclusion numbering must encode w:suff w:val="space" after %1.');
+
+  assert.ok(conclusionLevel, 'conclusion decimal numbering level not found');
+  assert.match(conclusionLevel, /w:suff[^>]*w:val="space"/);
 });
 
