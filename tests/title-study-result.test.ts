@@ -13,7 +13,7 @@ const fullReport: TitleStudy = {
   ],
   findings: [
     {
-      id: 'finding-1',
+      id: 'raw-finding-id',
       statement: 'Los documentos identifican valores que deben cotejarse.',
       sourceDocumentIds: ['doc-a', 'doc-b'],
       values: [
@@ -38,7 +38,7 @@ const fullReport: TitleStudy = {
     {
       id: 'conclusion-1',
       statement: 'La diferencia queda registrada en el resultado validado.',
-      supportingFindingIds: ['finding-1'],
+      supportingFindingIds: ['raw-finding-id'],
     },
   ],
 };
@@ -64,7 +64,7 @@ test('renders the validated result with readable references, original and normal
   assert.match(html, /La diferencia queda registrada/);
   assert.match(html, /Hallazgos de respaldo:<\/strong>.*Hallazgo 1/);
   assert.equal(html.includes('doc-a'), false);
-  assert.equal(html.includes('finding-1'), false);
+  assert.equal(html.includes('raw-finding-id'), false);
 });
 
 test('omits optional sections and normalized column when the validated collections are absent', () => {
