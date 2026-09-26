@@ -9,7 +9,7 @@ import { TitleStudyResult } from '../src/components/TitleStudyResult.js';
 import { renderTitleStudyDocx } from '../src/report-types/title-study/renderer.js';
 import { titleStudySchema } from '../src/report-types/title-study/schema.js';
 import { titleStudyReviewFixture } from './fixtures/title-study-review.js';
-import { readDocxDocumentXml } from './helpers/docx.js';
+import { readDocxDocumentXml, readDocxEntries } from './helpers/docx.js';
 
 const execFileAsync = promisify(execFile);
 const reviewPath = 'dist/review/title-study-review.docx';
@@ -113,9 +113,26 @@ test('review generator command creates the ignored DOCX review file with ZIP sig
   assert.ok(bytes.length > 1000);
   assert.equal(bytes.subarray(0, 2).toString('hex'), '504b');
 
+  const entries = readDocxEntries(bytes);
   const xml = readDocxDocumentXml(bytes);
   assert.match(xml, /documento-sintetico-a\.pdf/);
   assert.match(xml, /El fixture sintético conserva la relación/);
+  assert.match(xml, /w:instrText[^>]*>TOC[^<]*\\h[^<]*\\o "1-2"/);
+  assert.match(xml, /w:fldChar[^>]*w:fldCharType="begin"/);
+  assert.match(xml, /w:fldChar[^>]*w:fldCharType="separate"/);
+  assert.match(xml, /w:fldChar[^>]*w:fldCharType="end"/);
+
+  const settingsXml = entries.get('word/settings.xml')?.toString('utf8');
+  assert.ok(settingsXml);
+  assert.match(settingsXml, /w:updateFields[^>]*w:val="true"/);
+
+  const numberingXml = entries.get('word/numbering.xml')?.toString('utf8');
+  assert.ok(numberingXml);
+  const conclusionLevel = [...numberingXml.matchAll(/<w:lvl\\b[\\s\\S]*?<\\/w:lvl>/g)]
+    .map((match) => match[0])
+    .find((level) => /w:numFmt[^>]*w:val="decimal"/.test(level) && /w:lvlText[^>]*w:val="%1\\."/.test(level));
+  assert.ok(conclusionLevel);
+  assert.match(conclusionLevel, /w:suff[^>]*w:val="space"/);
 
   const gitignore = await readFile('.gitignore', 'utf8');
   assert.match(gitignore, /^dist$/m);
