@@ -1,21 +1,113 @@
 # Metas de seguimiento y ponderación administrativa — G_INF_01
 
-**Estado:** acuerdo humano para llevar un control sencillo. Complementa el [Development Plan](DEVELOPMENT_PLAN.md) y su [propuesta V2](DEVELOPMENT_PLAN_PROPOSAL.md); no modifica requisitos, arquitectura, workflow ni autoriza por sí mismo nuevas implementaciones. **Corte de referencia:** `main` `24d44b14d5d690aede60759a0f7603a473209b79`; [Issue #12](https://github.com/cmiloarevalo-hash/G_INF_01/issues/12) / [PR #13](https://github.com/cmiloarevalo-hash/G_INF_01/pull/13) abiertos en HEAD `c04257c711bbd0bfb5b4bdfa9fe09c7d93297d02` y en HOLD a la fecha de esta nota. Confirmar el estado vivo antes de actualizar.
+**Estado:** control administrativo vigente. Complementa el [Development Plan](DEVELOPMENT_PLAN.md) y la [propuesta V2](DEVELOPMENT_PLAN_PROPOSAL.md); no modifica requisitos, arquitectura ni workflow.
+
+**Base documental de este REWORK:** la branch de PR #21 fue actualizada sobre `main` `d2325a23232e72599ffecc96a354c41490b5f527`. Ese SHA es sólo la base previa al merge de este PR y **no** queda fijado como SHA definitivo de intervención/publicación M2.
 
 ## Regla del porcentaje
 
-Las cinco metas reciben **20 puntos porcentuales cada una (5 × 20 = 100)**. Es una **ponderación uniforme convencional del trabajo restante**, útil para visualizar controles; no expresa iguales HH, costos, duración, importancia técnica ni avance observado. La baseline ya integrada (servidor, UI inicial, selección PDF y contrato `TITLE_STUDY`) queda fuera de este 100% y no se cuenta dos veces.
+Las cinco metas tienen **20 puntos cada una (5 × 20 = 100)**.
 
-Sólo se suman al «porcentaje de metas cumplidas» los 20 puntos de una meta con su condición de término **verificada y registrada en GitHub** (Issue/PR/SHA y, cuando corresponda, prueba humana). Antes de ello se marca `EN CURSO`, `PENDIENTE` o `PAUSADA`, sin inventar un porcentaje parcial de ejecución. Si más adelante se desea medir avance parcial por actividad u horas, habrá que definir ese método y registrar evidencia en otro Work Item.
+Sólo una meta completamente cerrada, con evidencia registrada en GitHub, suma sus 20 puntos. Un estado `EN CURSO`, `ACTIVA`, `PENDIENTE` o `PAUSADA` suma **0 puntos cerrados**, aunque exista avance técnico real.
 
-| Meta | Resultado comprobable para cerrar la meta | Estado al registrar | Peso |
+| Meta | Condición de cierre | Estado actual | Puntos cerrados |
 |---|---|---|---:|
-| **M1 · Análisis invitado de una llamada** | Completar revisión del [Issue #12 / PR #13](https://github.com/cmiloarevalo-hash/G_INF_01/pull/13) sobre su SHA vigente; prueba real con documentos propios y revisión humana del JSON y estados; integrar sólo tras satisfacer el workflow. | **EN CURSO / HOLD**: código y tests propuestos en PR, prueba real del nuevo flujo pendiente. | 20% |
-| **M2 · Publicación comprobada del piloto** | En Work Item posterior: comprobar acceso, ejecución de la versión identificada, secretos y rutas, y registrar evidencia de publicación conforme a V-036. Previsualización no equivale a publicación. | **PAUSADA**: AI Studio se retomará por decisión humana. | 20% |
-| **M3 · Resultado e informe para invitado** | Presentación web legible y DOCX generado desde `TITLE_STUDY` validado, con pruebas del contenido y revisión humana. No atribuir al LLM la generación de Word. | **PAUSADA parcialmente**: DOCX/Issue #10 queda pendiente por decisión humana; la presentación rica tampoco está integrada. | 20% |
-| **M4 · Trabajo persistente y capacidades completas** | Identidad Google, autorización, proyectos en Firestore, documentos/JSON/DOCX en Drive y vistas de recuperación; implementar también la configuración y demás proveedores previstos mediante Work Items independientes. | **PENDIENTE**. Su orden interno se propone después, según contratos y prioridad. | 20% |
-| **M5 · Integración del producto completo** | Verificar de extremo a extremo permisos, persistencia, análisis, informes, recuperación y errores entre componentes; registrar resultados por SHA y entorno. | **PENDIENTE**: requiere las capacidades relevantes de M3 y M4. | 20% |
+| **M1 · Análisis invitado de una llamada** | Flujo invitado integrado y evidencia funcional/revisión por SHA completadas. | **CERRADA** — integrada mediante PR #13. | **20** |
+| **M2 · Publicación comprobada del piloto** | Publicación real del SHA autorizado, URL pública, smoke test real y V-036 decidido con evidencia persistida. | **EN CURSO / ACTIVA** — Issue #20; M2.1 en REWORK documental. V-036 `PENDING`. | **0** |
+| **M3 · Resultado e informe para invitado** | Vista web enriquecida + DOCX determinista + coherencia integrada + revisión humana V-028. | **CERRADA** — M3.1–M3.4 integradas; V-026/V-027/V-028 `PASS`. | **20** |
+| **M4 · Trabajo persistente y capacidades completas** | Identidad, persistencia de proyectos/documentos e integraciones funcionales según Work Items específicos. | **PENDIENTE**. | **0** |
+| **M5 · Integración del producto completo** | Verificación end-to-end del conjunto relevante de capacidades integradas. | **PENDIENTE**. | **0** |
 
-**Registro inicial:** 0 de estas 5 metas tienen todas sus condiciones comprobadas; **0/100 puntos de metas cerradas**, lo cual **no significa 0% de trabajo técnico realizado**. M1 tiene trabajo real en un PR abierto. Actualizar este registro cuando se cierre una meta; no inferir cumplimiento de un build, mock, previsualización o PR sin merge.
+**Total administrativo actual:** **2 metas cerradas = 40/100 puntos**.
 
-**Secuencia de coordinación propuesta:** verificar M1 cuando el Humano retome pruebas; planear M2 por separado cuando se retome AI Studio; M3 y M4 pueden descomponerse en Work Items posteriores, y M5 integra lo realizado. Las dependencias técnicas salen de [Software Architecture](SOFTWARE_ARCHITECTURE.md) y la propuesta V2; el único orden canónico general es definir la interfaz antes de completar el motor ([Development Plan §3](DEVELOPMENT_PLAN.md)). Esta tabla no es un cálculo de ruta crítica ni fija fechas.
+El avance parcial de M2 no suma puntos hasta su cierre completo. La ponderación no representa esfuerzo, costo ni duración.
+
+## M2 · Estado de subtareas
+
+### M2.1 · Preparar la versión — EN CURSO
+
+Objetivo vigente: dejar trazable la versión que continuará hacia AI Studio bajo el protocolo `AI_STUDIO_OPERATOR`.
+
+Secuencia obligatoria:
+
+```text
+merge PR #21
+→ Supervisor relee main
+→ registra el nuevo main SHA como EXPECTED SHA en Issue #20
+→ AI_STUDIO_REQUEST
+→ AI Studio import/sync desde GitHub
+→ OBSERVED SHA
+→ EXPECTED SHA == OBSERVED SHA
+→ PREVIEW / TEST / intervención M2 dependiente del código
+→ AI_STUDIO_REPORT
+→ evidencia persistida en GitHub
+```
+
+Reglas de M2.1:
+
+- el SHA actual de `main` previo a PR #21 **no** se fija como target definitivo de publicación;
+- el `EXPECTED SHA` se registra después del merge de PR #21;
+- si `EXPECTED SHA != OBSERVED SHA`: `BLOCKED`;
+- AI Studio no puede usar `Fix`;
+- AI Studio no puede escribir código ni estado del repositorio;
+- preview y live preview **no equivalen** a publicación;
+- M2.1 no declara V-036 PASS.
+
+### M2.2 · Configurar acceso seguro — PENDIENTE
+
+Requiere Work Item y alcance específico. Mantener Secrets bajo control autorizado y no persistir valores sensibles en GitHub.
+
+### M2.3 · Publicar y probar — PENDIENTE
+
+Debe publicar exclusivamente el SHA autorizado por el Supervisor bajo `AI_STUDIO_REQUEST MODE=PUBLISH`.
+
+Condiciones mínimas:
+
+- SHA Gate satisfecho;
+- publicación efectiva;
+- URL pública;
+- smoke test público real;
+- `AI_STUDIO_REPORT` con evidencia no sensible.
+
+### M2.4 · Registrar y decidir — PENDIENTE
+
+Persistir evidencia saneada en GitHub y obtener decisión del Supervisor sobre V-036 y cierre de M2.
+
+## M3 · Cierre
+
+M3 quedó completamente integrada:
+
+- M3.1 — contrato de presentación;
+- M3.2 — vista web enriquecida `TITLE_STUDY`;
+- M3.3 — renderer y descarga DOCX;
+- M3.4 — verificación integrada y revisión humana.
+
+Verificaciones:
+
+- V-026: **PASS**;
+- V-027: **PASS**;
+- V-028: **PASS**.
+
+## Pendientes posteriores
+
+M4 y M5 permanecen pendientes. Entre las capacidades aún no integradas se incluyen, según sus futuros Work Items:
+
+- autenticación Google;
+- Firestore/proyectos persistentes;
+- Google Drive/Picker y persistencia documental;
+- configuración completa de proveedores/modelos adicionales;
+- integración end-to-end del producto completo.
+
+La visibilidad de una capacidad en AI Studio no autoriza su adopción. Las integraciones Google deben seguir el protocolo `SPIKE_READ_ONLY` y, si se decide adoptarlas, pasar por decisión humana + Issue + implementación canónica.
+
+## Estado resumido
+
+```text
+M1  CERRADA      20
+M2  EN CURSO      0
+M3  CERRADA      20
+M4  PENDIENTE     0
+M5  PENDIENTE     0
+-------------------
+TOTAL             40 / 100
+```
