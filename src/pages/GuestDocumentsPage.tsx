@@ -60,6 +60,26 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
   return body;
 }
 
+export async function requestTitleStudyDocx(
+  report: TitleStudy,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Blob> {
+  const response = await fetchImpl('/api/guest/report-docx', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ report }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(body.error || `Error HTTP ${response.status}`);
+  }
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
+    throw new Error('La respuesta no contiene un informe DOCX válido.');
+  }
+  return response.blob();
+}
+
 export const GuestDocumentsPage: FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const filesRef = useRef<File[]>([]);
@@ -73,6 +93,7 @@ export const GuestDocumentsPage: FC = () => {
   const [aliases, setAliases] = useState<{ id: string; label: string }[]>([]);
   const [selectedAlias, setSelectedAlias] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGeneratingDocx, setIsGeneratingDocx] = useState(false);
   const [report, setReport] = useState<TitleStudy | null>(null);
   const [partial, setPartial] = useState(false);
 
@@ -167,6 +188,28 @@ export const GuestDocumentsPage: FC = () => {
     } finally { setIsAnalyzing(false); }
   };
 
+  const downloadDocx = async () => {
+    if (!report || isGeneratingDocx) return;
+    setIsGeneratingDocx(true);
+    setMessage('Generando informe DOCX…');
+    try {
+      const blob = await requestTitleStudyDocx(report);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'estudio-de-titulos.docx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setMessage('Informe DOCX generado. Revisa el archivo descargado antes de utilizarlo.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'No fue posible generar el informe DOCX.');
+    } finally {
+      setIsGeneratingDocx(false);
+    }
+  };
+
   return (
     <div className="guest-documents-page">
       <section className="guest-documents-intro">
@@ -227,7 +270,14 @@ export const GuestDocumentsPage: FC = () => {
         <p>Máximo {MAX_GUEST_FILES} archivos y {MAX_GUEST_TOTAL_BYTES.toLocaleString('es-CL')} bytes originales (50 MB) por selección. Superar un límite bloquea el envío. Los archivos legibles se envían juntos en una solicitud; los incompatibles, como CSV y XLS/XLSX, quedan seleccionados pero no analizados. El proveedor puede aplicar límites técnicos adicionales.</p>
         <p>«Fuente identificada» indica que un JSON estructuralmente válido menciona ese archivo. No acredita que Gemini leyó su contenido correctamente ni que los hechos fueron cotejados con el original.</p>
       </aside>
-      {report !== null && <TitleStudyResult report={report} partial={partial} />}
+      {report !== null && <>
+        <div className="guest-report-actions">
+          <button type="button" className="btn-secondary" disabled={isGeneratingDocx} onClick={downloadDocx}>
+            {isGeneratingDocx ? 'Generando DOCX…' : 'Descargar DOCX'}
+          </button>
+        </div>
+        <TitleStudyResult report={report} partial={partial} />
+      </>}
     </div>
   );
 };
