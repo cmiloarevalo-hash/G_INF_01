@@ -725,3 +725,226 @@ body {
     padding: 1rem;
   }
 }
+
+/* Structured TITLE_STUDY result */
+.title-study-result {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+  gap: 1.25rem;
+}
+
+.title-study-result-header,
+.title-study-result-nav,
+.title-study-section,
+.title-study-card-list,
+.title-study-card,
+.title-study-table-scroll,
+.title-study-conclusion-list {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.title-study-result-header h3 {
+  margin-bottom: 0.45rem;
+  font-size: 1.35rem;
+  overflow-wrap: anywhere;
+}
+
+.title-study-review-note {
+  max-width: 52rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.title-study-result-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.title-study-result-nav a {
+  display: inline-flex;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  color: #93c5fd;
+  background: var(--bg-surface);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.title-study-result-nav a:hover,
+.title-study-result-nav a:focus-visible {
+  border-color: var(--color-primary);
+  color: var(--text-main);
+}
+
+.title-study-section {
+  scroll-margin-top: 5rem;
+}
+
+.title-study-section > h4 {
+  margin-bottom: 0.8rem;
+  color: var(--text-main);
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.title-study-card-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.title-study-card {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface);
+}
+
+.title-study-card-heading,
+.title-study-comparison-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.65rem;
+}
+
+.title-study-card h5 {
+  margin-top: 0.15rem;
+  color: var(--text-main);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.title-study-index {
+  display: block;
+  color: #60a5fa;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.title-study-trace,
+.title-study-explanation {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.title-study-explanation {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.title-study-comparison-status {
+  flex-shrink: 0;
+  max-width: 14rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 999px;
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.1);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.title-study-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.title-study-table {
+  width: 100%;
+  min-width: 34rem;
+  border-collapse: collapse;
+  background: var(--bg-card);
+  font-size: 0.8rem;
+}
+
+.title-study-table th,
+.title-study-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.title-study-table th {
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.1);
+  font-weight: 700;
+}
+
+.title-study-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.title-study-original-value {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.title-study-conclusion-list {
+  display: grid;
+  gap: 0.75rem;
+  padding-left: 1.35rem;
+}
+
+.title-study-conclusion-list li {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface);
+}
+
+.title-study-conclusion-list li::marker {
+  color: #60a5fa;
+  font-weight: 700;
+}
+
+.title-study-conclusion-list p:first-child {
+  margin-bottom: 0.45rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 768px) {
+  .title-study-result {
+    gap: 1rem;
+  }
+
+  .title-study-card-heading,
+  .title-study-comparison-heading {
+    flex-direction: column;
+  }
+
+  .title-study-comparison-status {
+    max-width: 100%;
+    text-align: left;
+  }
+
+  .title-study-table {
+    min-width: 30rem;
+  }
+
+  .title-study-table th,
+  .title-study-table td {
+    padding: 0.55rem 0.6rem;
+  }
+}

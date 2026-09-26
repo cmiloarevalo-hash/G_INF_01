@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent, FC } from 'react';
+import { TitleStudyResult } from '../components/TitleStudyResult.js';
+import { titleStudySchema, type TitleStudy } from '../report-types/title-study/schema.js';
 import { selectionLimitError, MAX_GUEST_FILES, MAX_GUEST_TOTAL_BYTES } from '../shared/guest-limits.js';
 
 export type GuestFileStatus = 'Pendiente' | 'Fuente identificada' | 'No analizado';
@@ -71,7 +73,7 @@ export const GuestDocumentsPage: FC = () => {
   const [aliases, setAliases] = useState<{ id: string; label: string }[]>([]);
   const [selectedAlias, setSelectedAlias] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [report, setReport] = useState<unknown>(null);
+  const [report, setReport] = useState<TitleStudy | null>(null);
   const [partial, setPartial] = useState(false);
 
   const enqueueUpdate = (update: () => Promise<void>) => {
@@ -125,6 +127,7 @@ export const GuestDocumentsPage: FC = () => {
     if (files.length === 0) { setMessage('Selecciona al menos un archivo.'); return; }
     setIsAnalyzing(true);
     setReport(null);
+    setPartial(false);
     setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'Pendiente' as const }])));
     setMessage('Preparando los archivos legibles para una sola solicitud a Gemini…');
     const credentialHeaders: Record<string, string> = keySource === 'temporary'
@@ -145,13 +148,19 @@ export const GuestDocumentsPage: FC = () => {
         const file = files[index]!;
         return [fileIdentity(file), { file, status: entry.status, ...(entry.reason ? { reason: entry.reason } : {}) }];
       })));
-      if (!response.ok || !outcome.report) {
-        if (!outcome.statuses) setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'No analizado' as const, reason: 'No se confirmó un resultado validado.' }])));
-        setMessage(outcome.error ?? `Error HTTP ${response.status}`); return;
+      const parsedReport = outcome.report === undefined ? null : titleStudySchema.safeParse(outcome.report);
+      if (!response.ok || !parsedReport?.success) {
+        if (response.ok && !parsedReport?.success) {
+          const reason = 'La respuesta no cumple el contrato TITLE_STUDY; no se confirmó un resultado validado.';
+          setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'No analizado' as const, reason }])));
+        } else if (!outcome.statuses) {
+          setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'No analizado' as const, reason: 'No se confirmó un resultado validado.' }])));
+        }
+        setMessage(outcome.error ?? (response.ok ? 'La respuesta no cumple el contrato TITLE_STUDY; no se mostrará como informe.' : `Error HTTP ${response.status}`)); return;
       }
-      setReport(outcome.report);
+      setReport(parsedReport.data);
       setPartial(Boolean(outcome.partial));
-      setMessage(outcome.partial ? 'Resultado preliminar parcial: algunos archivos no se analizaron; revisa su causa antes de interpretar el JSON.' : 'Resultado preliminar validado por el contrato TITLE_STUDY. Requiere revisión humana.');
+      setMessage(outcome.partial ? 'Resultado preliminar parcial: algunos archivos no se analizaron; revisa su causa y el informe antes de interpretarlo.' : 'Resultado preliminar validado por el contrato TITLE_STUDY. Requiere revisión humana.');
     } catch (error) {
       setStatuses(Object.fromEntries(files.map((file) => [fileIdentity(file), { file, status: 'No analizado' as const, reason: 'No se confirmó el envío o resultado; revisa el error de conexión.' }])));
       setMessage(error instanceof Error ? error.message : 'No fue posible completar el análisis.');
@@ -218,10 +227,7 @@ export const GuestDocumentsPage: FC = () => {
         <p>Máximo {MAX_GUEST_FILES} archivos y {MAX_GUEST_TOTAL_BYTES.toLocaleString('es-CL')} bytes originales (50 MB) por selección. Superar un límite bloquea el envío. Los archivos legibles se envían juntos en una solicitud; los incompatibles, como CSV y XLS/XLSX, quedan seleccionados pero no analizados. El proveedor puede aplicar límites técnicos adicionales.</p>
         <p>«Fuente identificada» indica que un JSON estructuralmente válido menciona ese archivo. No acredita que Gemini leyó su contenido correctamente ni que los hechos fueron cotejados con el original.</p>
       </aside>
-      {report !== null && <section className="guest-report-panel" aria-labelledby="guest-report-title">
-        <h3 id="guest-report-title">Resultado preliminar {partial ? '(parcial)' : ''} · requiere revisión humana</h3>
-        <pre>{JSON.stringify(report, null, 2)}</pre>
-      </section>}
+      {report !== null && <TitleStudyResult report={report} partial={partial} />}
     </div>
   );
 };
