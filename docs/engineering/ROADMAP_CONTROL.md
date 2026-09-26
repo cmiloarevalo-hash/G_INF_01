@@ -13,7 +13,7 @@ Sólo una meta completamente cerrada, con evidencia registrada en GitHub, suma s
 | Meta | Condición de cierre | Estado actual | Puntos cerrados |
 |---|---|---|---:|
 | **M1 · Análisis invitado de una llamada** | Flujo invitado integrado y evidencia funcional/revisión por SHA completadas. | **CERRADA** — integrada mediante PR #13. | **20** |
-| **M2 · Publicación comprobada del piloto** | Publicación real del SHA autorizado, URL pública, smoke test real y V-036 decidido con evidencia persistida. | **EN CURSO / ACTIVA** — Issue #20; M2.1 en REWORK documental. V-036 `PENDING`. | **0** |
+| **M2 · Publicación comprobada del piloto** | Publicación real del SHA autorizado, URL pública, smoke test real y V-036 decidido con evidencia persistida. | **EN CURSO / ACTIVA** — Issue #20; M2.1 **EN CURSO** — preparación documental lista; verificación/importación en AI Studio pendiente. V-036 `PENDING`. | **0** |
 | **M3 · Resultado e informe para invitado** | Vista web enriquecida + DOCX determinista + coherencia integrada + revisión humana V-028. | **CERRADA** — M3.1–M3.4 integradas; V-026/V-027/V-028 `PASS`. | **20** |
 | **M4 · Trabajo persistente y capacidades completas** | Identidad, persistencia de proyectos/documentos e integraciones funcionales según Work Items específicos. | **PENDIENTE**. | **0** |
 | **M5 · Integración del producto completo** | Verificación end-to-end del conjunto relevante de capacidades integradas. | **PENDIENTE**. | **0** |
