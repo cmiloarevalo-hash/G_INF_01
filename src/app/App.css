@@ -79,6 +79,10 @@ body {
 }
 
 .roadmap-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
   margin-bottom: 1rem;
 }
 
@@ -94,6 +98,33 @@ body {
 
 .roadmap-panel-heading h2 {
   font-size: 1rem;
+}
+
+.roadmap-source {
+  flex-shrink: 0;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.56rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.roadmap-source-live {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.roadmap-source-stale {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.roadmap-node-points {
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .roadmap-progress-summary {
