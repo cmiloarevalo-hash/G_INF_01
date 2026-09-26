@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or SHA to verify
+        required: true
+        default: main
+        type: string
+      base:
+        description: Base branch, tag or SHA for git diff --check
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    env:
+      TARGET_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.pull_request.head.sha }}
+      BASE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.base || github.event.pull_request.base.sha }}
+
+    steps:
+      - name: Checkout target
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TARGET_REF }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Resolve verification SHAs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          target_sha="$(git rev-parse HEAD)"
+
+          if git rev-parse --verify "${BASE_REF}^{commit}" >/dev/null 2>&1; then
+            base_sha="$(git rev-parse "${BASE_REF}^{commit}")"
+          elif git rev-parse --verify "refs/remotes/origin/${BASE_REF}^{commit}" >/dev/null 2>&1; then
+            base_sha="$(git rev-parse "refs/remotes/origin/${BASE_REF}^{commit}")"
+          else
+            echo "::error::Unable to resolve base ref '${BASE_REF}' from fetched history."
+            exit 1
+          fi
+
+          echo "TARGET_SHA=${target_sha}" >> "${GITHUB_ENV}"
+          echo "BASE_SHA=${base_sha}" >> "${GITHUB_ENV}"
+          echo "Target: ${TARGET_REF} -> ${target_sha}"
+          echo "Base: ${BASE_REF} -> ${base_sha}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Check diff whitespace
+        shell: bash
+        run: git diff --check "${BASE_SHA}...${TARGET_SHA}"
