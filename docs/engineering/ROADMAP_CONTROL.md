@@ -96,7 +96,7 @@ Entre las capacidades aún no completadas se incluyen, según sus futuros Work I
 - configuración completa de proveedores/modelos adicionales;
 - integración end-to-end del producto completo.
 
-La visibilidad de una capacidad en AI Studio no autoriza su adopción. Las integraciones Google deben seguir el protocolo `SPIKE_READ_ONLY` y, si se decide adoptarlas, pasar por decisión humana + Issue + implementación canónica.
+La visibilidad de una capacidad en AI Studio no autoriza su adopción. La ruta técnica normal es el Implementador. AI Studio sólo puede intervenir después de `Implementer attempt → intrinsic blocker → Supervisor verification → no reasonable Implementer path → one minimal AI_STUDIO_REQUEST → AI_STUDIO_REPORT → STOP`; `SPIKE_READ_ONLY` no es una fase rutinaria de investigación.
 
 ## Estado resumido
 

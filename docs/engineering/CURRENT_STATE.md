@@ -44,29 +44,30 @@ git diff --check <base>...<HEAD>
 
 El resultado de CI es evidencia automática ligada al SHA; no sustituye la revisión semántica ni la decisión del Supervisor.
 
-### AI_STUDIO_OPERATOR — INTEGRADO
+### AI_STUDIO_OPERATOR — FALLBACK POR ESCALAMIENTO VERIFICADO
 
-El workflow canónico integra `AI_STUDIO_OPERATOR` como operador externo de Google AI Studio.
+El **Implementador Web / Agente implementador es la ruta técnica normal**. `AI_STUDIO_OPERATOR` no es un canal paralelo ni un revisor rutinario.
 
-Puede operar sólo en modos autorizados:
+Toda intervención AI Studio, incluso read-only, requiere previamente:
+
+1. Work Item explícito;
+2. intento de la operación por el Implementador;
+3. bloqueo técnico intrínseco persistido con evidencia;
+4. verificación independiente del Supervisor;
+5. ausencia de una vía razonable en el canal implementador;
+6. `AI_STUDIO_REQUEST` explícito para **una sola operación mínima**.
+
+Sólo dentro de ese escalamiento pueden usarse capacidades técnicas como `OBSERVE`, `PREVIEW`, `TEST`, `DIAGNOSE`, `SPIKE_READ_ONLY` o `PLATFORM_MUTATE`. Cada intervención termina en `AI_STUDIO_REPORT` y `STOP → Supervisor`; no existe continuación automática.
+
+`PUBLISH` **no es un modo AI Studio**:
 
 ```text
-OBSERVE
-PREVIEW
-TEST
-DIAGNOSE
-PUBLISH
-SPIKE_READ_ONLY
+PUBLISH = HUMAN ACTION
 ```
 
-No es el Agente implementador y no tiene autoridad para:
+AI Studio nunca implementa código ni tiene autoridad para editar archivos, aplicar `Fix`, commit, branch, PR, push, merge, cambiar dependencias/schema/prompts/workflow/repository secrets o escribir/sincronizar estado del repositorio.
 
-- editar código/archivos;
-- aplicar `Fix`;
-- commit, branch, PR, push o merge;
-- cambiar dependencias, schema, prompts, workflow o repository secrets.
-
-GitHub sigue siendo la fuente persistente de verdad. La evidencia útil de AI Studio vuelve al Supervisor mediante `AI_STUDIO_REPORT` y debe persistirse en GitHub.
+GitHub sigue siendo la fuente persistente de verdad.
 
 ## 2. M2 · Publicación comprobada del piloto — CERRADA
 
@@ -119,7 +120,7 @@ Continúan fuera del estado integrado actual y requieren Work Items propios:
 - demás capacidades de M4;
 - integración end-to-end completa de M5.
 
-La existencia de botones, documentación o capacidades visibles en Google AI Studio no autoriza su adopción. Para integraciones Google aplica `SPIKE_READ_ONLY → Supervisor review → Human decision → Issue → implementación canónica`.
+La existencia de botones, documentación o capacidades visibles en Google AI Studio no autoriza su adopción. La ruta técnica normal sigue siendo el Implementador. AI Studio sólo puede intervenir tras `Implementer attempt → intrinsic blocker → Supervisor verification → no reasonable Implementer path → one minimal AI_STUDIO_REQUEST → AI_STUDIO_REPORT → STOP`.
 
 ## 5. Resumen de verificación
 
