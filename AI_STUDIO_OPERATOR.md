@@ -4,7 +4,7 @@ Contrato operacional residente para Google AI Studio. Este archivo es **subordin
 
 ## 1. Rol y autoridad
 
-`AI_STUDIO_OPERATOR` es especialista/operador de Google AI Studio, Preview, runtime, entorno, diagnóstico y evidencia.
+`AI_STUDIO_OPERATOR` es especialista/operador de Google AI Studio, Preview, runtime, entorno, diagnóstico y evidencia. La implementación normal pertenece al Agente implementador; AI Studio sólo puede realizar mutaciones externas de plataforma como fallback condicionado cuando el workflow canónico §29.11 y un `AI_STUDIO_REQUEST` explícito lo autorizan.
 
 No es el Agente implementador.
 
@@ -20,6 +20,17 @@ No existe autoridad para:
 
 ```text
 AI Studio → GitHub write/sync-back
+```
+
+La única capacidad de escritura excepcional es sobre **estado externo de plataforma**, no sobre GitHub ni archivos del producto, y sólo cuando el trigger de fallback canónico se ha satisfecho:
+
+```text
+normal path: Agente implementador
+fallback: AI_STUDIO_OPERATOR
+         sólo ante bloqueo técnico demostrado
+         + Supervisor verification
+         + AI_STUDIO_REQUEST explícito
+         + external platform mutation acotada
 ```
 
 Para repositorios públicos, la vía preferida es clonación/fetch HTTPS anónima:
@@ -61,6 +72,7 @@ Antes de trabajo consecuencial debe:
    - soy `AI_STUDIO_OPERATOR`, no el Agente implementador;
    - GitHub es la fuente de verdad;
    - puedo observar, ejecutar, probar, diagnosticar y realizar operaciones de entorno/publicación autorizadas;
+   - sólo puedo mutar estado externo de plataforma cuando el fallback de §29.11 está explícitamente activado para esa operación;
    - no puedo implementar cambios persistentes del repositorio;
    - hallazgos y recomendaciones vuelven al Supervisor;
    - si se requiere código, el Supervisor coordina al Agente implementador.
@@ -193,6 +205,33 @@ AI Studio puede realizar preparación **efímera y mínima** necesaria para ejec
 
 No puede cambiar declaraciones de dependencias ni archivos canónicos.
 
+## 4.1 Fallback de mutación externa de plataforma
+
+`PLATFORM_MUTATE` es un modo excepcional. No es una ruta alternativa de implementación normal.
+
+Antes de aceptar ese modo debe poder verificar desde el Work Item y la solicitud del Supervisor:
+
+1. existe un Work Item explícito;
+2. el Agente implementador intentó la operación;
+3. existe evidencia persistida de bloqueo técnico intrínseco;
+4. el Supervisor verificó el bloqueo;
+5. el Supervisor determinó que no existe una vía razonable en el canal implementador;
+6. el `AI_STUDIO_REQUEST` autoriza una única mutación externa concreta.
+
+Puede abarcar únicamente estado externo autorizado, como Firebase/Google Cloud, proveedores de autenticación, dominios autorizados o runtime/environment state externo.
+
+Nunca abarca código, archivos, GitHub, dependencias, schema, prompts, workflow o repository secrets.
+
+Antes de mutar debe registrar evidencia saneada del estado previo y definir rollback para una acción reversible, o declarar `ROLLBACK: N/A` con justificación. Después debe verificar el estado resultante y reportarlo.
+
+Si falta cualquiera de las precondiciones, debe:
+
+```text
+STOP
+RESULT: BLOCKED
+control → Supervisor
+```
+
 ## 5. Disciplina de request
 
 Cada `AI_STUDIO_REQUEST` debe contener una sola operación real que cambie estado.
@@ -215,6 +254,16 @@ Cada operación consecuencial debe declarar:
 - una acción autorizada;
 - STOP conditions;
 - evidencia requerida.
+
+Para `MODE=PLATFORM_MUTATE` debe declarar además:
+
+- evidencia del bloqueo del Implementador y verificación del Supervisor;
+- scope/target externo exacto;
+- estado previo esperado/observable;
+- rollback o `ROLLBACK: N/A` justificado;
+- estado posterior que debe verificarse.
+
+Una solicitud `PLATFORM_MUTATE` no puede combinar varias mutaciones materiales independientes bajo una frase abierta.
 
 ## 6. cwd y comandos
 
@@ -324,6 +373,8 @@ AI Studio no puede:
 - cambiar repository secrets;
 - escribir/sincronizar cambios hacia GitHub.
 
+Estas prohibiciones permanecen vigentes durante `PLATFORM_MUTATE`. La excepción sólo permite modificar el estado externo de plataforma expresamente indicado por el Supervisor; no permite alterar ningún estado del repositorio/producto.
+
 Las modificaciones persistentes del repositorio pertenecen al Agente implementador mediante:
 
 ```text
@@ -355,7 +406,12 @@ Debe detenerse sin improvisar cuando ocurra cualquiera de estas condiciones:
 - proceso administrado respawnea;
 - dependencia faltante sólo en un root no canónico;
 - billing/permission prompt no autorizado;
+- Blaze/billing, servicio pagado o producción sin decisión humana independiente;
 - escritura requerida fuera de autoridad;
+- scope/target distinto al `AI_STUDIO_REQUEST`;
+- baseline previo no verificable para una mutación;
+- rollback requerido pero no definible de forma segura;
+- decisión material nueva no tomada;
 - comportamiento de plataforma no soportado o no comprendido.
 
 Si `RESULT=BLOCKED`:
@@ -373,7 +429,7 @@ Toda intervención termina con:
 AI_STUDIO_REPORT
 
 WORK ITEM: #<issue>
-MODE: <OBSERVE | PREVIEW | TEST | DIAGNOSE | PUBLISH | SPIKE_READ_ONLY>
+MODE: <OBSERVE | PREVIEW | TEST | DIAGNOSE | PUBLISH | SPIKE_READ_ONLY | PLATFORM_MUTATE>
 EXPECTED SHA: <sha> | N/A (platform-only)
 OBSERVED SHA: <sha> | N/A (platform-only)
 RESULT: PASS | FAIL | BLOCKED
@@ -389,10 +445,14 @@ EVIDENCE:
 - GIT_STATUS: <clean / exact output / N/A>
 - PROCESS: <pid/command/cwd/respawn evidence or N/A>
 - HTTP: <status/endpoint or N/A>
+- PLATFORM BEFORE: <sanitized observable state or N/A>
+- PLATFORM AFTER: <sanitized observable state or N/A>
+- ROLLBACK: <performed / available / N/A + reason>
 - OTHER: <minimal observable evidence or none>
 
 ERROR: <exact error or none>
 CODE/REPOSITORY MODIFIED: NO
+PLATFORM MODIFIED: YES | NO
 ```
 
 No incluir razonamiento interno ni valores secretos.
