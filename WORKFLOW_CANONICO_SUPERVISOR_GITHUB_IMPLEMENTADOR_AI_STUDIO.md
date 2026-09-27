@@ -15,7 +15,7 @@ Ya están integradas en el baseline y se preservan sin reimplementarlas:
 - Issue #4 / PR #5 — autoridad de merge del Supervisor;
 - Issue #26 / PR #27 — GitHub Actions como CI persistente y CI como evidencia;
 - Issue #32 / PR #33 — `AI_STUDIO_OPERATOR` subordinado y no-write;
-- Issue #36 / PR #38 — contrato residente, bootstrap/recovery, `CANONICAL_GIT_CHECKOUT`, `MANAGED_PREVIEW_ROOT`, materialización one-way, cwd/process safety, SHA Gate, PUBLISH y reporting.
+- Issue #36 / PR #38 — contrato residente, bootstrap/recovery, `CANONICAL_GIT_CHECKOUT`, `MANAGED_PREVIEW_ROOT`, materialización one-way, cwd/process safety, SHA Gate y reporting. Su antigua autoridad AI Studio `PUBLISH` queda explícitamente SUPERSEDED por Issue #60.
 
 Reglas operativas verificadas que estaban pendientes de integración canónica antes de la consolidación de Issue #47:
 
@@ -32,7 +32,7 @@ Este workflow organiza el trabajo colaborativo entre:
 
 - **Chat Web GPT**: planificación, arquitectura, definición de tareas y revisión.
 - **Agente implementador**: implementación y escritura técnica mediante Codespaces/terminal u otro canal de implementación expresamente autorizado.
-- **AI_STUDIO_OPERATOR**: Google AI Studio web para operación externa read/test/publish, sin escritura de código ni repositorio.
+- **AI_STUDIO_OPERATOR**: fallback excepcional de Google AI Studio, sólo tras bloqueo técnico intrínseco demostrado por el Implementador y verificado por el Supervisor; nunca implementa código, nunca escribe repositorio y nunca publica.
 - **GitHub**: memoria persistente, tareas, código, evidencia y coordinación.
 - **Humano**: intención del producto, prioridades, permisos y decisiones excepcionales.
 
@@ -816,18 +816,22 @@ prioridades
 decisiones de producto
 cambio material de scope
 credenciales
-permisos
+autenticación y permisos
 trade-offs importantes
+publicación operacional aprobada
 ```
 
-No debería tener que copiar:
+Regla de publicación:
 
-- diffs;
-- código;
-- contexto técnico;
-- resultados extensos;
+```text
+PUBLISH = HUMAN ACTION
+```
 
-entre Chat Web GPT y el Agente implementador.
+Cuando exista una publicación, el Supervisor debe haber confirmado previamente el estado/SHA aprobado y las precondiciones aplicables. La acción de publicar corresponde al Humano.
+
+Esta autoridad de publicación **no convierte al Humano en implementador de código**. El Humano no edita producto, no prepara parches y no sustituye al Agente implementador. Tampoco transfiere autoridad de publicación al Agente implementador ni a AI Studio.
+
+No debería tener que copiar diffs, código, contexto técnico ni resultados extensos entre Chat Web GPT y el Agente implementador.
 
 Un mensaje humano ideal puede ser simplemente:
 
@@ -861,40 +865,46 @@ El workflow canónico puede resumirse en diez reglas:
 ---
 
 
-# 29. AI_STUDIO_OPERATOR — protocolo subordinado de operación externa
+# 29. AI_STUDIO_OPERATOR — fallback excepcional por escalamiento verificado
 
-Esta sección añade un rol operativo externo sin sustituir las reglas generales ya definidas para Issue, scopes, implementador, revisión por SHA, decisiones del Supervisor, CI, integración, merge y Humano.
+AI Studio no es una ruta paralela de implementación, revisión rutinaria ni publicación.
 
-> **AI_STUDIO_OPERATOR no es el Agente implementador y Google AI Studio web no puede ejercer el rol implementador bajo este protocolo.**
-
-El Agente implementador conserva la escritura canónica por branch/commit/PR y sigue siendo la ruta normal para toda implementación técnica. `AI_STUDIO_OPERATOR` es invocado por el Supervisor para producir evidencia operacional, ejecutar una publicación autorizada o, únicamente bajo el fallback condicionado de §29.11, realizar una mutación externa de plataforma expresamente autorizada.
-
-La excepción de §29.11 no convierte a AI Studio en implementador de código ni concede autoridad sobre el repositorio.
+Ruta técnica normal:
 
 ```text
-                         ┌→ Agente implementador → branch/commit/PR → GitHub
-Humano → Supervisor → GitHub
-                         └→ AI_STUDIO_OPERATOR → evidencia/publicación → Supervisor/GitHub
+Human intent/decision
+→ Supervisor
+→ Work Item
+→ Web Implementer / Agente implementador
+→ implementación o ejecución técnica
+→ tests/evidence
+→ branch/commit/PR cuando existen cambios de repositorio
+→ Supervisor review
 ```
 
-GitHub continúa siendo la fuente persistente de verdad. AI Studio no crea una ruta paralela `AI Studio → code → GitHub`.
+Reglas absolutas:
 
-El contrato de ejecución residente es [`AI_STUDIO_OPERATOR.md`](AI_STUDIO_OPERATOR.md). AI Studio debe leerlo desde el mismo SHA que está verificando antes de ejecutar una tarea dependiente del código. Ese archivo es subordinado a este workflow: no puede ampliar permisos, scope, autoridad ni estados formales. Ante contradicción, prevalece este workflow.
+```text
+AI Studio is never the code implementer.
+AI Studio is never a routine reviewer.
+AI Studio never writes repository/product code.
+AI Studio has no PUBLISH authority.
+```
 
-**NEW CHAT BOOTSTRAP:** un chat nuevo de AI Studio reconstruye contexto desde GitHub + Work Item + documentación canónica, no desde el transcript previo. Antes de trabajo consecuencial debe completar el bootstrap residente: establecer rol/autoridad, objetivo, TASK, MODE, EXPECTED SHA, evidencia esperada y límites; verificar checkout/HEAD/worktree y managed Preview root/runtime cuando aplique; y declarar la única operación, STOP conditions y evidencia a retornar. Sólo después puede actuar.
+El contrato residente `AI_STUDIO_OPERATOR.md` es subordinado a este workflow y no puede ampliar autoridad.
 
 ## 29.1 Permission Matrix
 
 | Capacidad | AI_STUDIO_OPERATOR |
 |---|---|
-| READ / OBSERVE | YES |
-| PULL / SYNC FROM GITHUB | YES, sólo para consumir/importar una versión |
-| PREVIEW | YES |
-| TEST | YES |
-| DIAGNOSE | YES |
-| PUBLISH external operational state | YES, sólo bajo protocolo PUBLISH |
-| EXTERNAL PLATFORM MUTATION | YES, sólo como fallback condicionado según §29.11 |
-| SPIKE_READ_ONLY | YES |
+| READ / OBSERVE | CONDITIONAL — sólo tras §29.2 |
+| PULL / SYNC FROM GITHUB | CONDITIONAL — read-only, sólo tras §29.2 |
+| PREVIEW | CONDITIONAL — sólo tras §29.2 |
+| TEST | CONDITIONAL — sólo tras §29.2 |
+| DIAGNOSE | CONDITIONAL — sólo tras §29.2 |
+| SPIKE_READ_ONLY | CONDITIONAL — sólo tras §29.2 |
+| EXTERNAL PLATFORM MUTATION | CONDITIONAL — sólo tras §29.2 y scope explícito |
+| PUBLISH external operational state | NO — HUMAN ONLY |
 | repository/product-code write | NO |
 | WRITE CANONICAL | NO |
 | Fix / APPLY FIX | NO |
@@ -906,339 +916,238 @@ El contrato de ejecución residente es [`AI_STUDIO_OPERATOR.md`](AI_STUDIO_OPERA
 | CHANGE REPOSITORY SECRETS | NO |
 | ADOPT INTEGRATION | NO sin decisión humana + Issue |
 
-`PULL / SYNC` nunca autoriza sincronización de cambios de vuelta al repositorio. Para repositorios públicos, la vía preferida es clone/fetch HTTPS anónimo, sin token, preservando `.git` y verificando `origin`, HEAD exacto y worktree limpio. Esto no exige integración GitHub nativa ni sync bidireccional.
+Los nombres de capacidades técnicas no conceden autoridad. Incluso una operación read-only requiere primero el gate de escalamiento.
 
-## 29.2 Inicio: AI_STUDIO_REQUEST
+`PULL / SYNC` sólo consume/importa desde GitHub; nunca autoriza sync-back.
 
-Toda intervención usada como evidencia del workflow comienza por solicitud explícita del Supervisor y un Work Item existente.
+## 29.2 Gate universal de escalamiento AI Studio
 
-Antes de una tarea dependiente del código, AI Studio debe obtener/refrescar la copia Git read-only, verificar `origin`, `EXPECTED SHA`, worktree limpio, leer `AI_STUDIO_OPERATOR.md` desde ese mismo SHA e identificar explícitamente `CANONICAL_GIT_CHECKOUT` y, cuando aplique, `MANAGED_PREVIEW_ROOT`. Sólo entonces puede ejecutar el `TASK`.
+**Toda** intervención AI Studio, incluyendo `OBSERVE`, `PREVIEW`, `TEST`, `DIAGNOSE`, `SPIKE_READ_ONLY` y `PLATFORM_MUTATE`, requiere que todas estas condiciones sean verdaderas:
 
-El checkout Git usado para verificar SHA y la raíz administrada que alimenta el Preview pueden ser distintos. Verificar un clone exacto **no prueba** que el Preview visible use ese árbol.
+1. existe un Work Item explícito;
+2. el Web Implementer / Agente implementador intentó primero la tarea u operación por un canal autorizado;
+3. existe evidencia concreta y persistida de un bloqueo técnico intrínseco del canal implementador;
+4. el Supervisor verificó independientemente esa evidencia;
+5. el Supervisor determinó que no existe una vía razonable en el canal implementador;
+6. el Supervisor emitió un `AI_STUDIO_REQUEST` explícito;
+7. el request autoriza una sola operación mínima y acotada que únicamente busca despejar el bloqueo;
+8. la operación termina en `AI_STUDIO_REPORT` y `STOP → Supervisor`.
+
+Si falta una condición:
 
 ```text
-AI_STUDIO_REQUEST
+AI Studio: DO NOT EXECUTE
+RESULT: BLOCKED
+control → Supervisor
+```
 
+No existe continuación automática entre operaciones AI Studio.
+
+Regla mínima:
+
+```text
+observe/attempt through Implementer
+→ verified intrinsic blocker
+→ AI Studio gets the smallest operation that only clears that blocker
+→ verify
+→ report
+→ STOP
+```
+
+No asignar tareas amplias como diagnose + mutate + verify + publish, materialize + preview + publish, varias mutaciones independientes, revisión general del producto o implementación de una feature.
+
+## 29.3 Inicio: AI_STUDIO_REQUEST y modos técnicos
+
+Los modos son descriptores técnicos, no autorización autónoma:
+
+```text
+OBSERVE
+PREVIEW
+TEST
+DIAGNOSE
+SPIKE_READ_ONLY
+PLATFORM_MUTATE
+```
+
+`PUBLISH` no es un modo AI Studio.
+
+Cada `AI_STUDIO_REQUEST` debe incluir como mínimo:
+
+```text
 WORK ITEM: #<issue>
-MODE: OBSERVE | PREVIEW | TEST | DIAGNOSE | PUBLISH | SPIKE_READ_ONLY | PLATFORM_MUTATE
+ESCALATION VERIFIED: YES
+IMPLEMENTER BLOCKER EVIDENCE: <persisted reference>
+MODE: OBSERVE | PREVIEW | TEST | DIAGNOSE | SPIKE_READ_ONLY | PLATFORM_MUTATE
 EXPECTED SHA: <sha> | N/A (platform-only)
-TARGET: <preview / route / deployment / platform capability>
-CANONICAL_GIT_CHECKOUT: <absolute path when code-dependent>
-MANAGED_PREVIEW_ROOT: <absolute path when Preview/Publish-dependent>
-TASK: <una sola operación concreta>
+TARGET: <exact target>
+TASK: <una sola operación mínima>
 PRECONDITIONS: <observable conditions>
 STOP CONDITIONS: <conditions that force BLOCKED/return>
-
-FORBIDDEN:
-- edit code/files
-- Fix
-- commit / branch / PR / push / merge
-- dependency / schema / prompt / workflow changes
-- repository secret changes
-
-RETURN:
-- OBSERVED SHA
-- RESULT: PASS | FAIL | BLOCKED
-- CLASSIFICATION
-- EVIDENCE
-- ERROR exacto si existe
+EVIDENCE REQUIRED: <minimal evidence>
+ROLLBACK: <plan | N/A + justification, when mutation applies>
+FORBIDDEN: code/repository write; Fix; dependency/schema/prompt/workflow/repository-secret changes; publish/share
+RETURN: RESULT + CLASSIFICATION + EVIDENCE + ERROR + STOP → Supervisor
 ```
 
-`EXPECTED SHA: N/A (platform-only)` sólo se usa para `SPIKE_READ_ONLY` o `PLATFORM_MUTATE` puramente de plataforma que no dependan de una versión del código. Si la mutación externa debe preparar o afectar un runtime ligado a código, el request debe declarar el SHA aplicable y respetar el SHA Gate correspondiente.
+`EXPECTED SHA: N/A (platform-only)` sólo se admite cuando la operación no depende de una versión del código.
 
-## 29.3 Modos y disciplina de prompts
+`PLATFORM_MUTATE` requiere evidencia before/after saneada y rollback para acciones reversibles, o `ROLLBACK: N/A` justificado.
 
-- `OBSERVE`: inspeccionar estado visible sin modificarlo.
-- `PREVIEW`: ejecutar preview del SHA autorizado.
-- `TEST`: ejecutar una comprobación concreta.
-- `DIAGNOSE`: reproducir y aislar un fallo sin aplicar corrección.
-- `PUBLISH`: publicar exclusivamente el SHA autorizado por el Supervisor.
-- `SPIKE_READ_ONLY`: estudiar una capacidad/integración sin adoptarla.
-- `PLATFORM_MUTATE`: ejecutar una única mutación externa de plataforma bajo el fallback condicionado de §29.11; nunca editar código ni estado del repositorio.
+## 29.4 SHA Gate y evidencia
 
-Una operación real que cambie estado por prompt. Puede incluir verificación antes/después, pero no combinar diagnose + repair + publish. No usar tareas abiertas como “arregla todo” o “actualiza la interfaz”. `Fix` permanece prohibido.
+Toda escalación dependiente del código requiere:
 
-Plantillas mínimas:
+1. origin esperado;
+2. `EXPECTED SHA == OBSERVED SHA`;
+3. checkout canónico limpio;
+4. lectura de `AI_STUDIO_OPERATOR.md` desde el mismo SHA;
+5. `CANONICAL_GIT_CHECKOUT` identificado;
+6. `MANAGED_PREVIEW_ROOT` identificado cuando la operación dependa de Preview/runtime;
+7. evidencia de que el árbol aprobado es el observado/ejecutado cuando aplique.
 
-```text
-MODE: TEST
-EXPECTED SHA: <sha>
-TASK: ejecutar <prueba concreta>; reportar resultado/evidencia; no modificar archivos.
-```
-
-```text
-MODE: DIAGNOSE
-EXPECTED SHA: <sha>
-TASK: reproducir <fallo concreto>; capturar error exacto; clasificar; no aplicar Fix.
-```
-
-```text
-MODE: PUBLISH
-EXPECTED SHA: <approved-sha>
-TASK: importar/sincronizar ese SHA; confirmar SHA; smoke preview; publish; smoke público; no modificar código.
-```
-
-```text
-MODE: PLATFORM_MUTATE
-WORK ITEM: #<issue>
-TARGET: <recurso/configuración externa concreta>
-TASK: ejecutar una única mutación externa expresamente autorizada; capturar evidencia antes/después; aplicar rollback si corresponde; no modificar código ni repositorio.
-```
-
-## 29.4 SHA Gate
-
-Es obligatorio antes de:
-
-- `PREVIEW`;
-- `TEST`;
-- `DIAGNOSE` sobre código;
-- `PUBLISH`.
-
-```text
-EXPECTED SHA == OBSERVED SHA
-```
-
-Si no coincide:
+Mismatch material:
 
 ```text
 STOP
 RESULT: BLOCKED
 CLASSIFICATION: AI_STUDIO_ENVIRONMENT
-REASON: SHA_MISMATCH
 ```
 
-No se continúa la operación ni se declara defecto de código.
+Un clone exacto no prueba por sí solo el Preview. La materialización one-way, cuando sea necesaria, debe usar una vía soportada sin inventar/reconstruir archivos ni sincronizar de vuelta a GitHub.
 
-Para `PREVIEW` y `PUBLISH`, el SHA Gate no termina en el checkout: también debe identificarse el `MANAGED_PREVIEW_ROOT` y demostrarse, por una vía soportada, que el árbol aprobado fue materializado unidireccionalmente allí. No se inventan/sustituyen archivos ni se sincroniza de vuelta a GitHub. Un HTTP 200 por sí solo no prueba que el Preview visible corresponda al SHA autorizado.
+`PASS` no equivale a `SEMANTIC_ACCEPTED`; `FAIL` no equivale automáticamente a `REWORK`.
 
-## 29.5 Ventanas de intervención
+## 29.5 Ventana única de intervención
 
-- **Antes/durante implementación:** `OBSERVE`, `SPIKE_READ_ONLY` o diagnóstico de plataforma/capacidad. La implementación normal pertenece al Agente implementador; AI Studio sólo puede ejecutar `PLATFORM_MUTATE` cuando se activa expresamente el fallback de §29.11.
-- **Branch/PR:** `PREVIEW`, `TEST` o `DIAGNOSE` sólo por solicitud del Supervisor y con el HEAD exacto como `EXPECTED SHA`.
-- **Revisión:** puede aportar evidencia; `PASS` no equivale a `SEMANTIC_ACCEPTED` y `FAIL` no equivale por sí solo a `REWORK`.
-- **Post-merge/publicación:** `PUBLISH` sólo para el SHA autorizado explícitamente por el Supervisor.
+AI Studio no tiene ventanas rutinarias antes/durante implementación, PR review o post-merge.
 
-Las decisiones formales continúan bajo las reglas de revisión existentes; AI Studio sólo reporta `PASS / FAIL / BLOCKED`.
-
-## 29.6 Clasificación y diagnóstico
-
-Toda falla se clasifica provisionalmente como:
+Su única ventana válida es:
 
 ```text
-CODE
-AI_STUDIO_ENVIRONMENT
-DEPLOYMENT
-EXTERNAL_SERVICE
-UNKNOWN
-```
-
-- `CODE`: evidencia de defecto en el mismo SHA.
-- `AI_STUDIO_ENVIRONMENT`: sync, instalación, preview, runtime o estado interno de AI Studio.
-- `DEPLOYMENT`: fallo durante preparación/publicación/serving con origen aún por determinar.
-- `EXTERNAL_SERVICE`: servicio/proveedor externo indisponible, limitado o rechazando la operación.
-- `UNKNOWN`: evidencia insuficiente.
-
-```text
-confirm SHA → reproduce → capture exact error → classify → report → no automatic fix
-```
-
-La clasificación es evidencia provisional. El Supervisor aplica las decisiones `REWORK / HOLD / ESCALATE` según las reglas generales ya existentes. Un problema de entorno/plataforma no se convierte automáticamente en `REWORK` de código.
-
-Reglas operativas verificadas, detalladas en `AI_STUDIO_OPERATOR.md`:
-
-- **cwd:** toda operación dependiente del proyecto usa path absoluto, `cd <absolute-path> && ...` o equivalente; si el launcher ejecuta desde otra raíz, `BLOCKED / AI_STUDIO_ENVIRONMENT`.
-- **process safety:** identificar PID/comando/cwd exactos, preferir cierre graceful, no usar listas amplias de PID ni loops de takeover de puerto; respawn administrado implica `STOP / BLOCKED`.
-- **recovery:** ante `Canceled`, `An internal error occurred`, respuesta stale/repetida o fallo de tool/workspace: salir/volver atrás → reingresar al proyecto → `NEW CHAT` → comprobar únicamente `git rev-parse HEAD`, `git status --short` y `GET /api/health`; continuar sólo con SHA correcto, worktree limpio y health válido.
-- si la recuperación falla, puede probarse sesión fresca/privada o Remix/workspace fresco como recuperación de entorno; sin evidencia de defecto de aplicación no se clasifica automáticamente como `CODE`.
-- `BLOCKED` significa detenerse, no improvisar y devolver control al Supervisor.
-
-## 29.7 Protocolo PUBLISH
-
-```text
-approved GitHub SHA
-→ AI_STUDIO_REQUEST MODE=PUBLISH
-→ pull/sync/import desde GitHub
-→ SHA Gate
-→ identificar CANONICAL_GIT_CHECKOUT y MANAGED_PREVIEW_ROOT
-→ demostrar materialización one-way del árbol aprobado en el managed root
-→ preview smoke test
-→ publish
-→ public smoke test
+Implementer attempted
+→ intrinsic blocker persisted
+→ Supervisor verified
+→ no reasonable Implementer path
+→ one minimal AI_STUDIO_REQUEST
+→ one operation
 → AI_STUDIO_REPORT
-→ evidencia persistida en GitHub
-→ control vuelve al Supervisor
+→ STOP → Supervisor
 ```
 
-Distinción obligatoria:
+Esto aplica también a asistencia read-only. AI Studio no es segundo revisor, smoke-test rutinario, checker post-merge ni canal normal de Preview.
+
+## 29.6 Clasificación, seguridad operacional y recuperación
+
+Clasificaciones válidas: `CODE`, `AI_STUDIO_ENVIRONMENT`, `DEPLOYMENT`, `EXTERNAL_SERVICE`, `UNKNOWN`.
+
+`CODE` exige evidencia en el mismo SHA y no autoriza a AI Studio a corregirlo.
+
+Reglas preservadas:
+
+- cwd exacto/path absoluto; mismatch → STOP/BLOCKED;
+- process safety con PID/comando/cwd exactos, cierre graceful, sin kill amplio ni loops de takeover;
+- recovery transitorio con chequeos mínimos, sin loops de retry;
+- secret safety: no imprimir/copiar tokens, credenciales, API keys, support emails u otros valores sensibles;
+- scope safety: no ampliar target/operación;
+- billing/security: billing/Blaze, servicio pagado, producción no autorizada, permiso material nuevo o credencial fuera del contexto autorizado → STOP.
+
+## 29.7 Publicación — exclusiva del Humano
 
 ```text
-repository/product-code write: NO
-authorized external PUBLISH: YES
+PUBLISH = HUMAN ACTION
+AI_STUDIO_PUBLISH_AUTHORITY = NONE
 ```
 
-`PUBLISH` nunca autoriza `Fix`, edición de código, dependencias, repository secrets, commit, push, PR o merge.
+El Supervisor puede confirmar el SHA/estado aprobado y las precondiciones. La acción operacional de publicar/compartir corresponde al Humano.
 
-Si publicar exige escritura del proyecto:
+AI Studio no pulsa Publish, no ejecuta comandos equivalentes y no convierte Preview/TEST/DIAGNOSE/PLATFORM_MUTATE en publicación.
 
-```text
-STOP → ESCALATE → decisión humana → nuevo Work Item
-```
+El Web Implementer tampoco adquiere autoridad humana de publicación por esta regla.
 
-## 29.8 SPIKE_READ_ONLY para integraciones Google
+## 29.8 RESEARCH_GATE y SPIKE_READ_ONLY
 
-```text
-SPIKE_READ_ONLY
-→ inspeccionar capacidad/documentación/configuración visible
-→ AI_STUDIO_REPORT
-→ Supervisor review
-→ Human decision
-→ Issue
-→ implementación canónica por el Agente implementador
-```
+`RESEARCH_GATE` permanece vigente conforme a §30.
 
-Puede reportar OAuth/scopes esperados, configuración visible, secretos previsiblemente necesarios **sin leer/copiar valores**, archivos potencialmente afectados y limitaciones de plataforma.
+La investigación ordinaria se realiza por Supervisor o Agente implementador. `SPIKE_READ_ONLY` en AI Studio no es una fase rutinaria del Research Gate y sólo puede usarse después de satisfacer §29.2 para una única observación mínima.
 
-Ver o pulsar una capacidad de integración no autoriza su adopción. Si el spike requiere escribir/generar cambios del proyecto, se detiene y escala.
-
-Después de la decisión humana y del Work Item, la implementación sigue normalmente en el Agente implementador. Sólo si ese canal intenta la operación, demuestra un bloqueo técnico intrínseco, el Supervisor verifica la evidencia y no existe una vía razonable de implementación, puede activarse §29.11 para una mutación externa de plataforma concreta.
+La investigación produce evidencia, no decisión ni implementación.
 
 ## 29.9 Regla absoluta de no escritura de repositorio/product-code
 
 ```text
-AI Studio may read, run, test, diagnose and publish.
-AI Studio may perform external platform mutation only under §29.11.
-AI Studio may not write product code or repository state.
+AI_STUDIO_ALLOWED_REPOSITORY_WRITES = NONE
+ALLOWED WRITE PATHS = NONE
+repository/product-code write = NO
 ```
 
-Prohibido: editar archivos; aplicar `Fix`; commit; branch; PR; push; merge; cambiar dependencias, schema, prompts, workflow o repository secrets.
+AI Studio nunca puede implementar features/fixes, editar archivos, aplicar Fix, cambiar dependencias/schema/prompts/workflow, commit/push/branch/PR/merge, escribir `main`, cambiar repository secrets ni sincronizar hacia GitHub.
 
-La preparación efímera interna para ejecutar Preview sólo es admisible si no modifica ni sincroniza archivos de vuelta a GitHub. Puede instalar dependencias ya declaradas desde el lockfile/manifiestos del SHA aprobado, iniciar/reiniciar servicios permitidos y materializar unidireccionalmente el árbol aprobado al workspace administrado por una vía soportada. Eso no concede autoridad para cambiar dependencias ni archivos canónicos.
+Preparación efímera sólo se admite cuando sea estrictamente necesaria para la única operación escalada y no cambie repositorio.
 
-`WRITE_SANDBOX: NO AUTORIZADO`.
-
-Cualquier necesidad futura de escritura de repositorio/product-code exige:
+Necesidad de escritura de repositorio:
 
 ```text
-STOP → ESCALATE → decisión humana explícita → nuevo Work Item
+STOP → Supervisor → Agente implementador / nuevo Work Item según corresponda
 ```
 
-La mutación externa condicionada de §29.11 no constituye escritura de repositorio y no altera esta prohibición.
-
-## 29.10 Fin: AI_STUDIO_REPORT y evidencia
-
-Toda intervención termina con:
+## 29.10 AI_STUDIO_REPORT y STOP obligatorio
 
 ```text
 AI_STUDIO_REPORT
-
 WORK ITEM: #<issue>
-MODE: <OBSERVE | PREVIEW | TEST | DIAGNOSE | PUBLISH | SPIKE_READ_ONLY | PLATFORM_MUTATE>
+MODE: <OBSERVE | PREVIEW | TEST | DIAGNOSE | SPIKE_READ_ONLY | PLATFORM_MUTATE>
 EXPECTED SHA: <sha> | N/A (platform-only)
 OBSERVED SHA: <sha> | N/A (platform-only)
 RESULT: PASS | FAIL | BLOCKED
 CLASSIFICATION: CODE | AI_STUDIO_ENVIRONMENT | DEPLOYMENT | EXTERNAL_SERVICE | UNKNOWN
-EVIDENCE: <mínima y verificable>
-ERROR: <exacto o none>
+EVIDENCE:
+- ESCALATION VERIFIED: YES | NO
+- IMPLEMENTER BLOCKER: <persisted reference>
+- ORIGIN: <origin or N/A>
+- CANONICAL_GIT_CHECKOUT: <path or N/A>
+- MANAGED_PREVIEW_ROOT: <path or N/A>
+- MATERIALIZATION: <evidence or N/A>
+- COMMAND/ACTION: <single action>
+- GIT_STATUS: <clean/output/N/A>
+- HTTP: <status/endpoint or N/A>
+- PLATFORM BEFORE: <sanitized state or N/A>
+- PLATFORM AFTER: <sanitized state or N/A>
+- ROLLBACK: <performed/available/N/A + reason>
+ERROR: <sanitized exact error or none>
 CODE/REPOSITORY MODIFIED: NO
+PLATFORM MODIFIED: YES | NO
+STOP → Supervisor
 ```
 
-Después del reporte:
+No incluir razonamiento interno ni valores secretos.
+
+## 29.11 Fallback de mutación externa de plataforma
+
+`PLATFORM_MUTATE` es un caso particular de §29.2, no una ruta alternativa.
+
+Además requiere target/scope exactos, baseline observable, evidencia before/after, rollback cuando corresponda y STOP CONDITIONS específicas.
+
+Puede abarcar sólo estado externo estrictamente requerido por el Work Item. No autoriza código/producto/repositorio, repository secrets, dependencias/schema/prompts/workflow, billing/Blaze/servicios pagados, producción no autorizada ni publicación.
+
+Si baseline/rollback no son verificables de forma segura, aparece permiso/credencial nuevo, cambia el scope o surge comportamiento inesperado que aumente riesgo:
 
 ```text
-control → Supervisor
+STOP → BLOCKED → Supervisor
 ```
 
-La evidencia sólo adquiere persistencia para el workflow cuando se registra en el Issue o PR correspondiente, asociada al Work Item, modo, SHA aplicable, resultado, clasificación y evidencia concreta. Cuando sea relevante debe incluir cwd real, checkout Git, managed Preview root, evidencia de materialización, comando/acción exacta, proceso/respawn y estado HTTP observable.
+`TECHNICAL PERMISSION != WORKFLOW AUTHORITY` permanece vigente antes, durante y después de toda escalación.
 
-AI Studio puede incluir una sección opcional `IMPLEMENTER_SUGGESTION` con una propuesta o pista diagnóstica sustentada en evidencia. Esa sugerencia no es una decisión formal ni autoriza código. El Supervisor decide si requiere un Work Item y coordina al Agente implementador, que sigue siendo la única autoridad de cambios persistentes de repositorio.
+## 29.12 Compatibilidad operacional inmediata — Issue #53
 
-## 29.11 Fallback condicionado para mutación externa de plataforma
+La decisión humana de Issue #60 ya es operativamente vigente y supersede cualquier request anterior incompatible.
 
-Ruta normal:
+Para Issue #53:
 
-```text
-Work Item
-→ Agente implementador
-→ implementación técnica
-→ verificación
-→ Supervisor
-```
-
-Fallback excepcional:
-
-```text
-Agente implementador intenta la operación
-→ bloqueo técnico intrínseco demostrado y persistido
-→ Supervisor verifica la evidencia
-→ no existe una vía razonable en el canal implementador
-→ Supervisor emite AI_STUDIO_REQUEST explícito
-→ AI_STUDIO_OPERATOR ejecuta una mutación externa acotada
-→ evidencia antes/después + rollback cuando corresponda
-→ AI_STUDIO_REPORT
-→ control vuelve al Supervisor
-```
-
-El fallback sólo puede activarse si **todas** estas condiciones son verdaderas:
-
-1. existe un Work Item explícito;
-2. el Agente implementador intentó la tarea por un canal autorizado;
-3. el bloqueo técnico quedó demostrado y persistido con evidencia concreta;
-4. el Supervisor verificó ese bloqueo;
-5. el Supervisor determinó que no existe una vía razonable en el canal implementador;
-6. existe un `AI_STUDIO_REQUEST` explícito para una operación externa concreta, con scope y target delimitados.
-
-La excepción permite exclusivamente mutación externa de plataforma estrictamente necesaria para el Work Item, por ejemplo:
-
-- configuración Firebase;
-- configuración Google Cloud;
-- proveedores de autenticación;
-- dominios autorizados;
-- runtime/environment state externo autorizado.
-
-No autoriza, ni directa ni implícitamente:
-
-- escritura de código/producto;
-- modificación de archivos del repositorio;
-- `Fix`;
-- commit, push, branch, PR o merge;
-- escritura directa a `main`;
-- repository secrets;
-- dependencias;
-- schema;
-- prompts;
-- workflow;
-- Blaze/billing;
-- servicios pagados;
-- producción sin decisión humana independiente.
-
-Cada `AI_STUDIO_REQUEST MODE=PLATFORM_MUTATE` debe declarar:
-
-- Work Item y autoridad que activa el fallback;
-- evidencia del bloqueo del Implementador y verificación del Supervisor;
-- target, scope y una única mutación concreta;
-- precondiciones observables;
-- STOP CONDITIONS;
-- evidencia de estado **antes** y **después** sin revelar secretos;
-- plan de rollback para acciones reversibles, o justificación explícita de `ROLLBACK: N/A`;
-- resultado esperado y campos requeridos del `AI_STUDIO_REPORT`.
-
-STOP obligatorio antes de ampliar o continuar si aparece cualquiera de estas condiciones:
-
-- necesidad de editar código o repositorio;
-- Blaze/billing, servicio pagado o producción no autorizada;
-- scope/target distinto al request;
-- permiso o credencial no disponible;
-- decisión material de producto/arquitectura/seguridad no tomada;
-- baseline previo no verificable;
-- rollback necesario pero no definible de forma segura;
-- comportamiento de plataforma inesperado que cambie materialmente el riesgo.
-
-La existencia de permisos técnicos en AI Studio no activa el fallback. El Supervisor no delega autoridad de decisión: AI Studio ejecuta únicamente la operación solicitada, reporta evidencia y devuelve el control.
-
-`repository/product-code write = NO` permanece verdadero durante y después de cada uso del fallback.
-
----
-
+- el HOLD por cuota de AI Studio permanece vigente hasta decisión humana expresa;
+- ningún request pendiente de Preview o Publish se reanuda automáticamente;
+- si AI Studio vuelve a estar disponible, cualquier nueva intervención requiere primero un intento del Web Implementer, bloqueo intrínseco demostrado, verificación del Supervisor y un nuevo `AI_STUDIO_REQUEST` mínimo conforme a §29.2;
+- una antigua autorización `PUBLISH` de AI Studio queda sin efecto;
+- cualquier publicación eventual es acción exclusiva del Humano conforme a §29.7.
 
 ---
 
@@ -1368,7 +1277,7 @@ Si una decisión estratégica cambia, se conserva el razonamiento histórico y l
 
 **AI_STUDIO_OPERATOR**
 
-Cuando una recomendación dependa del estado actual de Google o de otra información externa mutable, separa observación directa, documentación actual, inferencia y desconocido; devuelve evidencia al Supervisor y no convierte su recomendación en decisión canónica.
+No es una vía rutinaria del Research Gate. Sólo participa si primero se satisface el gate universal de §29.2: intento del Implementador, bloqueo técnico intrínseco persistido, verificación del Supervisor y ausencia de vía razonable en el canal implementador. En esa única operación mínima separa observación directa, documentación actual, inferencia y desconocido; devuelve evidencia al Supervisor, no convierte su recomendación en decisión canónica y termina en STOP.
 
 **Supervisor**
 
@@ -1384,90 +1293,31 @@ Este protocolo no concede nueva autoridad de escritura, merge, scope o decisión
 
 # 31. TECHNICAL PERMISSION != WORKFLOW AUTHORITY
 
-**Provenance:** Issue #39. Antes de la integración de PR #49, Issue #39 permanecía OPEN y esta regla existía como decisión humana operativamente vigente, todavía no integrada canónicamente. PR #40 fue cerrado sin merge y no constituye integración canónica. La regla quedó consolidada en el workflow canónico mediante Issue #47 / PR #49, sin reutilizar PR #40 como evidencia válida de implementación. Issue #39 permanece OPEN.
-
-Regla:
+**Provenance:** Issue #39. La regla quedó consolidada mediante Issue #47 / PR #49 y permanece vigente.
 
 ```text
 TECHNICAL PERMISSION != WORKFLOW AUTHORITY
 AI_STUDIO_ALLOWED_REPOSITORY_WRITES = NONE
 ALLOWED WRITE PATHS = NONE
-AI_STUDIO_EXTERNAL_PLATFORM_WRITES = CONDITIONAL_FALLBACK_ONLY
+AI_STUDIO_EXTERNAL_PLATFORM_WRITES = CONDITIONAL_ESCALATION_ONLY
+AI_STUDIO_PUBLISH_AUTHORITY = NONE
 ```
 
-Aunque una OAuth App, GitHub App, integración o herramienta disponga técnicamente de scopes de escritura, esos permisos técnicos **no conceden autoridad operacional** cuando el workflow no la autoriza. La única excepción activa definida por este workflow es la mutación **externa de plataforma** condicionada de §29.11; nunca autoriza escritura de repositorio/product-code.
+Scopes técnicos de lectura, escritura, Preview, entorno o publicación no conceden autoridad operacional.
 
-AI Studio puede consumir/importar/pull desde GitHub y operar únicamente conforme al protocolo `AI_STUDIO_OPERATOR`. No puede usar capacidad técnica disponible para:
+La ruta normal es el Web Implementer / Agente implementador. Cualquier uso de AI Studio exige primero §29.2.
 
-- Push Changes;
-- Stage and commit;
-- commit directo;
-- crear o modificar branch;
-- crear o modificar PR;
-- editar workflows;
-- escribir directamente en `main`;
-- modificar archivos del repositorio;
-- sincronizar cambios desde AI Studio hacia GitHub;
-- realizar cualquier otro write de estado del repositorio.
+La única escritura externa posible desde AI Studio es una mutación de plataforma mínima expresamente autorizada después del gate; nunca repositorio/product-code y nunca publicación.
 
-La instalación de la GitHub App debe permanecer restringida a `cmiloarevalo-hash/G_INF_01` salvo decisión humana explícita para otro repositorio.
+AI Studio no puede usar capacidad técnica disponible para Push Changes, stage/commit, branch/PR, workflow edits, escritura a main, modificación de archivos, sync-back o publicación.
 
-Una allowlist descrita únicamente en prompt o documentación **no constituye enforcement técnico suficiente** cuando la integración conserva permisos más amplios. No se debe afirmar que la prohibición está técnicamente garantizada sólo porque el prompt o la documentación la declaren.
+La instalación GitHub App permanece restringida a `cmiloarevalo-hash/G_INF_01` salvo decisión humana explícita.
 
-## 31.1 Excepción futura de escritura de repositorio/product-code
+Una allowlist documental no constituye enforcement técnico suficiente.
 
-No existe excepción activa de escritura de repositorio/product-code.
+## 31.1 Escritura de repositorio/product-code
 
-El namespace sugerido en Issue #39:
-
-```text
-docs/ai-studio-evidence/**
-```
-
-permanece:
-
-```text
-NOT AUTHORIZED
-NOT ACTIVE
-```
-
-Cualquier excepción futura requiere, como mínimo:
-
-1. decisión humana explícita;
-2. Work Item separado;
-3. alcance y allowlist explícitos;
-4. prohibición de escritura directa a `main`;
-5. control GitHub-side verificable antes de afirmar enforcement;
-6. revisión de autoridad, seguridad y rollback;
-7. actualización canónica del workflow antes de usarla como regla general.
-
-Tener scopes técnicos amplios nunca activa implícitamente una excepción. GitHub continúa siendo la fuente persistente de verdad y el Supervisor conserva la decisión dentro de la autoridad vigente.
-
-## 31.2 Excepción activa: mutación externa de plataforma como fallback
-
-Issue #54 activa únicamente la excepción de §29.11.
-
-```text
-normal path:
-Agente implementador
-
-fallback:
-AI_STUDIO_OPERATOR
-sólo ante bloqueo técnico demostrado
-y sólo para external platform mutation autorizada
-```
-
-Esta excepción:
-
-- requiere Work Item explícito;
-- requiere intento y evidencia del Agente implementador;
-- requiere verificación del Supervisor;
-- requiere que no exista una vía razonable en el canal implementador;
-- requiere `AI_STUDIO_REQUEST` explícito, target/scope concreto, STOP CONDITIONS, evidencia antes/después y rollback cuando corresponda;
-- termina siempre en `AI_STUDIO_REPORT` y retorno de control al Supervisor;
-- no concede autoridad de decisión a AI Studio.
-
-Permite únicamente estado externo de plataforma autorizado. No cambia las constantes:
+No existe excepción activa.
 
 ```text
 AI_STUDIO_ALLOWED_REPOSITORY_WRITES = NONE
@@ -1475,7 +1325,40 @@ ALLOWED WRITE PATHS = NONE
 repository/product-code write = NO
 ```
 
-Blaze/billing, servicios pagados y producción continúan fuera de esta excepción y requieren decisión humana independiente.
+El namespace histórico `docs/ai-studio-evidence/**` permanece `NOT AUTHORIZED / NOT ACTIVE`.
+
+Cualquier excepción futura requiere decisión humana explícita, Work Item separado, control GitHub-side verificable y actualización canónica previa.
+
+## 31.2 Escalación AI Studio
+
+Issue #60 generaliza el fallback a toda intervención AI Studio:
+
+```text
+normal path:
+Web Implementer / Agente implementador
+
+fallback:
+AI_STUDIO_OPERATOR
+sólo ante bloqueo técnico intrínseco demostrado
++ Supervisor verification
++ no reasonable Implementer path
++ one minimal AI_STUDIO_REQUEST
++ one operation
++ STOP → Supervisor
+```
+
+Los modos read-only no omiten el gate. `PLATFORM_MUTATE` añade baseline, before/after, rollback y STOP CONDITIONS.
+
+Publicación:
+
+```text
+PUBLISH = HUMAN ACTION
+AI_STUDIO_PUBLISH_AUTHORITY = NONE
+```
+
+Blaze/billing, servicios pagados y producción siguen requiriendo decisión humana independiente.
+
+---
 
 # Resultado
 
@@ -1611,7 +1494,7 @@ Para las 49 secciones/subsecciones estructurales del baseline, `PRESERVED` es el
 | 29.4 SHA Gate | PRESERVED | 29.4 SHA Gate | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
 | 29.5 Ventanas de intervención | PRESERVED | 29.5 Ventanas de intervención | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
 | 29.6 Clasificación y diagnóstico | PRESERVED | 29.6 Clasificación y diagnóstico | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
-| 29.7 Protocolo PUBLISH | PRESERVED | 29.7 Protocolo PUBLISH | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 29.7 Protocolo PUBLISH | SUPERSEDED | 29.7 Publicación — exclusiva del Humano | Issue #60 elimina autoridad PUBLISH de AI Studio; `PUBLISH = HUMAN ACTION`. |
 | 29.8 SPIKE_READ_ONLY para integraciones Google | PRESERVED | 29.8 SPIKE_READ_ONLY para integraciones Google | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
 | 29.9 Regla absoluta de no escritura | PRESERVED | 29.9 Regla absoluta de no escritura | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
 | 29.10 Fin: AI_STUDIO_REPORT y evidencia | PRESERVED | 29.10 Fin: AI_STUDIO_REPORT y evidencia | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
