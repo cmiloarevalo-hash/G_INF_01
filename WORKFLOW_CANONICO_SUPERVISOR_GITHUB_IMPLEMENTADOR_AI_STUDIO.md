@@ -36,7 +36,7 @@ A la fecha del baseline:
 - **Issue #35 está OPEN.** Su decisión humana hace operativos `RESEARCH_GATE` y `STRATEGIC_RATIONALE` mientras la integración canónica sigue pendiente. Esta propuesta los incorpora en §31 sin afirmar que el Issue ya estuviera integrado o cerrado.
 - **Issue #39 está OPEN.** Su decisión humana hace operativas `TECHNICAL PERMISSION != WORKFLOW AUTHORITY` y `AI_STUDIO_ALLOWED_REPOSITORY_WRITES = NONE` mientras la integración canónica sigue pendiente. El PR #40 fue cerrado sin merge y no constituye integración canónica. Esta propuesta incorpora esas reglas en §32 sin afirmar que el Issue ya estuviera integrado o cerrado.
 
-### Reglas propuestas para Issue #47, todavía no canónicas
+### Reglas nuevas propuestas por decisión humana vigente para esta versión
 
 Esta propuesta añade:
 
@@ -47,9 +47,7 @@ Esta propuesta añade:
 - `Repository state != Preview state != Published state`;
 - protocolo reforzado `NEW CHAT Supervisor`.
 
-Estas formulaciones pertenecen al candidato de Issue #47. Salvo una decisión humana independiente y persistida que les otorgue efecto operativo antes del merge, **no deben tratarse como reglas ya canónicas ni como autoridad ya integrada**. Adquieren autoridad canónica sólo después de revisión independiente y merge autorizado.
-
-No cambian silenciosamente la autoridad ya asignada: el Humano conserva decisiones excepcionales, de producto, cambios materiales de scope, permisos, credenciales y trade-offs importantes; el Supervisor delimita, coordina, revisa y decide dentro de la autoridad ya existente; el Agente implementador implementa por branch/commit/PR; AI Studio continúa subordinado y sin autoridad de escritura de repositorio.
+Estas reglas no cambian silenciosamente la autoridad ya asignada: el Humano conserva decisiones excepcionales y de producto; el Supervisor planifica, revisa, decide y ejecuta merge cuando corresponde; el Agente implementador implementa por branch/commit/PR; AI Studio continúa subordinado y sin autoridad de escritura de repositorio.
 
 
 ## 1. Objetivo
@@ -402,20 +400,6 @@ Antes de modificar código debe responder internamente estas preguntas:
 10. ¿Existen cambios previos que no pertenecen a esta tarea?
 
 Si no puede responder una pregunta material, debe detenerse y pedir aclaración.
-
-Antes de escribir debe asumir además esta regla de autoridad:
-
-> **Su función es implementar, no gobernar el proyecto.**
->
-> Puede tomar decisiones locales necesarias para cumplir el Issue dentro de Objective, Acceptance Criteria, Semantic Scope, Path Scope y arquitectura vigentes.
->
-> No puede redefinir arquitectura, ampliar scope, cambiar intención del producto, adoptar integraciones no autorizadas, modificar workflow o autoridad, ni convertir una propuesta en decisión aprobada.
->
-> Ante una decisión técnica material no determinada, debe presentar la propuesta y devolver control al Supervisor cuando la elección requiera autorización.
->
-> Ante cambio material de arquitectura, scope, permisos, credenciales, costes, integración o excepción, debe detenerse: corresponde Supervisor → `ESCALATE` → decisión humana.
->
-> Tests y CI son evidencia, no aprobación. No se autoaprueba ni hace merge.
 
 ---
 
@@ -1276,55 +1260,6 @@ Cambiar de herramienta, chat o interfaz no borra la autoría previa ni crea inde
 
 Cualquier excepción requiere §35 `HUMAN_EXCEPTION / WAIVER`. La excepción no se presume.
 
-## 30.4 Matriz de autoridad
-
-| Actor | Puede decidir | No puede decidir unilateralmente |
-|---|---|---|
-| **Humano** | Intención, prioridades, decisiones de producto, cambios materiales de scope, permisos, credenciales, excepciones y trade-offs importantes. | La ejecución técnica no sustituye el proceso Issue → branch → PR → review. |
-| **Supervisor** | Delimitar Work Items; interpretar requisitos; coordinar; verificar gates; autorizar una estrategia técnica dentro del scope y arquitectura ya aprobados; revisar PR; emitir `SEMANTIC_ACCEPTED / REWORK / HOLD / ESCALATE`; verificar `MERGE_ELIGIBLE`; ejecutar merge cuando corresponda. | No implementa normalmente aquello que después revisará. No cambia unilateralmente intención de producto, scope material, arquitectura aprobada o autoridad reservada al Humano. |
-| **Agente implementador** | Decisiones locales o mecánicas necesarias para cumplir el Work Item dentro de Objective, Acceptance Criteria, scopes y arquitectura vigentes. | No redefine arquitectura, no amplía scope, no adopta integraciones nuevas, no cambia workflow, no se autoaprueba, no declara `SEMANTIC_ACCEPTED` ni hace merge. |
-| **AI_STUDIO_OPERATOR** | Observar, Preview, Test, Diagnose, Publish autorizado y `SPIKE_READ_ONLY`; produce evidencia. | No implementa, no decide arquitectura, no adopta integraciones, no modifica repositorio y no hace Fix/commit/branch/PR/merge. |
-| **CI** | Produce evidencia mecánica para un SHA. | No aprueba semánticamente. `PASS != SEMANTIC_ACCEPTED`. |
-
-## 30.5 Gate de autoridad y arquitectura
-
-Antes de entregar una acción material al Agente implementador, el Supervisor debe clasificar la necesidad, como mínimo, entre:
-
-- ejecución directa de un requisito ya definido;
-- decisión técnica material;
-- cambio de scope;
-- cambio arquitectónico;
-- integración externa;
-- operación AI Studio;
-- excepción humana.
-
-Luego aplica este gate:
-
-**Decisión local de implementación.** Si está determinada por el Issue, la documentación y la arquitectura vigentes, y no altera responsabilidades, invariantes, integración autorizada ni scope, puede resolverla el Agente implementador.
-
-**Estrategia técnica material dentro de arquitectura y scope ya aprobados.** El Agente implementador puede proponerla; el Supervisor puede autorizarla o verificarla dentro de su autoridad existente. Si depende de información externa mutable, aplica además el `RESEARCH_GATE` de §31, cuya fuente permanece en Issue #35 OPEN y operativamente vigente por decisión humana.
-
-**Cambio durable de arquitectura.** Si cambia responsabilidades de componentes, introduce o sustituye capas/plataformas, altera almacenamiento o modelo de integración, modifica una invariante arquitectónica o contradice el diseño TARGET aprobado, el Agente implementador debe detenerse. El Supervisor tampoco lo decide unilateralmente.
-
-Secuencia requerida:
-
-~~~text
-propuesta
-→ análisis / RESEARCH_GATE si aplica
-→ Supervisor
-→ ESCALATE
-→ decisión humana
-→ Work Item específico
-→ ADR/documentación cuando corresponda
-→ Agente implementador
-→ PR
-→ revisión independiente
-~~~
-
-La fuente arquitectónica vigente es `docs/engineering/SOFTWARE_ARCHITECTURE.md`: declara el diseño como TARGET aprobado y establece que los cambios durables de arquitectura se documentan y aprueban antes de alterar ese diseño.
-
-Una duda local no debe escalarse artificialmente; un cambio de arquitectura, scope o autoridad no debe ocultarse como elección de implementación.
-
 ---
 
 # 31. RESEARCH_GATE y STRATEGIC_RATIONALE
@@ -1768,20 +1703,6 @@ El §26 se mantiene íntegro y se amplía con este protocolo.
 
 Una sesión nueva del Supervisor reconstruye el estado desde fuentes persistentes antes de decidir.
 
-Regla de autoridad de la sesión:
-
-> **La función del Supervisor es gobernar el trabajo técnico, no sustituir al Humano ni al Agente implementador.**
->
-> Delimita, coordina, investiga o verifica cuando corresponde, revisa independientemente, decide por SHA y ejecuta el merge cuando es elegible.
->
-> No implementa normalmente lo que después revisará.
->
-> Puede autorizar estrategias dentro del scope y arquitectura ya aprobados.
->
-> No cambia unilateralmente intención, scope material, arquitectura aprobada, permisos, credenciales, integraciones o autoridad reservada al Humano; en esos casos usa `ESCALATE`.
-
-Antes de autorizar una acción material, además debe clasificarla conforme al gate de §30.5. La clasificación no sustituye el Work Item: sirve para determinar qué autoridad y qué evidencia son necesarias antes del handoff.
-
 Orden mínimo:
 
 1. declarar rol: `Supervisor`;
@@ -1914,7 +1835,7 @@ Criterios:
 | Fase A — intención | PRESERVED | Fase A — intención | Contenido operativo conservado; sin pérdida semántica. |
 | Fase B — creación del Work Item | PRESERVED | Fase B — creación del Work Item | Contenido operativo conservado; sin pérdida semántica. |
 | 10. Inicio del Agente implementador | PRESERVED | 10. Inicio del Agente implementador | Contenido operativo conservado; sin pérdida semántica. |
-| 11. Bootstrap del Agente implementador | EXPANDED | §11 + §30.5 | Las diez preguntas originales se conservan; se añade declaración explícita de autoridad y STOP/ESCALATE ante decisiones no autorizadas. |
+| 11. Bootstrap del Agente implementador | PRESERVED | 11. Bootstrap del Agente implementador | Contenido operativo conservado; sin pérdida semántica. |
 | 12. Política de lectura | PRESERVED | 12. Política de lectura | Contenido operativo conservado; sin pérdida semántica. |
 | 13. Implementación | PRESERVED | 13. Implementación | Contenido operativo conservado; sin pérdida semántica. |
 | 14. Problemas descubiertos durante el trabajo | PRESERVED | 14. Problemas descubiertos durante el trabajo | Contenido operativo conservado; sin pérdida semántica. |
@@ -1948,7 +1869,7 @@ Criterios:
 | 29.9 Regla absoluta de no escritura | EXPANDED | §29.9 + §32 | Prohibición original preservada y endurecida por TECHNICAL PERMISSION != WORKFLOW AUTHORITY. |
 | 29.10 Fin: AI_STUDIO_REPORT y evidencia | PRESERVED | 29.10 Fin: AI_STUDIO_REPORT y evidencia | Contenido operativo conservado; sin pérdida semántica. |
 | Resultado | PRESERVED | Resultado | Contenido operativo conservado; sin pérdida semántica. |
-| — | NEW | §30 Separación estricta Supervisor / Agente implementador | Formaliza independencia de revisión, matriz de autoridad y gate de decisiones/arquitectura sin transferir autoridad entre roles. |
+| — | NEW | §30 Separación estricta Supervisor / Agente implementador | Decisión humana vigente de esta propuesta; no elimina responsabilidades existentes. |
 | Issue #35 OPEN | NEW | §31 RESEARCH_GATE y STRATEGIC_RATIONALE | Regla operativa humana pendiente de integración en la fuente base; se incorpora prospectivamente sin declarar Issue cerrado. |
 | Issue #39 OPEN | NEW | §32 TECHNICAL PERMISSION != WORKFLOW AUTHORITY | Regla operativa humana pendiente de integración en la fuente base; PR #40 cerrado sin merge no se presenta como integración. |
 | — | NEW | §33 Política de invocación de AI Studio | Formaliza que AI Studio sólo se usa cuando la evidencia/operación de plataforma es material. |
@@ -1971,7 +1892,7 @@ Resultado de la matriz:
 
 ## Reglas nuevas
 
-- §30: separación estricta Supervisor / Agente implementador, matriz de autoridad y gate de decisiones/arquitectura.
+- §30: separación estricta Supervisor / Agente implementador.
 - §31: `RESEARCH_GATE` + `STRATEGIC_RATIONALE`, provenientes de decisión humana operativa del Issue #35 abierto.
 - §32: `TECHNICAL PERMISSION != WORKFLOW AUTHORITY` + `AI_STUDIO_ALLOWED_REPOSITORY_WRITES = NONE`, provenientes de decisión humana operativa del Issue #39 abierto.
 - §33: política de invocación de AI Studio.
