@@ -1942,4 +1942,3 @@ Antes de considerar el reemplazo:
 - el HEAD exacto revisado debe coincidir con el HEAD que se pretenda integrar.
 
 Hasta ese momento, la fuente normativa vigente continúa siendo `WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md` en `main`.
-
