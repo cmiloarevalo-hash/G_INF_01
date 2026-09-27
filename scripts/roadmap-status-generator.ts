@@ -64,6 +64,12 @@ function normalizeMarkdownLabel(value: string) {
     .trim();
 }
 
+function compactChildLabel(value: string) {
+  const normalized = normalizeMarkdownLabel(value);
+  const sentence = normalized.match(/^(.+?)(?:[.!?](?:\s|$)|$)/);
+  return sentence?.[1]?.trim() || normalized;
+}
+
 function parseChildIdentity(value: string, metaId: string): { id: string; label?: string } | null {
   const normalized = normalizeMarkdownLabel(value);
   const pattern = new RegExp(
@@ -73,7 +79,7 @@ function parseChildIdentity(value: string, metaId: string): { id: string; label?
   const match = normalized.match(pattern);
   if (!match?.[1]) return null;
 
-  const label = match[3]?.trim();
+  const label = match[3] ? compactChildLabel(match[3]) : undefined;
   return {
     id: match[1].toUpperCase(),
     ...(label ? { label } : {}),
