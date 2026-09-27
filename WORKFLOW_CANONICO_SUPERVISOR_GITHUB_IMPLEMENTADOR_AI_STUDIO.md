@@ -867,7 +867,9 @@ Esta sección añade un rol operativo externo sin sustituir las reglas generales
 
 > **AI_STUDIO_OPERATOR no es el Agente implementador y Google AI Studio web no puede ejercer el rol implementador bajo este protocolo.**
 
-El Agente implementador conserva la escritura canónica por branch/commit/PR. `AI_STUDIO_OPERATOR` es invocado por el Supervisor para producir evidencia operacional o ejecutar una publicación autorizada.
+El Agente implementador conserva la escritura canónica por branch/commit/PR y sigue siendo la ruta normal para toda implementación técnica. `AI_STUDIO_OPERATOR` es invocado por el Supervisor para producir evidencia operacional, ejecutar una publicación autorizada o, únicamente bajo el fallback condicionado de §29.11, realizar una mutación externa de plataforma expresamente autorizada.
+
+La excepción de §29.11 no convierte a AI Studio en implementador de código ni concede autoridad sobre el repositorio.
 
 ```text
                          ┌→ Agente implementador → branch/commit/PR → GitHub
@@ -891,6 +893,7 @@ El contrato de ejecución residente es [`AI_STUDIO_OPERATOR.md`](AI_STUDIO_OPERA
 | TEST | YES |
 | DIAGNOSE | YES |
 | PUBLISH external operational state | YES, sólo bajo protocolo PUBLISH |
+| EXTERNAL PLATFORM MUTATION | YES, sólo como fallback condicionado según §29.11 |
 | SPIKE_READ_ONLY | YES |
 | repository/product-code write | NO |
 | WRITE CANONICAL | NO |
@@ -917,7 +920,7 @@ El checkout Git usado para verificar SHA y la raíz administrada que alimenta el
 AI_STUDIO_REQUEST
 
 WORK ITEM: #<issue>
-MODE: OBSERVE | PREVIEW | TEST | DIAGNOSE | PUBLISH | SPIKE_READ_ONLY
+MODE: OBSERVE | PREVIEW | TEST | DIAGNOSE | PUBLISH | SPIKE_READ_ONLY | PLATFORM_MUTATE
 EXPECTED SHA: <sha> | N/A (platform-only)
 TARGET: <preview / route / deployment / platform capability>
 CANONICAL_GIT_CHECKOUT: <absolute path when code-dependent>
@@ -941,7 +944,7 @@ RETURN:
 - ERROR exacto si existe
 ```
 
-`EXPECTED SHA: N/A (platform-only)` sólo se usa para `SPIKE_READ_ONLY` puramente de plataforma que no dependa de una versión del código.
+`EXPECTED SHA: N/A (platform-only)` sólo se usa para `SPIKE_READ_ONLY` o `PLATFORM_MUTATE` puramente de plataforma que no dependan de una versión del código. Si la mutación externa debe preparar o afectar un runtime ligado a código, el request debe declarar el SHA aplicable y respetar el SHA Gate correspondiente.
 
 ## 29.3 Modos y disciplina de prompts
 
@@ -951,6 +954,7 @@ RETURN:
 - `DIAGNOSE`: reproducir y aislar un fallo sin aplicar corrección.
 - `PUBLISH`: publicar exclusivamente el SHA autorizado por el Supervisor.
 - `SPIKE_READ_ONLY`: estudiar una capacidad/integración sin adoptarla.
+- `PLATFORM_MUTATE`: ejecutar una única mutación externa de plataforma bajo el fallback condicionado de §29.11; nunca editar código ni estado del repositorio.
 
 Una operación real que cambie estado por prompt. Puede incluir verificación antes/después, pero no combinar diagnose + repair + publish. No usar tareas abiertas como “arregla todo” o “actualiza la interfaz”. `Fix` permanece prohibido.
 
@@ -972,6 +976,13 @@ TASK: reproducir <fallo concreto>; capturar error exacto; clasificar; no aplicar
 MODE: PUBLISH
 EXPECTED SHA: <approved-sha>
 TASK: importar/sincronizar ese SHA; confirmar SHA; smoke preview; publish; smoke público; no modificar código.
+```
+
+```text
+MODE: PLATFORM_MUTATE
+WORK ITEM: #<issue>
+TARGET: <recurso/configuración externa concreta>
+TASK: ejecutar una única mutación externa expresamente autorizada; capturar evidencia antes/después; aplicar rollback si corresponde; no modificar código ni repositorio.
 ```
 
 ## 29.4 SHA Gate
@@ -1002,7 +1013,7 @@ Para `PREVIEW` y `PUBLISH`, el SHA Gate no termina en el checkout: también debe
 
 ## 29.5 Ventanas de intervención
 
-- **Antes/durante implementación:** `OBSERVE`, `SPIKE_READ_ONLY` o diagnóstico de plataforma/capacidad. AI Studio no implementa.
+- **Antes/durante implementación:** `OBSERVE`, `SPIKE_READ_ONLY` o diagnóstico de plataforma/capacidad. La implementación normal pertenece al Agente implementador; AI Studio sólo puede ejecutar `PLATFORM_MUTATE` cuando se activa expresamente el fallback de §29.11.
 - **Branch/PR:** `PREVIEW`, `TEST` o `DIAGNOSE` sólo por solicitud del Supervisor y con el HEAD exacto como `EXPECTED SHA`.
 - **Revisión:** puede aportar evidencia; `PASS` no equivale a `SEMANTIC_ACCEPTED` y `FAIL` no equivale por sí solo a `REWORK`.
 - **Post-merge/publicación:** `PUBLISH` sólo para el SHA autorizado explícitamente por el Supervisor.
@@ -1089,10 +1100,13 @@ Puede reportar OAuth/scopes esperados, configuración visible, secretos previsib
 
 Ver o pulsar una capacidad de integración no autoriza su adopción. Si el spike requiere escribir/generar cambios del proyecto, se detiene y escala.
 
-## 29.9 Regla absoluta de no escritura
+Después de la decisión humana y del Work Item, la implementación sigue normalmente en el Agente implementador. Sólo si ese canal intenta la operación, demuestra un bloqueo técnico intrínseco, el Supervisor verifica la evidencia y no existe una vía razonable de implementación, puede activarse §29.11 para una mutación externa de plataforma concreta.
+
+## 29.9 Regla absoluta de no escritura de repositorio/product-code
 
 ```text
 AI Studio may read, run, test, diagnose and publish.
+AI Studio may perform external platform mutation only under §29.11.
 AI Studio may not write product code or repository state.
 ```
 
@@ -1102,11 +1116,13 @@ La preparación efímera interna para ejecutar Preview sólo es admisible si no 
 
 `WRITE_SANDBOX: NO AUTORIZADO`.
 
-Cualquier necesidad futura de escritura exige:
+Cualquier necesidad futura de escritura de repositorio/product-code exige:
 
 ```text
 STOP → ESCALATE → decisión humana explícita → nuevo Work Item
 ```
+
+La mutación externa condicionada de §29.11 no constituye escritura de repositorio y no altera esta prohibición.
 
 ## 29.10 Fin: AI_STUDIO_REPORT y evidencia
 
@@ -1116,7 +1132,7 @@ Toda intervención termina con:
 AI_STUDIO_REPORT
 
 WORK ITEM: #<issue>
-MODE: <mode>
+MODE: <OBSERVE | PREVIEW | TEST | DIAGNOSE | PUBLISH | SPIKE_READ_ONLY | PLATFORM_MUTATE>
 EXPECTED SHA: <sha> | N/A (platform-only)
 OBSERVED SHA: <sha> | N/A (platform-only)
 RESULT: PASS | FAIL | BLOCKED
@@ -1135,6 +1151,91 @@ control → Supervisor
 La evidencia sólo adquiere persistencia para el workflow cuando se registra en el Issue o PR correspondiente, asociada al Work Item, modo, SHA aplicable, resultado, clasificación y evidencia concreta. Cuando sea relevante debe incluir cwd real, checkout Git, managed Preview root, evidencia de materialización, comando/acción exacta, proceso/respawn y estado HTTP observable.
 
 AI Studio puede incluir una sección opcional `IMPLEMENTER_SUGGESTION` con una propuesta o pista diagnóstica sustentada en evidencia. Esa sugerencia no es una decisión formal ni autoriza código. El Supervisor decide si requiere un Work Item y coordina al Agente implementador, que sigue siendo la única autoridad de cambios persistentes de repositorio.
+
+## 29.11 Fallback condicionado para mutación externa de plataforma
+
+Ruta normal:
+
+```text
+Work Item
+→ Agente implementador
+→ implementación técnica
+→ verificación
+→ Supervisor
+```
+
+Fallback excepcional:
+
+```text
+Agente implementador intenta la operación
+→ bloqueo técnico intrínseco demostrado y persistido
+→ Supervisor verifica la evidencia
+→ no existe una vía razonable en el canal implementador
+→ Supervisor emite AI_STUDIO_REQUEST explícito
+→ AI_STUDIO_OPERATOR ejecuta una mutación externa acotada
+→ evidencia antes/después + rollback cuando corresponda
+→ AI_STUDIO_REPORT
+→ control vuelve al Supervisor
+```
+
+El fallback sólo puede activarse si **todas** estas condiciones son verdaderas:
+
+1. existe un Work Item explícito;
+2. el Agente implementador intentó la tarea por un canal autorizado;
+3. el bloqueo técnico quedó demostrado y persistido con evidencia concreta;
+4. el Supervisor verificó ese bloqueo;
+5. el Supervisor determinó que no existe una vía razonable en el canal implementador;
+6. existe un `AI_STUDIO_REQUEST` explícito para una operación externa concreta, con scope y target delimitados.
+
+La excepción permite exclusivamente mutación externa de plataforma estrictamente necesaria para el Work Item, por ejemplo:
+
+- configuración Firebase;
+- configuración Google Cloud;
+- proveedores de autenticación;
+- dominios autorizados;
+- runtime/environment state externo autorizado.
+
+No autoriza, ni directa ni implícitamente:
+
+- escritura de código/producto;
+- modificación de archivos del repositorio;
+- `Fix`;
+- commit, push, branch, PR o merge;
+- escritura directa a `main`;
+- repository secrets;
+- dependencias;
+- schema;
+- prompts;
+- workflow;
+- Blaze/billing;
+- servicios pagados;
+- producción sin decisión humana independiente.
+
+Cada `AI_STUDIO_REQUEST MODE=PLATFORM_MUTATE` debe declarar:
+
+- Work Item y autoridad que activa el fallback;
+- evidencia del bloqueo del Implementador y verificación del Supervisor;
+- target, scope y una única mutación concreta;
+- precondiciones observables;
+- STOP CONDITIONS;
+- evidencia de estado **antes** y **después** sin revelar secretos;
+- plan de rollback para acciones reversibles, o justificación explícita de `ROLLBACK: N/A`;
+- resultado esperado y campos requeridos del `AI_STUDIO_REPORT`.
+
+STOP obligatorio antes de ampliar o continuar si aparece cualquiera de estas condiciones:
+
+- necesidad de editar código o repositorio;
+- Blaze/billing, servicio pagado o producción no autorizada;
+- scope/target distinto al request;
+- permiso o credencial no disponible;
+- decisión material de producto/arquitectura/seguridad no tomada;
+- baseline previo no verificable;
+- rollback necesario pero no definible de forma segura;
+- comportamiento de plataforma inesperado que cambie materialmente el riesgo.
+
+La existencia de permisos técnicos en AI Studio no activa el fallback. El Supervisor no delega autoridad de decisión: AI Studio ejecuta únicamente la operación solicitada, reporta evidencia y devuelve el control.
+
+`repository/product-code write = NO` permanece verdadero durante y después de cada uso del fallback.
 
 ---
 
@@ -1291,9 +1392,10 @@ Regla:
 TECHNICAL PERMISSION != WORKFLOW AUTHORITY
 AI_STUDIO_ALLOWED_REPOSITORY_WRITES = NONE
 ALLOWED WRITE PATHS = NONE
+AI_STUDIO_EXTERNAL_PLATFORM_WRITES = CONDITIONAL_FALLBACK_ONLY
 ```
 
-Aunque una OAuth App, GitHub App, integración o herramienta disponga técnicamente de scopes de escritura, esos permisos técnicos **no conceden autoridad operacional** cuando el workflow no la autoriza.
+Aunque una OAuth App, GitHub App, integración o herramienta disponga técnicamente de scopes de escritura, esos permisos técnicos **no conceden autoridad operacional** cuando el workflow no la autoriza. La única excepción activa definida por este workflow es la mutación **externa de plataforma** condicionada de §29.11; nunca autoriza escritura de repositorio/product-code.
 
 AI Studio puede consumir/importar/pull desde GitHub y operar únicamente conforme al protocolo `AI_STUDIO_OPERATOR`. No puede usar capacidad técnica disponible para:
 
@@ -1312,9 +1414,9 @@ La instalación de la GitHub App debe permanecer restringida a `cmiloarevalo-has
 
 Una allowlist descrita únicamente en prompt o documentación **no constituye enforcement técnico suficiente** cuando la integración conserva permisos más amplios. No se debe afirmar que la prohibición está técnicamente garantizada sólo porque el prompt o la documentación la declaren.
 
-## 31.1 Excepción futura de escritura
+## 31.1 Excepción futura de escritura de repositorio/product-code
 
-No existe excepción activa.
+No existe excepción activa de escritura de repositorio/product-code.
 
 El namespace sugerido en Issue #39:
 
@@ -1340,6 +1442,40 @@ Cualquier excepción futura requiere, como mínimo:
 7. actualización canónica del workflow antes de usarla como regla general.
 
 Tener scopes técnicos amplios nunca activa implícitamente una excepción. GitHub continúa siendo la fuente persistente de verdad y el Supervisor conserva la decisión dentro de la autoridad vigente.
+
+## 31.2 Excepción activa: mutación externa de plataforma como fallback
+
+Issue #54 activa únicamente la excepción de §29.11.
+
+```text
+normal path:
+Agente implementador
+
+fallback:
+AI_STUDIO_OPERATOR
+sólo ante bloqueo técnico demostrado
+y sólo para external platform mutation autorizada
+```
+
+Esta excepción:
+
+- requiere Work Item explícito;
+- requiere intento y evidencia del Agente implementador;
+- requiere verificación del Supervisor;
+- requiere que no exista una vía razonable en el canal implementador;
+- requiere `AI_STUDIO_REQUEST` explícito, target/scope concreto, STOP CONDITIONS, evidencia antes/después y rollback cuando corresponda;
+- termina siempre en `AI_STUDIO_REPORT` y retorno de control al Supervisor;
+- no concede autoridad de decisión a AI Studio.
+
+Permite únicamente estado externo de plataforma autorizado. No cambia las constantes:
+
+```text
+AI_STUDIO_ALLOWED_REPOSITORY_WRITES = NONE
+ALLOWED WRITE PATHS = NONE
+repository/product-code write = NO
+```
+
+Blaze/billing, servicios pagados y producción continúan fuera de esta excepción y requieren decisión humana independiente.
 
 # Resultado
 
