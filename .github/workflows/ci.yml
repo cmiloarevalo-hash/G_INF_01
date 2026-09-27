@@ -18,7 +18,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -72,6 +72,16 @@ jobs:
           name: issue-70-package-lock
           path: package-lock.json
           if-no-files-found: error
+
+      - name: Create unattached lockfile blob
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          content="$(base64 -w0 package-lock.json)"
+          response="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/git/blobs" -f content="$content" -f encoding=base64)"
+          echo "LOCK_BLOB_SHA=$(jq -r '.sha' <<<"$response")"
 
       - name: Install dependencies
         run: npm ci
