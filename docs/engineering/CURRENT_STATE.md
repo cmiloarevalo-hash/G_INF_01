@@ -121,11 +121,30 @@ Reglas:
 
 Un preview, una URL privada, un 404/302 o una comprobación exclusivamente local **no** constituyen `V-036 PASS`.
 
-## 3. Capacidades futuras no integradas
+## 3. M4 · Trabajo persistente y capacidades completas — ACTIVA
+
+Issue #45 abrió M4 con cinco subtareas canónicas. El primer Work Item activo es Issue #46 / M4.1.
+
+### M4.1 · Identidad y sesión Google — IMPLEMENTADA EN REPOSITORIO / V-004 PENDING
+
+Esta branch incorpora la base de identidad autenticada mediante Firebase Authentication:
+
+- Firebase Web SDK como dependencia de producción;
+- Google Sign-In mediante popup;
+- sign-out;
+- estado mínimo de sesión con UID estable y nombre/email/foto sólo cuando Firebase los entrega;
+- servicio acotado bajo `src/services/auth/**`;
+- configuración cliente explícita mediante `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` y `VITE_FIREBASE_APP_ID`;
+- ausencia o incompletitud de esa configuración deshabilita únicamente el modo autenticado y conserva el modo invitado;
+- no se persisten manualmente tokens de autenticación ni credenciales LLM;
+- no se incorporan Firestore, Drive, Picker ni scopes Drive en M4.1.
+
+El código de repositorio no constituye `V-004 PASS`. Después del merge, la verificación controlada de plataforma debe confirmar proveedor Google habilitado, dominio autorizado, login real, persistencia esperada de sesión, sign-out y guest flow en el despliegue efectivo. Hasta entonces Issue #46 permanece abierto y M4.1 no suma sus 4 puntos administrativos.
+
+## 4. Capacidades futuras no integradas
 
 Continúan fuera del estado integrado actual y requieren Work Items propios:
 
-- autenticación Google y sesiones persistentes;
 - proyectos/persistencia en Firestore;
 - Google Drive / Picker y persistencia documental en Drive;
 - configuración completa de proveedores/modelos adicionales;
@@ -134,7 +153,7 @@ Continúan fuera del estado integrado actual y requieren Work Items propios:
 
 La existencia de botones, documentación o capacidades visibles en Google AI Studio no autoriza su adopción. Para integraciones Google aplica `SPIKE_READ_ONLY → Supervisor review → Human decision → Issue → implementación canónica`.
 
-## 4. Resumen de verificación
+## 5. Resumen de verificación
 
 | Verificación | Estado actual | Evidencia / límite |
 |---|---|---|
@@ -143,4 +162,4 @@ La existencia de botones, documentación o capacidades visibles en Google AI Stu
 | V-028 | **PASS** | revisión humana final M3.4 |
 | V-036 | **PENDING** | falta publicación pública + smoke test real del SHA M2 autorizado |
 
-**Estado operativo:** M1 integrada; M3 cerrada; CI y AI_STUDIO_OPERATOR integrados; M2 activa; V-036 pendiente.
+**Estado operativo:** M1 integrada; M2 activa; M3 cerrada; M4 activa con M4.1 implementada en repositorio y V-004 pendiente; CI y AI_STUDIO_OPERATOR integrados; V-036 pendiente.

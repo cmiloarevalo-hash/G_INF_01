@@ -1,4 +1,5 @@
 import type { FC } from 'react';
+import { AuthSessionControl } from './AuthSessionControl.js';
 
 interface HeaderProps {
   currentSectionTitle: string;
@@ -29,9 +30,12 @@ export const Header: FC<HeaderProps> = ({
         <h1 className="header-title">{currentSectionTitle}</h1>
       </div>
 
-      <div className="header-badge">
-        <span className="status-dot" style={{ backgroundColor: isHealthOk ? '#10b981' : '#f59e0b' }} />
-        <span>{isHealthOk ? 'En línea' : 'Conectando...'}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.75rem', minWidth: 0 }}>
+        <AuthSessionControl />
+        <div className="header-badge">
+          <span className="status-dot" style={{ backgroundColor: isHealthOk ? '#10b981' : '#f59e0b' }} />
+          <span>{isHealthOk ? 'En línea' : 'Conectando...'}</span>
+        </div>
       </div>
     </header>
   );
