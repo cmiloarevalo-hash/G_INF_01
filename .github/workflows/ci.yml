@@ -18,7 +18,7 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -42,6 +42,12 @@ jobs:
           node-version: 24
           package-manager-cache: false
 
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
       - name: Resolve verification SHAs
         shell: bash
         run: |
@@ -63,33 +69,6 @@ jobs:
           echo "Target: ${TARGET_REF} -> ${target_sha}"
           echo "Base: ${BASE_REF} -> ${base_sha}"
 
-      - name: Generate Issue #70 lockfile
-        run: npm install --package-lock-only --ignore-scripts
-
-      - name: Upload Issue #70 lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: issue-70-package-lock
-          path: package-lock.json
-          if-no-files-found: error
-
-      - name: Create unattached lockfile blob
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          base64 -w0 package-lock.json > /tmp/package-lock.b64
-          jq -n --rawfile content /tmp/package-lock.b64 '{content: $content, encoding: "base64"}' > /tmp/blob.json
-          response="$(curl --silent --show-error --fail \
-            --request POST \
-            --header "Authorization: Bearer ${GH_TOKEN}" \
-            --header "Accept: application/vnd.github+json" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            --data-binary @/tmp/blob.json \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/blobs")"
-          echo "LOCK_BLOB_SHA=$(jq -r '.sha' <<<"$response")"
-
       - name: Install dependencies
         run: npm ci
 
@@ -98,6 +77,9 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Test Firestore Security Rules
+        run: npm run test:firestore-rules
 
       - name: Check diff whitespace
         shell: bash
