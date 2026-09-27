@@ -2,6 +2,7 @@
 
 Prompt: `05_DOCUMENTS_UI.md`
 Status: PASS
+Commit: `3dbe979b24f3cf0344b2cfffd764c7ff25c85f17`
 
 Implemented:
 - authenticated project Documents surface embedded in reopened project flow;
@@ -13,6 +14,4 @@ Implemented:
 - default runtime explicitly reports Google Drive unavailable rather than fabricating integration;
 - no raw UID, direct Firestore access or browser credential persistence in UI code.
 
-Verification is bound to the phase commit through draft PR CI after push.
-
-Phase commit SHA is finalized by Git after this file is part of the commit; the exact SHA is carried forward in the next queue update and final audit.
+Verification: PASS in draft PR CI run #81.

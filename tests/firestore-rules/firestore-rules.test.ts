@@ -142,3 +142,84 @@ test('unrelated Firestore paths remain denied', async () => {
     }),
   );
 });
+
+
+function analysisDocument(
+  db: ReturnType<RulesTestEnvironment['authenticatedContext']>['firestore'],
+  userId: string,
+  analysisId: string,
+) {
+  return doc(db, 'users', userId, 'projects', PROJECT_A, 'analyses', analysisId);
+}
+
+function reportDocument(
+  db: ReturnType<RulesTestEnvironment['authenticatedContext']>['firestore'],
+  userId: string,
+  reportId: string,
+) {
+  return doc(db, 'users', userId, 'projects', PROJECT_A, 'reports', reportId);
+}
+
+test('own analysis metadata read/write is allowed', async () => {
+  const db = testEnv.authenticatedContext(USER_A).firestore();
+  const ref = analysisDocument(db, USER_A, 'analysis-a');
+
+  await assertSucceeds(setDoc(ref, {
+    reportType: 'TITLE_STUDY',
+    createdAt: 'seed',
+    updatedAt: 'seed',
+    driveJsonFileId: 'drive-json-a',
+  }));
+  await assertSucceeds(getDoc(ref));
+});
+
+test('cross-user analysis metadata read/write is denied', async () => {
+  const ownerDb = testEnv.authenticatedContext(USER_A).firestore();
+  await assertSucceeds(setDoc(analysisDocument(ownerDb, USER_A, 'analysis-a'), {
+    reportType: 'TITLE_STUDY',
+  }));
+
+  const otherDb = testEnv.authenticatedContext(USER_B).firestore();
+  await assertFails(getDoc(analysisDocument(otherDb, USER_A, 'analysis-a')));
+  await assertFails(setDoc(analysisDocument(otherDb, USER_A, 'analysis-b'), {
+    reportType: 'TITLE_STUDY',
+  }));
+});
+
+test('own report metadata read/write is allowed', async () => {
+  const db = testEnv.authenticatedContext(USER_A).firestore();
+  const ref = reportDocument(db, USER_A, 'report-a');
+
+  await assertSucceeds(setDoc(ref, {
+    analysisId: 'analysis-a',
+    reportType: 'TITLE_STUDY',
+    createdAt: 'seed',
+    updatedAt: 'seed',
+    driveDocxFileId: 'drive-docx-a',
+  }));
+  await assertSucceeds(getDoc(ref));
+});
+
+test('cross-user report metadata read/write is denied', async () => {
+  const ownerDb = testEnv.authenticatedContext(USER_A).firestore();
+  await assertSucceeds(setDoc(reportDocument(ownerDb, USER_A, 'report-a'), {
+    analysisId: 'analysis-a',
+    reportType: 'TITLE_STUDY',
+  }));
+
+  const otherDb = testEnv.authenticatedContext(USER_B).firestore();
+  await assertFails(getDoc(reportDocument(otherDb, USER_A, 'report-a')));
+  await assertFails(setDoc(reportDocument(otherDb, USER_A, 'report-b'), {
+    analysisId: 'analysis-a',
+    reportType: 'TITLE_STUDY',
+  }));
+});
+
+test('unrelated nested project paths remain denied', async () => {
+  const db = testEnv.authenticatedContext(USER_A).firestore();
+  await assertFails(
+    setDoc(doc(db, 'users', USER_A, 'projects', PROJECT_A, 'future', 'item'), {
+      value: true,
+    }),
+  );
+});
