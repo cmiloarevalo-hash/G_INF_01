@@ -402,22 +402,33 @@ test('guest entry remains rendered when Firebase config is unavailable', () => {
       throw new Error('driver should not be created');
     },
   });
+  const runtimeGlobal = globalThis as typeof globalThis & { React?: typeof React };
+  const previousReact = runtimeGlobal.React;
+  runtimeGlobal.React = React;
 
-  const html = renderToStaticMarkup(
-    React.createElement(
-      AuthSessionProvider,
-      { controller },
+  try {
+    const html = renderToStaticMarkup(
       React.createElement(
-        React.Fragment,
-        null,
-        React.createElement(AuthSessionControl),
-        React.createElement(HomePage, { onOpenGuestDocuments: () => undefined }),
+        AuthSessionProvider,
+        { controller },
+        React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(AuthSessionControl),
+          React.createElement(HomePage, { onOpenGuestDocuments: () => undefined }),
+        ),
       ),
-    ),
-  );
+    );
 
-  assert.match(html, /Modo invitado/);
-  assert.match(html, /Google no configurado/);
-  assert.match(html, /Disponible sin iniciar sesión/);
-  assert.match(html, /Abrir documentos del invitado/);
+    assert.match(html, /Modo invitado/);
+    assert.match(html, /Google no configurado/);
+    assert.match(html, /Disponible sin iniciar sesión/);
+    assert.match(html, /Abrir documentos del invitado/);
+  } finally {
+    if (previousReact === undefined) {
+      delete runtimeGlobal.React;
+    } else {
+      runtimeGlobal.React = previousReact;
+    }
+  }
 });
