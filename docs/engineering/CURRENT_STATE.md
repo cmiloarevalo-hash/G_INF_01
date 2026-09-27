@@ -141,11 +141,17 @@ La implementación de M4.1 incorpora la base de identidad autenticada mediante F
 
 El código de repositorio no constituye `V-004 PASS`. Después del merge, la verificación controlada de plataforma debe confirmar proveedor Google habilitado, dominio autorizado, login real, persistencia esperada de sesión, sign-out y guest flow en el despliegue efectivo. Hasta entonces Issue #46 permanece abierto y M4.1 no suma sus 4 puntos administrativos.
 
+### M4.2a · Base de repositorio Firestore — IMPLEMENTACIÓN DE REPOSITORIO EN CURSO
+
+El primer slice de M4.2 establece la base de persistencia de metadata de proyectos bajo `src/services/firestore/` con rutas `users/{uid}/projects/{projectId}`, reutilizando la misma Firebase App que Authentication. El contrato cubre crear, listar y obtener metadata mínima de proyecto para un UID autenticado y no introduce UI, documentos, análisis, informes ni Drive.
+
+Esta base de repositorio no demuestra aislamiento desplegado ni ciclo persistente real entre sesiones. Firestore todavía requiere Work Items separados para Security Rules, provisión/configuración y verificación real. **V-006 y V-007 permanecen PENDING; M4.2 no está completa.**
+
 ## 4. Capacidades futuras no integradas
 
 Continúan fuera del estado integrado actual y requieren Work Items propios:
 
-- proyectos/persistencia en Firestore;
+- completar proyectos/persistencia en Firestore con UI, Security Rules y verificación desplegada;
 - Google Drive / Picker y persistencia documental en Drive;
 - configuración completa de proveedores/modelos adicionales;
 - demás capacidades de M4;
