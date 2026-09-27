@@ -7,6 +7,7 @@ import {
   projectUiAvailability,
   reopenProjectForUi,
 } from './projectFlow.js';
+import { ProjectDocumentsPanel } from './ProjectDocumentsPanel.js';
 import { ProjectMetadataCard } from './ProjectMetadataCard.js';
 
 type ListState =
@@ -161,6 +162,7 @@ export function ProjectsPage() {
         <div className="project-result" aria-live="polite">
           <strong>Proyecto reabierto.</strong>
           <ProjectMetadataCard project={selected.project} />
+          <ProjectDocumentsPanel session={session} project={selected.project} />
         </div>
       )}
     </section>

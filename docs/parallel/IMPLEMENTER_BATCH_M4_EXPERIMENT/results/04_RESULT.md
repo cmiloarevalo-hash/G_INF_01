@@ -2,6 +2,7 @@
 
 Prompt: `04_DRIVE_REFS_FIRESTORE.md`
 Status: PASS
+Commit: `0c5c623453a9fd982b1c0f147db0b841a41aa59f`
 
 Implemented:
 - optional complete Drive folder-reference object on project metadata;
@@ -13,6 +14,4 @@ Implemented:
 - Firestore path remains `users/{uid}/projects/{projectId}`;
 - existing project ownership Security Rule is unchanged.
 
-Verification includes `npm run test:firestore-rules` through draft PR CI after push.
-
-Phase commit SHA is finalized by Git after this file is part of the commit; the exact SHA is carried forward in the next queue update and final audit.
+Verification: PASS in draft PR CI run #80, including Firestore Emulator suite.
