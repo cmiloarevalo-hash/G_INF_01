@@ -27,15 +27,15 @@ export function normalizeProjectName(name: string): string {
 
 export function createProjectRepository(driver: ProjectDriver): ProjectRepository {
   return {
-    create(uid, name) {
+    async create(uid, name) {
       return driver.create(requireUid(uid), normalizeProjectName(name));
     },
 
-    list(uid) {
+    async list(uid) {
       return driver.list(requireUid(uid));
     },
 
-    get(uid, projectId) {
+    async get(uid, projectId) {
       return driver.get(requireUid(uid), requireProjectId(projectId));
     },
   };
