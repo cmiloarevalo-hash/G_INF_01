@@ -136,17 +136,28 @@ test('single-flight gate blocks duplicate create while pending', async () => {
 test('authenticated list renders persisted project metadata from fake service', async () => {
   const fake = fakeRuntime();
   const projects = await listProjectsForUi(authenticated(), fake.runtime);
+  const runtimeGlobal = globalThis as typeof globalThis & { React?: typeof React };
+  const previousReact = runtimeGlobal.React;
+  runtimeGlobal.React = React;
 
-  const html = renderToStaticMarkup(
-    React.createElement(ProjectListContent, {
-      state: { status: 'loaded', projects },
-      onSelect: () => undefined,
-    }),
-  );
+  try {
+    const html = renderToStaticMarkup(
+      React.createElement(ProjectListContent, {
+        state: { status: 'loaded', projects },
+        onSelect: () => undefined,
+      }),
+    );
 
-  assert.match(html, /Proyecto Uno/);
-  assert.match(html, /p-1/);
-  assert.match(html, /Reabrir proyecto/);
+    assert.match(html, /Proyecto Uno/);
+    assert.match(html, /p-1/);
+    assert.match(html, /Reabrir proyecto/);
+  } finally {
+    if (previousReact === undefined) {
+      delete runtimeGlobal.React;
+    } else {
+      runtimeGlobal.React = previousReact;
+    }
+  }
 });
 
 test('empty list is distinct from loaded metadata', () => {
