@@ -1,8 +1,30 @@
-# Workflow simplificado — Chat Web GPT + GitHub + Agente implementador + AI_STUDIO_OPERATOR
+# Workflow canónico — Supervisor + GitHub + Agente implementador + AI_STUDIO_OPERATOR
 
-> **Estado canónico cuando este cambio exista en `main`:** este archivo queda retenido sólo como referencia histórica. La fuente canónica activa pasa a ser [`WORKFLOW_CANONICO_SUPERVISOR_GITHUB_IMPLEMENTADOR_AI_STUDIO.md`](WORKFLOW_CANONICO_SUPERVISOR_GITHUB_IMPLEMENTADOR_AI_STUDIO.md).
+> **Estado:** candidato de reemplazo para Issue #47. No sustituye la fuente vigente hasta revisión independiente y merge autorizado.
 >
-> En una branch o PR esta nota no sustituye la autoridad de la versión vigente en `main`; el reemplazo sólo adquiere efecto tras revisión y merge válidos.
+> **Baseline:** `WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md` en `main@ff1a7d46c3f9992adbcc41b933cc13c3501fc617` (blob `d6fd666d5be7659784f6f20021ba4a3515d45f14`).
+>
+> **Base de consolidación validada:** historial aceptado por el Supervisor en Issue #47, comentario `issuecomment-5851766362`.
+>
+> **Regla de consolidación:** preservar la función y significado del baseline; incorporar únicamente mejoras ya canónicas o reglas operativas verificadas y persistidas. No importar recomendaciones no adoptadas.
+
+## Estado de procedencia
+
+Ya están integradas en el baseline y se preservan sin reimplementarlas:
+
+- Issue #4 / PR #5 — autoridad de merge del Supervisor;
+- Issue #26 / PR #27 — GitHub Actions como CI persistente y CI como evidencia;
+- Issue #32 / PR #33 — `AI_STUDIO_OPERATOR` subordinado y no-write;
+- Issue #36 / PR #38 — contrato residente, bootstrap/recovery, `CANONICAL_GIT_CHECKOUT`, `MANAGED_PREVIEW_ROOT`, materialización one-way, cwd/process safety, SHA Gate, PUBLISH y reporting.
+
+Reglas operativas verificadas, pendientes de integración canónica antes de este candidato:
+
+- Issue #35 — `RESEARCH_GATE + STRATEGIC_RATIONALE`;
+- Issue #39 — `TECHNICAL PERMISSION != WORKFLOW AUTHORITY` y `AI_STUDIO_ALLOWED_REPOSITORY_WRITES = NONE`.
+
+Issue #35 y Issue #39 permanecen OPEN durante esta propuesta. Su incorporación aquí no debe describirse como integración previa; sólo adquirirían efecto canónico general si este candidato completa el lifecycle válido y se integra.
+
+El registro `recomendaciones/MEJORAS_WORKFLOW.md` es provenance de recomendaciones. Según la revisión histórica validada en #47, sólo la recomendación de CI fue adoptada mediante #26; las restantes recomendaciones no se importan por el solo hecho de estar documentadas.
 
 ## 1. Objetivo
 
@@ -171,7 +193,7 @@ Regla:
 
 # 6. Documentación del proyecto
 
-El workflow simplificado utiliza la documentación normal del producto:
+El workflow canónico utiliza la documentación normal del producto:
 
 ```text
 README.md
@@ -823,7 +845,7 @@ Chat Web GPT: revisa PR #145.
 
 # 28. Reglas esenciales
 
-El workflow simplificado puede resumirse en diez reglas:
+El workflow canónico puede resumirse en diez reglas:
 
 1. GitHub es la memoria compartida.
 2. El Issue define la tarea.
@@ -1116,6 +1138,209 @@ AI Studio puede incluir una sección opcional `IMPLEMENTER_SUGGESTION` con una p
 
 ---
 
+
+---
+
+# 30. RESEARCH_GATE + STRATEGIC_RATIONALE
+
+**Provenance:** Issue #35. Antes de la integración de este candidato, Issue #35 permanece OPEN y esta regla existe como decisión humana operativamente vigente. Este documento propone consolidarla canónicamente sin afirmar que hubiese estado integrada previamente.
+
+## 30.1 Cuándo se activa RESEARCH_GATE
+
+Antes de proponer o implementar una decisión técnica o estratégica material cuya validez dependa de información externa susceptible de cambio, el agente debe activar `RESEARCH_GATE`.
+
+Incluye, como mínimo, decisiones dependientes de:
+
+- versiones de SDK, API o runtime;
+- librerías, frameworks o herramientas;
+- estrategia de despliegue;
+- integración con proveedores o plataformas;
+- autenticación o seguridad dependiente de servicios externos;
+- formatos o protocolos externos;
+- límites, cuotas, planes o condiciones vigentes;
+- alternativas de arquitectura o ingeniería cuya conveniencia dependa del estado actual del ecosistema.
+
+No se activa automáticamente para decisiones locales, mecánicas o completamente determinadas por la documentación y el código vigentes, por ejemplo nombres, formato, refactors triviales autorizados o implementación directa sin dependencia de información externa mutable.
+
+## 30.2 Investigación y evidencia
+
+Cuando el gate se activa, el agente debe:
+
+1. identificar explícitamente el punto de decisión;
+2. explicar qué dato externo actual necesita confirmar;
+3. investigar fuentes vigentes, priorizando fuentes primarias/oficiales;
+4. separar hechos del proyecto, hechos externos verificados, inferencias e incertidumbres;
+5. registrar la propuesta y evidencia en el Issue del Work Item;
+6. devolver control al Supervisor antes de aplicar una estrategia no determinada ya por el Work Item.
+
+Fuentes prioritarias:
+
+- documentación oficial del proveedor;
+- especificaciones;
+- release notes;
+- repositorios oficiales;
+- documentación técnica oficial.
+
+Blogs, foros y comunidad pueden aportar contexto o descubrimiento, pero no deben ser la única base cuando existe una fuente primaria relevante.
+
+La investigación produce evidencia y propuesta. **No equivale a decisión aprobada.**
+
+## 30.3 Verificación del Supervisor
+
+El Supervisor contrasta de forma independiente las afirmaciones estratégicas relevantes antes de autorizar su aplicación y las evalúa contra:
+
+- Objective;
+- Acceptance Criteria;
+- Authorized Scope;
+- arquitectura;
+- especificaciones;
+- workflow;
+- estado actual del repositorio y SHA.
+
+Si la conclusión exige cambiar intención de producto, ampliar scope, adoptar una integración no autorizada, introducir credenciales o costes, cambiar el workflow fuera del Work Item o tomar una decisión reservada al Humano, el Supervisor usa `ESCALATE` en vez de aplicarla unilateralmente.
+
+## 30.4 STRATEGIC_RATIONALE
+
+La justificación se persiste en el Issue del Work Item para decisiones estratégicas/materiales, no para actividad mecánica como “copié”, “leí” o “ejecuté”.
+
+Plantilla mínima:
+
+```text
+STRATEGIC_RATIONALE
+
+WORK ITEM: #<issue>
+
+DECISION POINT:
+<decisión técnica/estratégica material>
+
+WHY CURRENT RESEARCH IS REQUIRED:
+<qué información externa susceptible de cambio debe verificarse>
+
+PROJECT CONSTRAINTS:
+<workflow, arquitectura, specs, scope, SHA>
+
+CURRENT EXTERNAL EVIDENCE:
+- <fuente primaria, fecha/versión, hecho relevante>
+- <fuente adicional si corresponde>
+
+OPTIONS CONSIDERED:
+A. ...
+B. ...
+C. ...
+
+PROPOSED APPROACH:
+...
+
+RATIONALE:
+<por qué encaja con este proyecto>
+
+RISKS / UNCERTAINTIES:
+...
+
+SUPERVISOR VERIFICATION:
+PENDING | VERIFIED
+
+RATIONALE STATUS:
+DRAFT | VERIFIED | SUPERSEDED
+```
+
+`Rationale Status` no crea estados formales nuevos. Los estados formales del Supervisor permanecen exactamente:
+
+```text
+SEMANTIC_ACCEPTED
+REWORK
+HOLD
+ESCALATE
+```
+
+Si una decisión estratégica cambia, se conserva el razonamiento histórico y la decisión anterior se marca `SUPERSEDED` cuando corresponda; no se borra la evidencia previa.
+
+## 30.5 Aplicación por rol y límites de autoridad
+
+**Agente implementador**
+
+- no inventa versiones, APIs o prácticas actuales;
+- investiga antes de escoger una estrategia técnica material no determinada;
+- registra propuesta y evidencia;
+- no amplía scope;
+- implementa sólo después de la autorización del Supervisor cuando la estrategia no esté ya determinada.
+
+**AI_STUDIO_OPERATOR**
+
+Cuando una recomendación dependa del estado actual de Google o de otra información externa mutable, separa observación directa, documentación actual, inferencia y desconocido; devuelve evidencia al Supervisor y no convierte su recomendación en decisión canónica.
+
+**Supervisor**
+
+- decide si el Research Gate está satisfecho;
+- contrasta evidencia de forma independiente;
+- decide únicamente dentro de la autoridad ya existente;
+- usa `ESCALATE` cuando corresponda.
+
+Este protocolo no concede nueva autoridad de escritura, merge, scope o decisión al Agente implementador ni a AI Studio.
+
+
+---
+
+# 31. TECHNICAL PERMISSION != WORKFLOW AUTHORITY
+
+**Provenance:** Issue #39. Antes de la integración de este candidato, Issue #39 permanece OPEN y esta regla existe como decisión humana operativamente vigente. PR #40 fue cerrado sin merge y no constituye integración canónica. Este documento propone consolidar la regla sin reutilizar PR #40 como evidencia válida de implementación.
+
+Regla:
+
+```text
+TECHNICAL PERMISSION != WORKFLOW AUTHORITY
+AI_STUDIO_ALLOWED_REPOSITORY_WRITES = NONE
+ALLOWED WRITE PATHS = NONE
+```
+
+Aunque una OAuth App, GitHub App, integración o herramienta disponga técnicamente de scopes de escritura, esos permisos técnicos **no conceden autoridad operacional** cuando el workflow no la autoriza.
+
+AI Studio puede consumir/importar/pull desde GitHub y operar únicamente conforme al protocolo `AI_STUDIO_OPERATOR`. No puede usar capacidad técnica disponible para:
+
+- Push Changes;
+- Stage and commit;
+- commit directo;
+- crear o modificar branch;
+- crear o modificar PR;
+- editar workflows;
+- escribir directamente en `main`;
+- modificar archivos del repositorio;
+- sincronizar cambios desde AI Studio hacia GitHub;
+- realizar cualquier otro write de estado del repositorio.
+
+La instalación de la GitHub App debe permanecer restringida a `cmiloarevalo-hash/G_INF_01` salvo decisión humana explícita para otro repositorio.
+
+Una allowlist descrita únicamente en prompt o documentación **no constituye enforcement técnico suficiente** cuando la integración conserva permisos más amplios. No se debe afirmar que la prohibición está técnicamente garantizada sólo porque el prompt o la documentación la declaren.
+
+## 31.1 Excepción futura de escritura
+
+No existe excepción activa.
+
+El namespace sugerido en Issue #39:
+
+```text
+docs/ai-studio-evidence/**
+```
+
+permanece:
+
+```text
+NOT AUTHORIZED
+NOT ACTIVE
+```
+
+Cualquier excepción futura requiere, como mínimo:
+
+1. decisión humana explícita;
+2. Work Item separado;
+3. alcance y allowlist explícitos;
+4. prohibición de escritura directa a `main`;
+5. control GitHub-side verificable antes de afirmar enforcement;
+6. revisión de autoridad, seguridad y rollback;
+7. actualización canónica del workflow antes de usarla como regla general.
+
+Tener scopes técnicos amplios nunca activa implícitamente una excepción. GitHub continúa siendo la fuente persistente de verdad y el Supervisor conserva la decisión dentro de la autoridad vigente.
+
 # Resultado
 
 Este workflow elimina completamente:
@@ -1154,3 +1379,118 @@ SEMANTIC_ACCEPTED / REWORK / HOLD / ESCALATE
 ```
 
 Es menos robusto mecánicamente que el workflow completo porque **scope, selección de contexto y verificación ya no están reforzados por software determinista**. Pero para probar colaboración **Chat Web GPT + Agente implementador + AI_STUDIO_OPERATOR + GitHub**, mantiene las partes más importantes sin introducir infraestructura adicional.
+
+
+---
+
+# Apéndice A — Provenance de mejoras consolidadas
+
+| Fuente | Estado antes de este candidato | Evidencia de integración / estado | Tratamiento en este documento |
+|---|---|---|---|
+| Issue #4 / PR #5 | CANONICAL | PR #5 merged; merge `7ceb98e7cff1621f21b3d9b5929acc7a264af739` | PRESERVED en §24 |
+| Issue #26 / PR #27 | CANONICAL | PR #27 merged; merge `3fa731a13fd2a77531392fd5b22fd240c9091ba6` | PRESERVED en §22 |
+| Issue #32 / PR #33 | CANONICAL | PR #33 merged; merge `d2325a23232e72599ffecc96a354c41490b5f527` | PRESERVED en §29 |
+| Issue #36 / PR #38 | CANONICAL | PR #38 merged; merge `1a4167c1e29b46efaf09662b8fb11919bfac44cf` | PRESERVED en §29 + `AI_STUDIO_OPERATOR.md` |
+| Issue #35 | OPERATIONAL_PENDING | Human decision persisted; Issue OPEN; no merged canonical integration found | NEW §30, proposed canonical consolidation |
+| Issue #39 | OPERATIONAL_PENDING | Human decision persisted; Issue OPEN; PR #40 closed/not merged | NEW §31, proposed canonical consolidation |
+| PR #40 | SUPERSEDED as implementation evidence | Persisted #39 handoff invalidates reuse after role-separation violation | Excluded as canonical integration evidence |
+| PR #49 | PROPOSED | Open/unmerged | Working vehicle for Issue #47 |
+
+
+---
+
+# Apéndice B — Handover canónico
+
+Hasta que este cambio sea revisado y merged, la fuente normativa vigente continúa siendo:
+
+`WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md` en `main`.
+
+Cuando el reemplazo se integre válidamente en `main`:
+
+- `WORKFLOW_CANONICO_SUPERVISOR_GITHUB_IMPLEMENTADOR_AI_STUDIO.md` pasa a ser la fuente canónica activa del workflow;
+- `WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md` queda retenido únicamente para trazabilidad histórica y contiene una referencia explícita al nuevo archivo;
+- no deben tratarse ambos archivos como workflows canónicos simultáneamente;
+- el merge de #47 no cierra automáticamente Issues #35 o #39; su cierre requiere evidencia y decisión conforme a su estado real.
+
+La branch o PR de este candidato no tiene autoridad canónica por sí misma.
+
+
+---
+
+# Apéndice C — Matriz completa de trazabilidad del baseline
+
+Criterios:
+
+- `PRESERVED`: contenido operativo del baseline se conserva semánticamente.
+- `MOVED`: contenido trasladado sin pérdida semántica.
+- `EXPANDED`: contenido existente conservado y ampliado por una regla ya autorizada.
+- `NEW`: contenido sin sección equivalente en el baseline, sustentado por evidencia autorizada.
+- `REMOVED`: eliminación propuesta; requiere justificación y autorización expresa.
+
+Para las 49 secciones/subsecciones estructurales del baseline, `PRESERVED` es el resultado. No se propone `MOVED`, `EXPANDED` ni `REMOVED` sobre contenido del baseline; las reglas operativas validadas se incorporan como secciones nuevas para evitar reescritura silenciosa del material vigente.
+
+| Sección/subsección del baseline | Clasificación | Ubicación nueva | Nota |
+|---|---|---|---|
+| 1. Objetivo | PRESERVED | 1. Objetivo | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 2. Principio fundamental | PRESERVED | 2. Principio fundamental | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 3. Responsabilidades | PRESERVED | 3. Responsabilidades | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 3.1 Chat Web GPT | PRESERVED | 3.1 Chat Web GPT | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 4. Agente implementador | PRESERVED | 4. Agente implementador | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 5. GitHub | PRESERVED | 5. GitHub | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 6. Documentación del proyecto | PRESERVED | 6. Documentación del proyecto | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 7. Unidad de trabajo: GitHub Issue | PRESERVED | 7. Unidad de trabajo: GitHub Issue | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 8. Dos tipos de scope | PRESERVED | 8. Dos tipos de scope | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| Semantic Scope | PRESERVED | Semantic Scope | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| Path Scope | PRESERVED | Path Scope | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 9. Flujo completo | PRESERVED | 9. Flujo completo | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| Fase A — intención | PRESERVED | Fase A — intención | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| Fase B — creación del Work Item | PRESERVED | Fase B — creación del Work Item | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 10. Inicio del Agente implementador | PRESERVED | 10. Inicio del Agente implementador | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 11. Bootstrap del Agente implementador | PRESERVED | 11. Bootstrap del Agente implementador | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 12. Política de lectura | PRESERVED | 12. Política de lectura | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 13. Implementación | PRESERVED | 13. Implementación | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 14. Problemas descubiertos durante el trabajo | PRESERVED | 14. Problemas descubiertos durante el trabajo | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 15. Verificación local | PRESERVED | 15. Verificación local | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 16. Publicación | PRESERVED | 16. Publicación | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 17. Handoff del Agente implementador | PRESERVED | 17. Handoff del Agente implementador | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 18. Revisión de Chat Web GPT | PRESERVED | 18. Revisión de Chat Web GPT | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 19. Significado de las decisiones | PRESERVED | 19. Significado de las decisiones | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| SEMANTIC_ACCEPTED | PRESERVED | SEMANTIC_ACCEPTED | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| REWORK | PRESERVED | REWORK | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| HOLD | PRESERVED | HOLD | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| ESCALATE | PRESERVED | ESCALATE | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 20. REWORK | PRESERVED | 20. REWORK | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 21. Decisión vigente | PRESERVED | 21. Decisión vigente | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 22. CI | PRESERVED | 22. CI | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 23. Integración | PRESERVED | 23. Integración | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 24. Merge | PRESERVED | 24. Merge | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 25. Cambio de sesión del Agente implementador | PRESERVED | 25. Cambio de sesión del Agente implementador | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 26. Cambio de sesión de Chat Web GPT | PRESERVED | 26. Cambio de sesión de Chat Web GPT | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 27. Rol del humano | PRESERVED | 27. Rol del humano | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 28. Reglas esenciales | PRESERVED | 28. Reglas esenciales | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 29. AI_STUDIO_OPERATOR — protocolo subordinado de operación externa | PRESERVED | 29. AI_STUDIO_OPERATOR — protocolo subordinado de operación externa | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 29.1 Permission Matrix | PRESERVED | 29.1 Permission Matrix | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 29.2 Inicio: AI_STUDIO_REQUEST | PRESERVED | 29.2 Inicio: AI_STUDIO_REQUEST | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 29.3 Modos y disciplina de prompts | PRESERVED | 29.3 Modos y disciplina de prompts | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 29.4 SHA Gate | PRESERVED | 29.4 SHA Gate | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 29.5 Ventanas de intervención | PRESERVED | 29.5 Ventanas de intervención | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 29.6 Clasificación y diagnóstico | PRESERVED | 29.6 Clasificación y diagnóstico | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 29.7 Protocolo PUBLISH | PRESERVED | 29.7 Protocolo PUBLISH | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 29.8 SPIKE_READ_ONLY para integraciones Google | PRESERVED | 29.8 SPIKE_READ_ONLY para integraciones Google | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 29.9 Regla absoluta de no escritura | PRESERVED | 29.9 Regla absoluta de no escritura | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| 29.10 Fin: AI_STUDIO_REPORT y evidencia | PRESERVED | 29.10 Fin: AI_STUDIO_REPORT y evidencia | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| Resultado | PRESERVED | Resultado | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
+| Issue #35 — RESEARCH_GATE + STRATEGIC_RATIONALE | NEW | §30 | Regla operativa humana validada; OPEN antes de este candidato; propuesta de consolidación canónica vía #47. |
+| Issue #39 — TECHNICAL PERMISSION != WORKFLOW AUTHORITY | NEW | §31 | Regla operativa humana validada; OPEN antes de este candidato; PR #40 no se usa como integración canónica. |
+| Provenance histórica validada | NEW | Apéndice A | Metadato de trazabilidad; no crea autoridad nueva. |
+| Handover old → new | NEW | Apéndice B | Mecánica de reemplazo autorizada por #47; evita dos fuentes aparentemente canónicas después del merge. |
+
+Resumen:
+
+- baseline estructural: **49/49 representado**;
+- `PRESERVED`: 49;
+- `MOVED`: 0;
+- `EXPANDED`: 0;
+- `REMOVED`: 0;
+- reglas operativas nuevas respecto del baseline: 2, ambas respaldadas por decisiones humanas persistidas (#35 y #39);
+- recomendaciones no adoptadas importadas: 0.
