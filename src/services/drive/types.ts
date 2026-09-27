@@ -89,3 +89,50 @@ export interface ConfirmedDriveFile {
 export interface DriveLocalFileUploadService {
   upload(input: DriveLocalFileUploadInput): Promise<ConfirmedDriveFile>;
 }
+
+export interface DrivePickerConfig {
+  developerKey: string;
+  appId: string;
+}
+
+export interface DrivePickerDocument {
+  id: string;
+  name?: string;
+  mimeType?: string;
+  url?: string;
+}
+
+export type DrivePickerOutcome =
+  | { status: 'picked'; documents: DrivePickerDocument[] }
+  | { status: 'cancelled' };
+
+export interface DrivePickerRuntimeCallbackData {
+  action: string;
+  documents?: unknown;
+}
+
+export type DrivePickerRuntimeCallback = (
+  data: DrivePickerRuntimeCallbackData,
+) => void;
+
+export interface DrivePickerBuiltInstance {
+  setVisible(visible: boolean): void;
+}
+
+export interface DrivePickerBuilder {
+  setDeveloperKey(value: string): DrivePickerBuilder;
+  setAppId(value: string): DrivePickerBuilder;
+  setOAuthToken(value: string): DrivePickerBuilder;
+  addDriveDocumentsView(): DrivePickerBuilder;
+  enableMultiselect(): DrivePickerBuilder;
+  setCallback(callback: DrivePickerRuntimeCallback): DrivePickerBuilder;
+  build(): DrivePickerBuiltInstance;
+}
+
+export interface DrivePickerRuntime {
+  createBuilder(): DrivePickerBuilder;
+}
+
+export interface DrivePickerService {
+  open(): Promise<DrivePickerOutcome>;
+}
