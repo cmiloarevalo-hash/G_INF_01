@@ -15,40 +15,22 @@ export interface GitHubRoadmapIssue {
   pull_request?: unknown;
 }
 
-interface ChildDefinition {
-  id: string;
-  label: string;
-}
-
 interface MetaDefinition {
   id: string;
   label: string;
-  children?: ChildDefinition[];
   legacyIssueNumber?: number;
+}
+
+interface PlannedChild {
+  id: string;
+  label?: string;
+  checked?: boolean;
 }
 
 const META_DEFINITIONS: MetaDefinition[] = [
   { id: 'M1', label: 'Análisis invitado de una llamada', legacyIssueNumber: 12 },
-  {
-    id: 'M2',
-    label: 'Publicación comprobada del piloto',
-    children: [
-      { id: 'M2.1', label: 'Preparar la versión' },
-      { id: 'M2.2', label: 'Configurar acceso seguro' },
-      { id: 'M2.3', label: 'Publicar y probar' },
-      { id: 'M2.4', label: 'Registrar y decidir' },
-    ],
-  },
-  {
-    id: 'M3',
-    label: 'Resultado e informe para invitado',
-    children: [
-      { id: 'M3.1', label: 'Contrato de presentación' },
-      { id: 'M3.2', label: 'Vista web enriquecida TITLE_STUDY' },
-      { id: 'M3.3', label: 'Renderer y descarga DOCX' },
-      { id: 'M3.4', label: 'Verificación integrada y revisión humana' },
-    ],
-  },
+  { id: 'M2', label: 'Publicación comprobada del piloto' },
+  { id: 'M3', label: 'Resultado e informe para invitado' },
   { id: 'M4', label: 'Trabajo persistente y capacidades completas' },
   { id: 'M5', label: 'Integración del producto completo' },
 ];
@@ -60,6 +42,78 @@ function escapeRegExp(value: string) {
 function findIssueByPrefix(issues: GitHubRoadmapIssue[], id: string) {
   const prefix = new RegExp('^' + escapeRegExp(id) + '\\s*:', 'i');
   return issues.find((issue) => prefix.test(issue.title));
+}
+
+function findChildIssues(issues: GitHubRoadmapIssue[], metaId: string) {
+  const prefix = new RegExp('^' + escapeRegExp(metaId) + '\\.(\\d+)\\s*:', 'i');
+  return issues
+    .map((issue) => {
+      const match = issue.title.match(prefix);
+      return match ? { issue, order: Number(match[1]) } : null;
+    })
+    .filter((entry): entry is { issue: GitHubRoadmapIssue; order: number } => entry !== null)
+    .sort((a, b) => a.order - b.order || a.issue.number - b.issue.number)
+    .map((entry) => entry.issue);
+}
+
+function normalizeMarkdownLabel(value: string) {
+  return value
+    .replace(/[*_~`]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/[.。]\s*$/, '')
+    .trim();
+}
+
+function parseChildIdentity(value: string, metaId: string): { id: string; label?: string } | null {
+  const normalized = normalizeMarkdownLabel(value);
+  const pattern = new RegExp(
+    '^(' + escapeRegExp(metaId) + '\\.(\\d+))\\s*(?:(?:·|:|—|-)\\s*)?(.*)$',
+    'i',
+  );
+  const match = normalized.match(pattern);
+  if (!match?.[1]) return null;
+
+  const label = match[3]?.trim();
+  return {
+    id: match[1].toUpperCase(),
+    ...(label ? { label } : {}),
+  };
+}
+
+function checklistChildren(body: string | null, metaId: string): PlannedChild[] {
+  if (!body) return [];
+
+  const children: PlannedChild[] = [];
+  const seen = new Set<string>();
+
+  for (const line of body.split('\n')) {
+    const match = line.match(/^\s*-\s*\[([ xX])\]\s*(.+)$/);
+    if (!match?.[2]) continue;
+
+    const identity = parseChildIdentity(match[2], metaId);
+    if (!identity || seen.has(identity.id)) continue;
+
+    seen.add(identity.id);
+    children.push({
+      ...identity,
+      checked: match[1]?.toLowerCase() === 'x',
+    });
+  }
+
+  return children.sort((a, b) => {
+    const aNumber = Number(a.id.split('.')[1]);
+    const bNumber = Number(b.id.split('.')[1]);
+    return aNumber - bNumber;
+  });
+}
+
+function titleChild(issue: GitHubRoadmapIssue, metaId: string): PlannedChild | null {
+  const colon = issue.title.indexOf(':');
+  if (colon < 0) return null;
+  return parseChildIdentity(
+    issue.title.slice(0, colon) + ' · ' + issue.title.slice(colon + 1),
+    metaId,
+  );
 }
 
 function sourceForIssue(
@@ -74,42 +128,46 @@ function statusFromIssue(issue: GitHubRoadmapIssue | undefined): RoadmapStatus {
   return issue.state === 'closed' ? 'OK' : 'EN PROCESO';
 }
 
-function checklistStatus(body: string | null, id: string): boolean | null {
-  if (!body) return null;
-  for (const line of body.split('\n')) {
-    const match = line.match(/^\s*-\s*\[([ xX])\]\s*(.+)$/);
-    if (!match || !match[2]?.includes(id)) continue;
-    return match[1]?.toLowerCase() === 'x';
-  }
-  return null;
-}
-
-function resolveChild(
+function resolveChildren(
   issues: GitHubRoadmapIssue[],
   parentIssue: GitHubRoadmapIssue | undefined,
-  definition: ChildDefinition,
-): RoadmapChildSnapshot {
-  const dedicatedIssue = findIssueByPrefix(issues, definition.id);
-  if (dedicatedIssue) {
-    return {
-      id: definition.id,
-      label: definition.label,
-      status: statusFromIssue(dedicatedIssue),
-      source: sourceForIssue(dedicatedIssue),
-    };
+  metaId: string,
+): RoadmapChildSnapshot[] {
+  const dedicatedIssues = findChildIssues(issues, metaId);
+  const dedicatedById = new Map<string, GitHubRoadmapIssue>();
+  for (const issue of dedicatedIssues) {
+    const identity = titleChild(issue, metaId);
+    if (identity) dedicatedById.set(identity.id, issue);
   }
 
-  const checked = checklistStatus(parentIssue?.body ?? null, definition.id);
-  if (checked !== null && parentIssue) {
-    return {
-      id: definition.id,
-      label: definition.label,
-      status: checked ? 'OK' : 'PENDIENTE',
-      source: sourceForIssue(parentIssue, 'checklist'),
-    };
-  }
+  const checklistPlan = checklistChildren(parentIssue?.body ?? null, metaId);
+  const plannedChildren = checklistPlan.length > 0
+    ? checklistPlan
+    : dedicatedIssues.flatMap((issue) => {
+        const identity = titleChild(issue, metaId);
+        return identity ? [identity] : [];
+      });
 
-  return { id: definition.id, label: definition.label, status: 'PENDIENTE' };
+  return plannedChildren.map((planned) => {
+    const dedicatedIssue = dedicatedById.get(planned.id);
+
+    if (dedicatedIssue) {
+      const issueIdentity = titleChild(dedicatedIssue, metaId);
+      return {
+        id: planned.id,
+        label: planned.label ?? issueIdentity?.label,
+        status: statusFromIssue(dedicatedIssue),
+        source: sourceForIssue(dedicatedIssue),
+      };
+    }
+
+    return {
+      id: planned.id,
+      label: planned.label,
+      status: planned.checked ? 'OK' : 'PENDIENTE',
+      ...(parentIssue ? { source: sourceForIssue(parentIssue, 'checklist') } : {}),
+    };
+  });
 }
 
 function resolveMeta(
@@ -119,8 +177,9 @@ function resolveMeta(
   const metaIssue = definition.legacyIssueNumber
     ? issues.find((issue) => issue.number === definition.legacyIssueNumber)
     : findIssueByPrefix(issues, definition.id);
+  const children = resolveChildren(issues, metaIssue, definition.id);
 
-  if (!definition.children?.length) {
+  if (children.length === 0) {
     return {
       id: definition.id,
       label: definition.label,
@@ -133,7 +192,6 @@ function resolveMeta(
     };
   }
 
-  const children = definition.children.map((child) => resolveChild(issues, metaIssue, child));
   const completed = children.filter((child) => child.status === 'OK').length;
   const pointsEarned = Number(((20 / children.length) * completed).toFixed(2));
   const status: RoadmapStatus = completed === children.length
@@ -149,7 +207,9 @@ function resolveMeta(
     pointsEarned,
     pointsMax: 20,
     children,
-    ...(metaIssue ? { source: sourceForIssue(metaIssue) } : {}),
+    ...(metaIssue
+      ? { source: sourceForIssue(metaIssue, definition.legacyIssueNumber ? 'legacy' : 'issue') }
+      : {}),
   };
 }
 
