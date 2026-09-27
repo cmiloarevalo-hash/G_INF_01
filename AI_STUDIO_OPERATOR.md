@@ -1,6 +1,6 @@
 # AI_STUDIO_OPERATOR
 
-Contrato operacional residente para Google AI Studio. Este archivo es **subordinado** al workflow canónico `WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md`: resume reglas de ejecución y nunca amplía autoridad.
+Contrato operacional residente para Google AI Studio. Este archivo es **subordinado** al workflow canónico `WORKFLOW_CANONICO_SUPERVISOR_GITHUB_IMPLEMENTADOR_AI_STUDIO.md`: resume reglas de ejecución y nunca amplía autoridad.
 
 ## 1. Rol y autoridad
 

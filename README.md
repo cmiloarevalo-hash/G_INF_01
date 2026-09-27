@@ -54,4 +54,4 @@ Las pruebas locales usan Secrets simulados: no demuestran inyección efectiva de
 
 ## Proceso de trabajo
 
-- [Workflow simplificado](WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md)
+- [Workflow canónico](WORKFLOW_CANONICO_SUPERVISOR_GITHUB_IMPLEMENTADOR_AI_STUDIO.md)

@@ -1,6 +1,6 @@
 # Recomendaciones para mejorar el workflow — ChatGPT Work + GitHub
 
-**Estado:** seguimiento de recomendaciones. El CI mínimo con GitHub Actions fue adoptado mediante Issue #26; las demás medidas continúan como propuestas y **no se consideran adoptadas** por este cambio. El [workflow vigente](../WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md) mantiene la separación de roles.
+**Estado:** seguimiento de recomendaciones. El CI mínimo con GitHub Actions fue adoptado mediante Issue #26; las demás medidas continúan como propuestas y **no se consideran adoptadas** por este cambio. El [workflow vigente](../WORKFLOW_CANONICO_SUPERVISOR_GITHUB_IMPLEMENTADOR_AI_STUDIO.md) mantiene la separación de roles.
 
 ## Idea rectora
 
