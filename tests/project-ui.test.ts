@@ -9,6 +9,7 @@ import type {
   AuthenticatedProjectService,
 } from '../src/services/firestore/authenticated.js';
 import {
+  loadProjectRuntime,
   resolveProjectRuntime,
   type ProjectRuntimeState,
 } from '../src/services/firestore/runtime.js';
@@ -213,6 +214,22 @@ test('project runtime unavailable is controlled and does not construct a service
       reason: 'Falta configuración Firebase: VITE_FIREBASE_PROJECT_ID',
     },
   );
+});
+
+test('project runtime loader failure becomes controlled unavailable state', async () => {
+  const runtime = await loadProjectRuntime(
+    async () => {
+      throw new Error('runtime config endpoint unavailable');
+    },
+    () => {
+      throw new Error('service must not be constructed');
+    },
+  );
+
+  assert.deepEqual(runtime, {
+    status: 'unavailable',
+    reason: 'No fue posible cargar la configuración Firebase para proyectos.',
+  });
 });
 
 test('project navigation entries are available while unrelated future entries remain future', () => {

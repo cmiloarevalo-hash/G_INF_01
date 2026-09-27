@@ -49,6 +49,20 @@ export function resolveProjectRuntime(
   }
 }
 
+export async function loadProjectRuntime(
+  loadResolution: () => Promise<FirebaseConfigResolution>,
+  serviceFactory: ProjectServiceFactory = createProjectService,
+): Promise<ProjectRuntimeState> {
+  try {
+    return resolveProjectRuntime(await loadResolution(), serviceFactory);
+  } catch {
+    return {
+      status: 'unavailable',
+      reason: 'No fue posible cargar la configuración Firebase para proyectos.',
+    };
+  }
+}
+
 const ProjectRuntimeContext = React.createContext<ProjectRuntimeState | null>(null);
 
 export interface ProjectRuntimeProviderProps {
@@ -80,9 +94,9 @@ export function ProjectRuntimeProvider({
     if (initialState || buildTimeResolution?.available) return;
 
     let active = true;
-    void loadResolution().then((resolution) => {
+    void loadProjectRuntime(loadResolution, serviceFactory).then((nextRuntime) => {
       if (!active) return;
-      setRuntime(resolveProjectRuntime(resolution, serviceFactory));
+      setRuntime(nextRuntime);
     });
 
     return () => {
