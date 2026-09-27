@@ -30,15 +30,15 @@ export function createAuthenticatedProjectService(
   repository: ProjectRepository,
 ): AuthenticatedProjectService {
   return {
-    create(session, name) {
+    async create(session, name) {
       return repository.create(authenticatedUid(session), name);
     },
 
-    list(session) {
+    async list(session) {
       return repository.list(authenticatedUid(session));
     },
 
-    get(session, projectId) {
+    async get(session, projectId) {
       return repository.get(authenticatedUid(session), projectId);
     },
   };
