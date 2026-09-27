@@ -1,5 +1,9 @@
 import type { AuthSessionState } from '../auth/types.js';
-import type { ProjectMetadata, ProjectRepository } from './types.js';
+import type {
+  ProjectDriveFolderRefs,
+  ProjectMetadata,
+  ProjectRepository,
+} from './types.js';
 
 export class AuthenticatedProjectSessionError extends Error {
   constructor(status: AuthSessionState['status']) {
@@ -16,6 +20,11 @@ export interface AuthenticatedProjectService {
   create(session: AuthSessionState, name: string): Promise<ProjectMetadata>;
   list(session: AuthSessionState): Promise<ProjectMetadata[]>;
   get(session: AuthSessionState, projectId: string): Promise<ProjectMetadata | null>;
+  updateDriveFolders(
+    session: AuthSessionState,
+    projectId: string,
+    driveFolders: ProjectDriveFolderRefs,
+  ): Promise<ProjectMetadata | null>;
 }
 
 function authenticatedUid(session: AuthSessionState): string {
@@ -40,6 +49,14 @@ export function createAuthenticatedProjectService(
 
     async get(session, projectId) {
       return repository.get(authenticatedUid(session), projectId);
+    },
+
+    async updateDriveFolders(session, projectId, driveFolders) {
+      return repository.updateDriveFolders(
+        authenticatedUid(session),
+        projectId,
+        driveFolders,
+      );
     },
   };
 }

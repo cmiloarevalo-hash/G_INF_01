@@ -7,6 +7,7 @@ import {
   createAuthenticatedProjectService,
 } from '../src/services/firestore/authenticated.js';
 import type {
+  ProjectDriveFolderRefs,
   ProjectMetadata,
   ProjectRepository,
 } from '../src/services/firestore/types.js';
@@ -34,7 +35,7 @@ function authenticated(uid = 'session-uid'): AuthSessionState {
 
 function createFakeRepository() {
   const calls: Array<{
-    operation: 'create' | 'list' | 'get';
+    operation: 'create' | 'list' | 'get' | 'updateDriveFolders';
     uid: string;
     value?: string;
   }> = [];
@@ -55,6 +56,13 @@ function createFakeRepository() {
     async get(uid, projectId) {
       calls.push({ operation: 'get', uid, value: projectId });
       return projectId === 'missing' ? null : project(projectId, 'Found');
+    },
+
+    async updateDriveFolders(uid, projectId, driveFolders) {
+      calls.push({ operation: 'updateDriveFolders', uid, value: projectId });
+      return projectId === 'missing'
+        ? null
+        : { ...project(projectId, 'Found'), driveFolders };
     },
   };
 
@@ -145,6 +153,9 @@ test('repository failures propagate as errors', async () => {
     async get() {
       throw new Error('repository unavailable');
     },
+    async updateDriveFolders() {
+      throw new Error('repository unavailable');
+    },
   };
   const service = createAuthenticatedProjectService(repository);
 
@@ -172,8 +183,51 @@ test('application-facing project API exposes no owner or UID override parameter'
     source,
     /get\(session: AuthSessionState, projectId: string\)/,
   );
+  assert.match(
+    source,
+    /updateDriveFolders\([\s\S]*session: AuthSessionState,[\s\S]*projectId: string/,
+  );
   assert.doesNotMatch(source, /ownerUid/);
   assert.doesNotMatch(source, /uidOverride/);
   assert.doesNotMatch(source, /accessToken|idToken|refreshToken/);
   assert.doesNotMatch(source, /localStorage|sessionStorage/);
+});
+
+
+const driveFolders: ProjectDriveFolderRefs = {
+  applicationRootFolderId: 'app-root',
+  projectsRootFolderId: 'projects-root',
+  projectFolderId: 'project-folder',
+  documentsFolderId: 'documents-folder',
+  analysisFolderId: 'analysis-folder',
+  reportsFolderId: 'reports-folder',
+};
+
+test('authenticated Drive refs update derives the only owner UID from session', async () => {
+  const fake = createFakeRepository();
+  const service = createAuthenticatedProjectService(fake.repository);
+
+  const updated = await service.updateDriveFolders(
+    authenticated('uid-from-session'),
+    'project-a',
+    driveFolders,
+  );
+
+  assert.deepEqual(updated?.driveFolders, driveFolders);
+  assert.deepEqual(fake.calls.at(-1), {
+    operation: 'updateDriveFolders',
+    uid: 'uid-from-session',
+    value: 'project-a',
+  });
+});
+
+test('checking session fails closed before Drive refs repository update', async () => {
+  const fake = createFakeRepository();
+  const service = createAuthenticatedProjectService(fake.repository);
+
+  await assert.rejects(
+    service.updateDriveFolders({ status: 'checking' }, 'project-a', driveFolders),
+    (error) => error instanceof AuthenticatedProjectSessionError,
+  );
+  assert.equal(fake.calls.length, 0);
 });

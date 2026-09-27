@@ -5,6 +5,7 @@ import {
   ProjectRepositoryInputError,
 } from '../src/services/firestore/service.js';
 import type {
+  ProjectDriveFolderRefs,
   ProjectDriver,
   ProjectMetadata,
 } from '../src/services/firestore/types.js';
@@ -39,6 +40,16 @@ function createFakeDriver(recordsByUid: Record<string, ProjectMetadata[]> = {}) 
     async get(uid, projectId) {
       calls.push({ operation: 'get', uid, value: projectId });
       return (recordsByUid[uid] ?? []).find((item) => item.id === projectId) ?? null;
+    },
+
+    async updateDriveFolders(uid, projectId, driveFolders) {
+      calls.push({ operation: 'updateDriveFolders', uid, value: projectId });
+      const records = recordsByUid[uid] ?? [];
+      const existing = records.find((item) => item.id === projectId);
+      if (!existing) return null;
+      const updated = { ...existing, driveFolders };
+      recordsByUid[uid] = records.map((item) => item.id === projectId ? updated : item);
+      return updated;
     },
   };
 
@@ -126,11 +137,82 @@ test('project not found is null while external driver failure remains an error',
     async get() {
       throw new Error('firestore unavailable');
     },
+    async updateDriveFolders() {
+      throw new Error('firestore unavailable');
+    },
   };
   const failingRepository = createProjectRepository(failingDriver);
 
   await assert.rejects(
     failingRepository.get('uid-a', 'project-a'),
+    /firestore unavailable/,
+  );
+});
+
+
+const confirmedDriveFolders: ProjectDriveFolderRefs = {
+  applicationRootFolderId: 'app-root',
+  projectsRootFolderId: 'projects-root',
+  projectFolderId: 'project-folder',
+  documentsFolderId: 'documents-folder',
+  analysisFolderId: 'analysis-folder',
+  reportsFolderId: 'reports-folder',
+};
+
+test('complete Drive folder refs update the project while projects without refs remain valid', async () => {
+  const original = project('project-a', 'Proyecto A');
+  const fake = createFakeDriver({ 'uid-a': [original] });
+  const repository = createProjectRepository(fake.driver);
+
+  assert.equal((await repository.get('uid-a', 'project-a'))?.driveFolders, undefined);
+
+  const updated = await repository.updateDriveFolders(
+    'uid-a',
+    'project-a',
+    confirmedDriveFolders,
+  );
+
+  assert.deepEqual(updated?.driveFolders, confirmedDriveFolders);
+  assert.deepEqual(fake.calls.at(-1), {
+    operation: 'updateDriveFolders',
+    uid: 'uid-a',
+    value: 'project-a',
+  });
+});
+
+test('incomplete Drive folder refs are rejected before persistence', async () => {
+  const fake = createFakeDriver({ 'uid-a': [project('project-a', 'Proyecto A')] });
+  const repository = createProjectRepository(fake.driver);
+
+  await assert.rejects(
+    repository.updateDriveFolders('uid-a', 'project-a', {
+      ...confirmedDriveFolders,
+      reportsFolderId: '   ',
+    }),
+    (error) => error instanceof ProjectRepositoryInputError,
+  );
+  assert.equal(fake.calls.some((call) => call.operation === 'updateDriveFolders'), false);
+});
+
+test('Drive folder update preserves not-found distinct from driver failure', async () => {
+  const repository = createProjectRepository(createFakeDriver().driver);
+  assert.equal(
+    await repository.updateDriveFolders('uid-a', 'missing', confirmedDriveFolders),
+    null,
+  );
+
+  const failingDriver: ProjectDriver = {
+    async create() { throw new Error('firestore unavailable'); },
+    async list() { throw new Error('firestore unavailable'); },
+    async get() { throw new Error('firestore unavailable'); },
+    async updateDriveFolders() { throw new Error('firestore unavailable'); },
+  };
+  await assert.rejects(
+    createProjectRepository(failingDriver).updateDriveFolders(
+      'uid-a',
+      'project-a',
+      confirmedDriveFolders,
+    ),
     /firestore unavailable/,
   );
 });

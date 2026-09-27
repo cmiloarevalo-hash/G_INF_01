@@ -61,6 +61,11 @@ function fakeRuntime() {
       if (error) throw error;
       return getResult;
     },
+    async updateDriveFolders(session, projectId) {
+      calls.push({ operation: 'updateDriveFolders', session, value: projectId });
+      if (error) throw error;
+      return getResult;
+    },
   };
 
   return {

@@ -1,4 +1,8 @@
-import type { ProjectDriver, ProjectRepository } from './types.js';
+import type {
+  ProjectDriveFolderRefs,
+  ProjectDriver,
+  ProjectRepository,
+} from './types.js';
 
 export class ProjectRepositoryInputError extends Error {
   constructor(message: string) {
@@ -19,10 +23,29 @@ function requireProjectId(projectId: string): string {
   return normalized;
 }
 
+function requireFolderId(value: string, label: string): string {
+  const normalized = value.trim();
+  if (!normalized) throw new ProjectRepositoryInputError(`Se requiere ${label}.`);
+  return normalized;
+}
+
 export function normalizeProjectName(name: string): string {
   const normalized = name.trim();
   if (!normalized) throw new ProjectRepositoryInputError('El nombre del proyecto no puede estar vacío.');
   return normalized;
+}
+
+export function normalizeProjectDriveFolders(
+  input: ProjectDriveFolderRefs,
+): ProjectDriveFolderRefs {
+  return {
+    applicationRootFolderId: requireFolderId(input.applicationRootFolderId, 'applicationRootFolderId'),
+    projectsRootFolderId: requireFolderId(input.projectsRootFolderId, 'projectsRootFolderId'),
+    projectFolderId: requireFolderId(input.projectFolderId, 'projectFolderId'),
+    documentsFolderId: requireFolderId(input.documentsFolderId, 'documentsFolderId'),
+    analysisFolderId: requireFolderId(input.analysisFolderId, 'analysisFolderId'),
+    reportsFolderId: requireFolderId(input.reportsFolderId, 'reportsFolderId'),
+  };
 }
 
 export function createProjectRepository(driver: ProjectDriver): ProjectRepository {
@@ -37,6 +60,14 @@ export function createProjectRepository(driver: ProjectDriver): ProjectRepositor
 
     async get(uid, projectId) {
       return driver.get(requireUid(uid), requireProjectId(projectId));
+    },
+
+    async updateDriveFolders(uid, projectId, driveFolders) {
+      return driver.updateDriveFolders(
+        requireUid(uid),
+        requireProjectId(projectId),
+        normalizeProjectDriveFolders(driveFolders),
+      );
     },
   };
 }
