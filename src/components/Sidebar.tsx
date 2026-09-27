@@ -9,8 +9,8 @@ export interface NavItemConfig {
 
 export const NAV_ITEMS: NavItemConfig[] = [
   { id: 'inicio', label: 'Inicio', group: 'Principal', isAvailable: true },
-  { id: 'nuevo-proyecto', label: 'Nuevo proyecto', group: 'Proyectos', isAvailable: false },
-  { id: 'mis-proyectos', label: 'Mis proyectos', group: 'Proyectos', isAvailable: false },
+  { id: 'nuevo-proyecto', label: 'Nuevo proyecto', group: 'Proyectos', isAvailable: true },
+  { id: 'mis-proyectos', label: 'Mis proyectos', group: 'Proyectos', isAvailable: true },
   { id: 'mis-informes', label: 'Mis informes', group: 'Informes', isAvailable: false },
   { id: 'apis-modelos', label: 'APIs y modelos', group: 'IA', isAvailable: false },
   { id: 'documentos-invitado', label: 'PDF locales (invitado)', group: 'Documentos', isAvailable: true },

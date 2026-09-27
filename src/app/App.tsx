@@ -4,6 +4,8 @@ import { Header } from '../components/Header.js';
 import { RoadmapStatusPanel } from '../components/RoadmapStatusPanel.js';
 import { HomePage } from '../pages/HomePage.js';
 import { GuestDocumentsPage } from '../pages/GuestDocumentsPage.js';
+import { NewProjectPage } from '../pages/NewProjectPage.js';
+import { ProjectsPage } from '../pages/ProjectsPage.js';
 import { UnavailablePage } from '../pages/UnavailablePage.js';
 import './App.css';
 
@@ -55,6 +57,10 @@ export function App() {
                 <HomePage onOpenGuestDocuments={() => setCurrentSection('documentos-invitado')} />
               ) : currentSection === 'documentos-invitado' ? (
                 <GuestDocumentsPage />
+              ) : currentSection === 'nuevo-proyecto' ? (
+                <NewProjectPage />
+              ) : currentSection === 'mis-proyectos' ? (
+                <ProjectsPage />
               ) : (
                 <UnavailablePage
                   sectionId={activeItem.id}
