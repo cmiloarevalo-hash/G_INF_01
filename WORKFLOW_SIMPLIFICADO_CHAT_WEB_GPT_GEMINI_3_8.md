@@ -1,5 +1,9 @@
 # Workflow simplificado — Chat Web GPT + GitHub + Agente implementador + AI_STUDIO_OPERATOR
 
+> **Estado canónico cuando este cambio exista en `main`:** este archivo queda retenido sólo como referencia histórica. La fuente canónica activa pasa a ser [`WORKFLOW_CANONICO_SUPERVISOR_GITHUB_IMPLEMENTADOR_AI_STUDIO.md`](WORKFLOW_CANONICO_SUPERVISOR_GITHUB_IMPLEMENTADOR_AI_STUDIO.md).
+>
+> En una branch o PR esta nota no sustituye la autoridad de la versión vigente en `main`; el reemplazo sólo adquiere efecto tras revisión y merge válidos.
+
 ## 1. Objetivo
 
 Este workflow organiza el trabajo colaborativo entre:
