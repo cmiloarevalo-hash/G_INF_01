@@ -21,7 +21,7 @@ La métrica administrativa vigente es incremental dentro de cada meta:
 | **M1 · Análisis invitado de una llamada** | **CERRADA** — mapping histórico autorizado a Issue #12. | **20 / 20** |
 | **M2 · Publicación comprobada del piloto** | **EN CURSO / ACTIVA** — M2.1 y M2.2 completadas; M2.3 en proceso; M2.4 pendiente. V-036 `PENDING`. | **10 / 20** |
 | **M3 · Resultado e informe para invitado** | **CERRADA** — M3.1–M3.4 completadas. | **20 / 20** |
-| **M4 · Trabajo persistente y capacidades completas** | **EN CURSO / ACTIVA** — Issue #45; M4.1 implementada en repositorio por Issue #46, pendiente de integración y V-004 desplegada. | **0 / 20** |
+| **M4 · Trabajo persistente y capacidades completas** | **EN CURSO / ACTIVA** — Issue #45; M4.1 implementada en repositorio por Issue #46; V-004 desplegada permanece pendiente. | **0 / 20** |
 | **M5 · Integración del producto completo** | **PENDIENTE** — sin Work Item canónico activo. | **0 / 20** |
 
 **Total administrativo actual: 50/100 puntos = 50%.**

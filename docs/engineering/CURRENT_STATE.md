@@ -127,7 +127,7 @@ Issue #45 abrió M4 con cinco subtareas canónicas. El primer Work Item activo e
 
 ### M4.1 · Identidad y sesión Google — IMPLEMENTADA EN REPOSITORIO / V-004 PENDING
 
-Esta branch incorpora la base de identidad autenticada mediante Firebase Authentication:
+La implementación de M4.1 incorpora la base de identidad autenticada mediante Firebase Authentication:
 
 - Firebase Web SDK como dependencia de producción;
 - Google Sign-In mediante popup;
