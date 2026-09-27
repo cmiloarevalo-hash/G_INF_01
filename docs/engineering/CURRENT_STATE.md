@@ -44,82 +44,45 @@ git diff --check <base>...<HEAD>
 
 El resultado de CI es evidencia automática ligada al SHA; no sustituye la revisión semántica ni la decisión del Supervisor.
 
-### AI_STUDIO_OPERATOR — INTEGRADO
+### AI_STUDIO_OPERATOR — FALLBACK POR ESCALAMIENTO VERIFICADO
 
-El workflow canónico integra `AI_STUDIO_OPERATOR` como operador externo de Google AI Studio.
+El **Implementador Web / Agente implementador es la ruta técnica normal**. `AI_STUDIO_OPERATOR` no es un canal paralelo ni un revisor rutinario.
 
-Puede operar sólo en modos autorizados:
+Toda intervención AI Studio, incluso read-only, requiere previamente:
 
-```text
-OBSERVE
-PREVIEW
-TEST
-DIAGNOSE
-PUBLISH
-SPIKE_READ_ONLY
-```
+1. Work Item explícito;
+2. intento de la operación por el Implementador;
+3. bloqueo técnico intrínseco persistido con evidencia;
+4. verificación independiente del Supervisor;
+5. ausencia de una vía razonable en el canal implementador;
+6. `AI_STUDIO_REQUEST` explícito para **una sola operación mínima**.
 
-No es el Agente implementador y no tiene autoridad para:
+Sólo dentro de ese escalamiento pueden usarse capacidades técnicas como `OBSERVE`, `PREVIEW`, `TEST`, `DIAGNOSE`, `SPIKE_READ_ONLY` o `PLATFORM_MUTATE`. Cada intervención termina en `AI_STUDIO_REPORT` y `STOP → Supervisor`; no existe continuación automática.
 
-- editar código/archivos;
-- aplicar `Fix`;
-- commit, branch, PR, push o merge;
-- cambiar dependencias, schema, prompts, workflow o repository secrets.
-
-GitHub sigue siendo la fuente persistente de verdad. La evidencia útil de AI Studio vuelve al Supervisor mediante `AI_STUDIO_REPORT` y debe persistirse en GitHub.
-
-## 2. M2 · Publicación comprobada del piloto — ACTIVA
-
-Issue #20 está activo. **V-036 permanece `PENDING`**: no existe todavía evidencia de publicación pública válida ni smoke test público real correspondiente al SHA que finalmente se seleccione.
-
-### M2.1 · Preparar la versión — EN CURSO
-
-PR #21 mantiene el objetivo documental de preparar una versión trazable para AI Studio.
-
-Secuencia vigente después de integrar este PR:
+`PUBLISH` **no es un modo AI Studio**:
 
 ```text
-merge PR #21
-→ Supervisor vuelve a leer main
-→ registra el nuevo main SHA en Issue #20 como EXPECTED SHA
-→ emite AI_STUDIO_REQUEST
-→ AI Studio import/sync desde GitHub
-→ registra OBSERVED SHA
-→ EXPECTED SHA == OBSERVED SHA
-→ sólo entonces PREVIEW / TEST / intervención M2 dependiente del código
-→ AI_STUDIO_REPORT
-→ evidencia persistida en Issue #20 / PR correspondiente
+PUBLISH = HUMAN ACTION
 ```
 
-Reglas:
+AI Studio nunca implementa código ni tiene autoridad para editar archivos, aplicar `Fix`, commit, branch, PR, push, merge, cambiar dependencias/schema/prompts/workflow/repository secrets o escribir/sincronizar estado del repositorio.
 
-1. **No existe aún SHA definitivo de publicación.** El `main` previo a PR #21 no debe fijarse como target final.
-2. El SHA definitivo para la siguiente intervención M2 se selecciona **después del merge de PR #21**, leyendo nuevamente el HEAD real de `main`.
-3. Para operaciones dependientes del código, `EXPECTED SHA` debe coincidir literalmente con `OBSERVED SHA`. Si no coincide: `BLOCKED`.
-4. AI Studio puede importar/sincronizar desde GitHub para observar, ejecutar o publicar el SHA autorizado, pero no puede escribir código ni estado del repositorio.
-5. `Fix` está prohibido.
-6. Toda intervención termina con `AI_STUDIO_REPORT`; el control vuelve al Supervisor.
-7. **Live preview no equivale a publicación pública.**
-8. M2.1 no declara `V-036 PASS`.
+GitHub sigue siendo la fuente persistente de verdad.
 
-### M2.2–M2.4 — PENDIENTES
+## 2. M2 · Publicación comprobada del piloto — CERRADA
 
-- **M2.2 · Configurar acceso seguro:** pendiente de Work Item/scope específico. No registrar valores de Secrets en GitHub.
-- **M2.3 · Publicar y probar:** pendiente. Debe usar el SHA autorizado por el Supervisor y producir una URL pública efectiva distinta del preview.
-- **M2.4 · Registrar y decidir:** pendiente. Debe persistir evidencia saneada y decisión del Supervisor.
+Issue #20 está **CLOSED**. Sus cuatro subtareas canónicas están completadas:
 
-### Condición de V-036
+- **M2.1 · Preparar la versión — COMPLETADA**;
+- **M2.2 · Configurar acceso seguro — COMPLETADA**;
+- **M2.3 · Publicar y probar — COMPLETADA** mediante Issue #37;
+- **M2.4 · Registrar y decidir — COMPLETADA**.
 
-`V-036` sólo puede pasar con evidencia desplegada real, incluyendo como mínimo:
+**V-036 = PASS** según la decisión formal del Supervisor persistida en Issue #20. La evidencia saneada de publicación pública y servicio operativo quedó registrada allí y en Issue #37.
 
-- SHA autorizado e identificado;
-- entorno/publicación correspondiente;
-- **URL pública efectiva**;
-- acceso real al cliente publicado;
-- smoke test público de las rutas/funciones exigidas por el Work Item;
-- evidencia persistida en GitHub.
+La aceptación humana de que el hosting no exponga un Git SHA exacto fue tratada como limitación no bloqueante para cerrar M2. Esa decisión **no implica que el `main` actual esté desplegado** ni permite reutilizar evidencia antigua como prueba de un despliegue posterior.
 
-Un preview, una URL privada, un 404/302 o una comprobación exclusivamente local **no** constituyen `V-036 PASS`.
+Con M1, M2 y M3 cerradas, el avance administrativo canónico vigente es **60/100 = 60%**.
 
 ## 3. M4 · Trabajo persistente y capacidades completas — ACTIVA
 
@@ -141,11 +104,11 @@ La implementación de M4.1 incorpora la base de identidad autenticada mediante F
 
 El código de repositorio no constituye `V-004 PASS`. Después del merge, la verificación controlada de plataforma debe confirmar proveedor Google habilitado, dominio autorizado, login real, persistencia esperada de sesión, sign-out y guest flow en el despliegue efectivo. Hasta entonces Issue #46 permanece abierto y M4.1 no suma sus 4 puntos administrativos.
 
-### M4.2a · Base de repositorio Firestore — IMPLEMENTACIÓN DE REPOSITORIO EN CURSO
+### M4.2a · Base de repositorio Firestore — BASE DE REPOSITORIO INTEGRADA / M4.2 PENDIENTE
 
 El primer slice de M4.2 establece la base de persistencia de metadata de proyectos bajo `src/services/firestore/` con rutas `users/{uid}/projects/{projectId}`, reutilizando la misma Firebase App que Authentication. El contrato cubre crear, listar y obtener metadata mínima de proyecto para un UID autenticado y no introduce UI, documentos, análisis, informes ni Drive.
 
-Esta base de repositorio no demuestra aislamiento desplegado ni ciclo persistente real entre sesiones. Firestore todavía requiere Work Items separados para Security Rules, provisión/configuración y verificación real. **V-006 y V-007 permanecen PENDING; M4.2 no está completa.**
+Issue #58 completó únicamente esta base de repositorio. No demuestra aislamiento desplegado ni ciclo persistente real entre sesiones, no completa M4.2 y no aporta puntos administrativos a M4. Firestore todavía requiere Work Items separados para Security Rules, provisión/configuración, UI/ciclo persistente y verificación real. **V-006 y V-007 permanecen PENDING; M4.2 no está completa.**
 
 ## 4. Capacidades futuras no integradas
 
@@ -157,7 +120,7 @@ Continúan fuera del estado integrado actual y requieren Work Items propios:
 - demás capacidades de M4;
 - integración end-to-end completa de M5.
 
-La existencia de botones, documentación o capacidades visibles en Google AI Studio no autoriza su adopción. Para integraciones Google aplica `SPIKE_READ_ONLY → Supervisor review → Human decision → Issue → implementación canónica`.
+La existencia de botones, documentación o capacidades visibles en Google AI Studio no autoriza su adopción. La ruta técnica normal sigue siendo el Implementador. AI Studio sólo puede intervenir tras `Implementer attempt → intrinsic blocker → Supervisor verification → no reasonable Implementer path → one minimal AI_STUDIO_REQUEST → AI_STUDIO_REPORT → STOP`.
 
 ## 5. Resumen de verificación
 
@@ -166,6 +129,6 @@ La existencia de botones, documentación o capacidades visibles en Google AI Stu
 | V-026 | **PASS** | M3.3/M3.4 integradas |
 | V-027 | **PASS** | M3.3/M3.4 integradas |
 | V-028 | **PASS** | revisión humana final M3.4 |
-| V-036 | **PENDING** | falta publicación pública + smoke test real del SHA M2 autorizado |
+| V-036 | **PASS** | Issue #20 cerrado; M2.1–M2.4 completadas y decisión formal del Supervisor persistida |
 
-**Estado operativo:** M1 integrada; M2 activa; M3 cerrada; M4 activa con M4.1 implementada en repositorio y V-004 pendiente; CI y AI_STUDIO_OPERATOR integrados; V-036 pendiente.
+**Estado operativo:** M1 cerrada; M2 cerrada con V-036 PASS; M3 cerrada; avance administrativo total 60/100 = 60%; M4 activa en 0/20, con M4.1 implementada en repositorio y V-004 PENDING; #58 integró sólo la base de repositorio M4.2a y M4.2 sigue incompleta.

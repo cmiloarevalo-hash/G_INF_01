@@ -19,16 +19,16 @@ La métrica administrativa vigente es incremental dentro de cada meta:
 | Meta | Estado canónico actual | Puntos actuales |
 |---|---|---:|
 | **M1 · Análisis invitado de una llamada** | **CERRADA** — mapping histórico autorizado a Issue #12. | **20 / 20** |
-| **M2 · Publicación comprobada del piloto** | **EN CURSO / ACTIVA** — M2.1 y M2.2 completadas; M2.3 en proceso; M2.4 pendiente. V-036 `PENDING`. | **10 / 20** |
+| **M2 · Publicación comprobada del piloto** | **CERRADA** — Issue #20 cerrado; M2.1–M2.4 completadas; V-036 `PASS`. | **20 / 20** |
 | **M3 · Resultado e informe para invitado** | **CERRADA** — M3.1–M3.4 completadas. | **20 / 20** |
 | **M4 · Trabajo persistente y capacidades completas** | **EN CURSO / ACTIVA** — Issue #45; M4.1 implementada en repositorio por Issue #46; V-004 desplegada permanece pendiente. | **0 / 20** |
 | **M5 · Integración del producto completo** | **PENDIENTE** — sin Work Item canónico activo. | **0 / 20** |
 
-**Total administrativo actual: 50/100 puntos = 50%.**
+**Total administrativo actual: 60/100 puntos = 60%.**
 
 ## M2 · Estado de subtareas
 
-M2 conserva 20 puntos totales. Sus cuatro subtareas canónicas valen 5 puntos cada una.
+M2 está **CERRADA** y conserva 20 puntos totales. Sus cuatro subtareas canónicas valen 5 puntos cada una y están completadas según Issue #20.
 
 ### M2.1 · Preparar la versión — COMPLETADA
 
@@ -38,15 +38,15 @@ Issue #20 mantiene M2.1 marcada como completada. Aporta **5 puntos**.
 
 Issue #34 está cerrado y Issue #20 mantiene M2.2 marcada como completada. Aporta **5 puntos**.
 
-### M2.3 · Publicar y probar — EN PROCESO
+### M2.3 · Publicar y probar — COMPLETADA
 
-Issue #37 es el Work Item canónico abierto. Aporta **0 puntos** hasta cerrarse.
+Issue #37 está cerrado y Issue #20 registra M2.3 como completada. Aporta **5 puntos**.
 
-### M2.4 · Registrar y decidir — PENDIENTE
+### M2.4 · Registrar y decidir — COMPLETADA
 
-Issue #20 mantiene M2.4 pendiente y no existe un Work Item hijo completado que la cierre. Aporta **0 puntos**.
+Issue #20 mantiene M2.4 marcada como completada y registra la evidencia/decisión final. Aporta **5 puntos**.
 
-V-036 permanece `PENDING` hasta la decisión formal correspondiente. El cierre parcial de M2 no convierte la meta completa en `OK`; sólo aporta las fracciones de subtareas cerradas.
+**V-036 = PASS** según la decisión formal del Supervisor persistida en Issue #20. La limitación aceptada sobre no observar un Git SHA exacto en el hosting no revierte ese cierre ni implica que el `main` actual esté desplegado.
 
 ## M3 · Cierre
 
@@ -73,32 +73,39 @@ Issue #46 contiene la implementación de Firebase Authentication / Google Sign-I
 
 M4.1 permanece **EN PROCESO** y aporta **0 puntos** hasta completar la verificación real desplegada V-004 y cerrar el Work Item. El merge del código por sí solo no equivale a V-004 PASS.
 
-### M4.2–M4.5 — PENDIENTES
+### M4.2 · Proyectos persistentes y aislamiento — PENDIENTE
 
-- M4.2 · Proyectos persistentes y aislamiento;
+Issue #58 completó únicamente el slice **M4.2a · base de repositorio Firestore para proyectos aislados por UID**. Esa base de repositorio no completa M4.2, no aporta puntos administrativos a M4 y no constituye V-006/V-007 PASS.
+
+Siguen pendientes los Work Items necesarios para completar M4.2, incluidas Security Rules, configuración/provisión de Firestore, UI/ciclo persistente y verificación desplegada según el scope que se autorice.
+
+### M4.3–M4.5 — PENDIENTES
+
 - M4.3 · Google Drive y persistencia documental;
 - M4.4 · Historial de análisis e informes;
 - M4.5 · APIs, modelos y preferencias del modo autenticado.
 
 ## Pendientes posteriores
 
-M4 está activa mediante Issue #45; M4.2–M4.5 siguen pendientes. M5 permanece pendiente. Entre las capacidades aún no integradas se incluyen, según sus futuros Work Items:
+M4 está activa mediante Issue #45 y permanece en **0/20**. M4.1 sigue con V-004 PENDING. M4.2 dispone sólo de la base de repositorio integrada por Issue #58 y sigue incompleta; M4.3–M4.5 siguen pendientes. M5 permanece pendiente.
 
-- Firestore/proyectos persistentes;
+Entre las capacidades aún no completadas se incluyen, según sus futuros Work Items:
+
+- completar Firestore/proyectos persistentes más allá de la base de repositorio de #58;
 - Google Drive/Picker y persistencia documental;
 - configuración completa de proveedores/modelos adicionales;
 - integración end-to-end del producto completo.
 
-La visibilidad de una capacidad en AI Studio no autoriza su adopción. Las integraciones Google deben seguir el protocolo `SPIKE_READ_ONLY` y, si se decide adoptarlas, pasar por decisión humana + Issue + implementación canónica.
+La visibilidad de una capacidad en AI Studio no autoriza su adopción. La ruta técnica normal es el Implementador. AI Studio sólo puede intervenir después de `Implementer attempt → intrinsic blocker → Supervisor verification → no reasonable Implementer path → one minimal AI_STUDIO_REQUEST → AI_STUDIO_REPORT → STOP`; `SPIKE_READ_ONLY` no es una fase rutinaria de investigación.
 
 ## Estado resumido
 
 ```text
 M1  CERRADA      20
-M2  EN CURSO      10
+M2  CERRADA      20
 M3  CERRADA      20
-M4  EN CURSO       0
-M5  PENDIENTE      0
+M4  EN CURSO      0
+M5  PENDIENTE     0
 --------------------
-TOTAL             50 / 100
+TOTAL             60 / 100
 ```
