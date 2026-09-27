@@ -6,72 +6,47 @@
 
 ## Regla del porcentaje
 
-Las cinco metas tienen **20 puntos cada una (5 × 20 = 100)**.
+Las cinco metas conservan **20 puntos cada una (5 × 20 = 100)**.
 
-Sólo una meta completamente cerrada, con evidencia registrada en GitHub, suma sus 20 puntos. Un estado `EN CURSO`, `ACTIVA`, `PENDIENTE` o `PAUSADA` suma **0 puntos cerrados**, aunque exista avance técnico real.
+La métrica administrativa vigente es incremental dentro de cada meta:
 
-| Meta | Condición de cierre | Estado actual | Puntos cerrados |
-|---|---|---|---:|
-| **M1 · Análisis invitado de una llamada** | Flujo invitado integrado y evidencia funcional/revisión por SHA completadas. | **CERRADA** — integrada mediante PR #13. | **20** |
-| **M2 · Publicación comprobada del piloto** | Publicación real del SHA autorizado, URL pública, smoke test real y V-036 decidido con evidencia persistida. | **EN CURSO / ACTIVA** — Issue #20; M2.1 **EN CURSO** — preparación documental lista; verificación/importación en AI Studio pendiente. V-036 `PENDING`. | **0** |
-| **M3 · Resultado e informe para invitado** | Vista web enriquecida + DOCX determinista + coherencia integrada + revisión humana V-028. | **CERRADA** — M3.1–M3.4 integradas; V-026/V-027/V-028 `PASS`. | **20** |
-| **M4 · Trabajo persistente y capacidades completas** | Identidad, persistencia de proyectos/documentos e integraciones funcionales según Work Items específicos. | **PENDIENTE**. | **0** |
-| **M5 · Integración del producto completo** | Verificación end-to-end del conjunto relevante de capacidades integradas. | **PENDIENTE**. | **0** |
+- si una meta tiene subtareas canónicas, sus 20 puntos se dividen en partes iguales entre esas subtareas;
+- cada subtarea canónica completada aporta su fracción;
+- una meta sin subtareas canónicas aporta 20 puntos sólo cuando su Work Item canónico está cerrado;
+- estados y puntos se derivan del estado canónico de GitHub, no de mensajes de commit;
+- Issue #43 es sólo el snapshot machine generado para la UI; no reemplaza a los Work Items/Issues fuente.
 
-**Total administrativo actual:** **2 metas cerradas = 40/100 puntos**.
+| Meta | Estado canónico actual | Puntos actuales |
+|---|---|---:|
+| **M1 · Análisis invitado de una llamada** | **CERRADA** — mapping histórico autorizado a Issue #12. | **20 / 20** |
+| **M2 · Publicación comprobada del piloto** | **EN CURSO / ACTIVA** — M2.1 y M2.2 completadas; M2.3 en proceso; M2.4 pendiente. V-036 `PENDING`. | **10 / 20** |
+| **M3 · Resultado e informe para invitado** | **CERRADA** — M3.1–M3.4 completadas. | **20 / 20** |
+| **M4 · Trabajo persistente y capacidades completas** | **PENDIENTE** — sin Work Item canónico activo. | **0 / 20** |
+| **M5 · Integración del producto completo** | **PENDIENTE** — sin Work Item canónico activo. | **0 / 20** |
 
-El avance parcial de M2 no suma puntos hasta su cierre completo. La ponderación no representa esfuerzo, costo ni duración.
+**Total administrativo actual: 50/100 puntos = 50%.**
 
 ## M2 · Estado de subtareas
 
-### M2.1 · Preparar la versión — EN CURSO
+M2 conserva 20 puntos totales. Sus cuatro subtareas canónicas valen 5 puntos cada una.
 
-Objetivo vigente: dejar trazable la versión que continuará hacia AI Studio bajo el protocolo `AI_STUDIO_OPERATOR`.
+### M2.1 · Preparar la versión — COMPLETADA
 
-Secuencia obligatoria:
+Issue #20 mantiene M2.1 marcada como completada. Aporta **5 puntos**.
 
-```text
-merge PR #21
-→ Supervisor relee main
-→ registra el nuevo main SHA como EXPECTED SHA en Issue #20
-→ AI_STUDIO_REQUEST
-→ AI Studio import/sync desde GitHub
-→ OBSERVED SHA
-→ EXPECTED SHA == OBSERVED SHA
-→ PREVIEW / TEST / intervención M2 dependiente del código
-→ AI_STUDIO_REPORT
-→ evidencia persistida en GitHub
-```
+### M2.2 · Configurar acceso seguro — COMPLETADA
 
-Reglas de M2.1:
+Issue #34 está cerrado y Issue #20 mantiene M2.2 marcada como completada. Aporta **5 puntos**.
 
-- el SHA actual de `main` previo a PR #21 **no** se fija como target definitivo de publicación;
-- el `EXPECTED SHA` se registra después del merge de PR #21;
-- si `EXPECTED SHA != OBSERVED SHA`: `BLOCKED`;
-- AI Studio no puede usar `Fix`;
-- AI Studio no puede escribir código ni estado del repositorio;
-- preview y live preview **no equivalen** a publicación;
-- M2.1 no declara V-036 PASS.
+### M2.3 · Publicar y probar — EN PROCESO
 
-### M2.2 · Configurar acceso seguro — PENDIENTE
-
-Requiere Work Item y alcance específico. Mantener Secrets bajo control autorizado y no persistir valores sensibles en GitHub.
-
-### M2.3 · Publicar y probar — PENDIENTE
-
-Debe publicar exclusivamente el SHA autorizado por el Supervisor bajo `AI_STUDIO_REQUEST MODE=PUBLISH`.
-
-Condiciones mínimas:
-
-- SHA Gate satisfecho;
-- publicación efectiva;
-- URL pública;
-- smoke test público real;
-- `AI_STUDIO_REPORT` con evidencia no sensible.
+Issue #37 es el Work Item canónico abierto. Aporta **0 puntos** hasta cerrarse.
 
 ### M2.4 · Registrar y decidir — PENDIENTE
 
-Persistir evidencia saneada en GitHub y obtener decisión del Supervisor sobre V-036 y cierre de M2.
+Issue #20 mantiene M2.4 pendiente y no existe un Work Item hijo completado que la cierre. Aporta **0 puntos**.
+
+V-036 permanece `PENDING` hasta la decisión formal correspondiente. El cierre parcial de M2 no convierte la meta completa en `OK`; sólo aporta las fracciones de subtareas cerradas.
 
 ## M3 · Cierre
 
@@ -104,10 +79,10 @@ La visibilidad de una capacidad en AI Studio no autoriza su adopción. Las integ
 
 ```text
 M1  CERRADA      20
-M2  EN CURSO      0
+M2  EN CURSO      10
 M3  CERRADA      20
-M4  PENDIENTE     0
-M5  PENDIENTE     0
--------------------
-TOTAL             40 / 100
+M4  PENDIENTE      0
+M5  PENDIENTE      0
+--------------------
+TOTAL             50 / 100
 ```
