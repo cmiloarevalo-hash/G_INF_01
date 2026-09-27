@@ -21,7 +21,7 @@ La métrica administrativa vigente es incremental dentro de cada meta:
 | **M1 · Análisis invitado de una llamada** | **CERRADA** — mapping histórico autorizado a Issue #12. | **20 / 20** |
 | **M2 · Publicación comprobada del piloto** | **EN CURSO / ACTIVA** — M2.1 y M2.2 completadas; M2.3 en proceso; M2.4 pendiente. V-036 `PENDING`. | **10 / 20** |
 | **M3 · Resultado e informe para invitado** | **CERRADA** — M3.1–M3.4 completadas. | **20 / 20** |
-| **M4 · Trabajo persistente y capacidades completas** | **PENDIENTE** — sin Work Item canónico activo. | **0 / 20** |
+| **M4 · Trabajo persistente y capacidades completas** | **EN CURSO / ACTIVA** — Issue #45; M4.1 implementada en repositorio por Issue #46; V-004 desplegada permanece pendiente. | **0 / 20** |
 | **M5 · Integración del producto completo** | **PENDIENTE** — sin Work Item canónico activo. | **0 / 20** |
 
 **Total administrativo actual: 50/100 puntos = 50%.**
@@ -63,11 +63,27 @@ Verificaciones:
 - V-027: **PASS**;
 - V-028: **PASS**.
 
+## M4 · Estado de subtareas
+
+M4 conserva 20 puntos totales. Sus cinco subtareas canónicas valen 4 puntos cada una.
+
+### M4.1 · Identidad y sesión Google — IMPLEMENTADA EN REPOSITORIO / V-004 PENDING
+
+Issue #46 contiene la implementación de Firebase Authentication / Google Sign-In, sesión mínima y sign-out preservando el modo invitado.
+
+M4.1 permanece **EN PROCESO** y aporta **0 puntos** hasta completar la verificación real desplegada V-004 y cerrar el Work Item. El merge del código por sí solo no equivale a V-004 PASS.
+
+### M4.2–M4.5 — PENDIENTES
+
+- M4.2 · Proyectos persistentes y aislamiento;
+- M4.3 · Google Drive y persistencia documental;
+- M4.4 · Historial de análisis e informes;
+- M4.5 · APIs, modelos y preferencias del modo autenticado.
+
 ## Pendientes posteriores
 
-M4 y M5 permanecen pendientes. Entre las capacidades aún no integradas se incluyen, según sus futuros Work Items:
+M4 está activa mediante Issue #45; M4.2–M4.5 siguen pendientes. M5 permanece pendiente. Entre las capacidades aún no integradas se incluyen, según sus futuros Work Items:
 
-- autenticación Google;
 - Firestore/proyectos persistentes;
 - Google Drive/Picker y persistencia documental;
 - configuración completa de proveedores/modelos adicionales;
@@ -81,7 +97,7 @@ La visibilidad de una capacidad en AI Studio no autoriza su adopción. Las integ
 M1  CERRADA      20
 M2  EN CURSO      10
 M3  CERRADA      20
-M4  PENDIENTE      0
+M4  EN CURSO       0
 M5  PENDIENTE      0
 --------------------
 TOTAL             50 / 100
