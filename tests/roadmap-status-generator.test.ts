@@ -37,7 +37,17 @@ const currentFixture: GitHubRoadmapIssue[] = [
   ),
   issue(34, 'M2.2: configurar y verificar acceso seguro en AI Studio', 'closed'),
   issue(37, 'M2.3: publicar y probar el piloto en AI Studio Starter Tier', 'open'),
-  issue(22, 'M3: resultado e informe para invitado', 'closed'),
+  issue(
+    22,
+    'M3: resultado e informe para invitado',
+    'closed',
+    [
+      '- [x] M3.1 · Contrato de presentación',
+      '- [x] M3.2 · Vista web enriquecida TITLE_STUDY',
+      '- [x] M3.3 · Renderer y descarga DOCX',
+      '- [x] M3.4 · Verificación integrada y revisión humana',
+    ].join('\n'),
+  ),
   issue(10, 'M3.1: contrato de presentación', 'closed'),
   issue(24, 'M3.2: vista web enriquecida TITLE_STUDY', 'closed'),
   issue(28, 'M3.3: renderer y descarga DOCX', 'closed'),
@@ -68,6 +78,7 @@ test('computes the current weighted roadmap as 50% from canonical Issue state', 
       ['M2.4', 'PENDIENTE'],
     ],
   );
+  assert.equal(m2?.children?.[0]?.source?.kind, 'checklist');
   assert.deepEqual([m4?.status, m4?.pointsEarned, m5?.status, m5?.pointsEarned], [
     'PENDIENTE',
     0,
@@ -86,6 +97,85 @@ test('a newly closed canonical subtask contributes its equal share without chang
   assert.equal(m2?.pointsMax, 20);
   assert.equal(m2?.pointsEarned, 15);
   assert.equal(snapshot.overallPercent, 55);
+});
+
+test('discovers future M4 checklist children generically and raises current 50% baseline to 60%', () => {
+  const fixture = [
+    ...currentFixture,
+    issue(
+      50,
+      'M4: trabajo persistente y capacidades completas',
+      'open',
+      [
+        '- [x] M4.1 · Persistencia inicial',
+        '- [ ] M4.2 · Integración persistente',
+      ].join('\n'),
+    ),
+    issue(51, 'M4.1: persistencia inicial', 'closed'),
+    issue(52, 'M4.2: integración persistente', 'open'),
+  ];
+
+  const snapshot = computeRoadmapSnapshot(fixture, 'source-sha', '2026-09-26T23:00:00.000Z');
+  const m4 = snapshot.metas.find((meta) => meta.id === 'M4');
+
+  assert.equal(snapshot.overallPercent, 60);
+  assert.equal(m4?.pointsEarned, 10);
+  assert.equal(m4?.pointsMax, 20);
+  assert.equal(m4?.status, 'EN PROCESO');
+  assert.deepEqual(
+    m4?.children?.map((child) => [child.id, child.label, child.status]),
+    [
+      ['M4.1', 'Persistencia inicial', 'OK'],
+      ['M4.2', 'Integración persistente', 'EN PROCESO'],
+    ],
+  );
+  assert.equal(m4?.children?.[0]?.source?.issueNumber, 51);
+  assert.equal(m4?.children?.[1]?.source?.issueNumber, 52);
+});
+
+test('parent checklist remains the complete planned denominator when dedicated child Issues exist', () => {
+  const fixture = [
+    ...currentFixture,
+    issue(
+      50,
+      'M4: trabajo persistente y capacidades completas',
+      'open',
+      [
+        '- [x] M4.1 · Persistencia inicial',
+        '- [ ] M4.2 · Integración persistente',
+      ].join('\n'),
+    ),
+    issue(51, 'M4.1: persistencia inicial', 'closed'),
+    issue(52, 'M4.2: integración persistente', 'open'),
+    issue(53, 'M4.3: issue aún no incorporado al plan padre', 'closed'),
+  ];
+
+  const snapshot = computeRoadmapSnapshot(fixture, 'source-sha', '2026-09-26T23:00:00.000Z');
+  const m4 = snapshot.metas.find((meta) => meta.id === 'M4');
+
+  assert.equal(m4?.pointsEarned, 10);
+  assert.deepEqual(m4?.children?.map((child) => child.id), ['M4.1', 'M4.2']);
+});
+
+test('discovers dedicated future child Issues when a parent has no canonical checklist plan', () => {
+  const fixture = [
+    ...currentFixture,
+    issue(60, 'M5: integración del producto completo', 'open'),
+    issue(61, 'M5.1: primer bloque end-to-end', 'closed'),
+    issue(62, 'M5.2: segundo bloque end-to-end', 'open'),
+  ];
+
+  const snapshot = computeRoadmapSnapshot(fixture, 'source-sha', '2026-09-26T23:00:00.000Z');
+  const m5 = snapshot.metas.find((meta) => meta.id === 'M5');
+
+  assert.equal(m5?.pointsEarned, 10);
+  assert.deepEqual(
+    m5?.children?.map((child) => [child.id, child.status]),
+    [
+      ['M5.1', 'OK'],
+      ['M5.2', 'EN PROCESO'],
+    ],
+  );
 });
 
 test('machine Issue body round-trips the generated snapshot through the delimited JSON payload', () => {
