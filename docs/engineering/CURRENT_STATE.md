@@ -114,13 +114,17 @@ Issue #58 completó únicamente esta base de repositorio. No demuestra aislamien
 
 Los slices #64, #66 y #68 conectan la sesión Auth compartida con la capa application-facing de proyectos y añaden UI autenticada para crear, listar y reabrir metadata de proyectos. La UI deriva el propietario exclusivamente desde la sesión, usa el servicio autenticado y mantiene estados controlados cuando la sesión o el runtime Firebase no están disponibles.
 
-Este avance sigue siendo evidencia de repositorio/CI: no despliega Firestore, no añade Security Rules y no demuestra persistencia real entre sesiones ni aislamiento cross-user. **V-006 y V-007 permanecen PENDING; M4 permanece 0/20 y M4.2 no está completa.**
+### M4.2e · Security Rules Firestore — VERSIONADAS Y PROBADAS EN EMULATOR / DESPLIEGUE PENDIENTE
+
+Issue #70 incorpora `firestore.rules` deny-by-default para `users/{uid}/projects/{projectId}`, permitiendo read/write sólo cuando existe autenticación y `request.auth.uid` coincide con el UID del path. La suite automatizada usa Firestore Emulator, auth mockeada y un proyecto `demo-*`; no requiere credenciales ni toca recursos Firebase reales.
+
+La evidencia Emulator/CI valida el modelo de reglas en repositorio, pero no demuestra que las rules estén desplegadas en el proyecto de desarrollo ni prueba aislamiento cross-user real. **V-006 y V-007 permanecen PENDING; M4 permanece 0/20 y M4.2 no está completa.**
 
 ## 4. Capacidades futuras no integradas
 
 Continúan fuera del estado integrado actual y requieren Work Items propios:
 
-- completar proyectos/persistencia en Firestore con UI, Security Rules y verificación desplegada;
+- completar proyectos/persistencia en Firestore con despliegue aprobado de Security Rules y verificación real;
 - Google Drive / Picker y persistencia documental en Drive;
 - configuración completa de proveedores/modelos adicionales;
 - demás capacidades de M4;

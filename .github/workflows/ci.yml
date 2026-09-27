@@ -42,6 +42,12 @@ jobs:
           node-version: 24
           package-manager-cache: false
 
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
       - name: Resolve verification SHAs
         shell: bash
         run: |
@@ -71,6 +77,9 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Test Firestore Security Rules
+        run: npm run test:firestore-rules
 
       - name: Check diff whitespace
         shell: bash
