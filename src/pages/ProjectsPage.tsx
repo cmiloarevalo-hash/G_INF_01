@@ -45,9 +45,13 @@ export function ProjectListContent({
     <ul className="project-list">
       {state.projects.map((project) => (
         <li key={project.id}>
-          <button type="button" onClick={() => onSelect(project.id)}>
-            <ProjectMetadataCard project={project} />
-            <span className="project-open-label">Reabrir proyecto</span>
+          <ProjectMetadataCard project={project} />
+          <button
+            type="button"
+            className="btn-secondary project-open-button"
+            onClick={() => onSelect(project.id)}
+          >
+            Reabrir proyecto
           </button>
         </li>
       ))}

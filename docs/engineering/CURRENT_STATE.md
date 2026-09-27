@@ -108,7 +108,7 @@ El código de repositorio no constituye `V-004 PASS`. Después del merge, la ver
 
 El primer slice de M4.2 establece la base de persistencia de metadata de proyectos bajo `src/services/firestore/` con rutas `users/{uid}/projects/{projectId}`, reutilizando la misma Firebase App que Authentication. El contrato cubre crear, listar y obtener metadata mínima de proyecto para un UID autenticado y no introduce UI, documentos, análisis, informes ni Drive.
 
-Issue #58 completó únicamente esta base de repositorio. No demuestra aislamiento desplegado ni ciclo persistente real entre sesiones, no completa M4.2 y no aporta puntos administrativos a M4. Firestore todavía requiere Work Items separados para Security Rules, provisión/configuración, UI/ciclo persistente y verificación real. **V-006 y V-007 permanecen PENDING; M4.2 no está completa.**
+Issue #58 completó únicamente esta base de repositorio. No demuestra aislamiento desplegado ni ciclo persistente real entre sesiones, no completa M4.2 y no aporta puntos administrativos a M4. Firestore todavía requiere Work Items separados para Security Rules, provisión/configuración y verificación real. **V-006 y V-007 permanecen PENDING; M4.2 no está completa.**
 
 ### M4.2b–M4.2d · Sesión compartida, servicio autenticado y UI de proyectos — INTEGRADOS EN REPOSITORIO / VERIFICACIÓN DESPLEGADA PENDIENTE
 
