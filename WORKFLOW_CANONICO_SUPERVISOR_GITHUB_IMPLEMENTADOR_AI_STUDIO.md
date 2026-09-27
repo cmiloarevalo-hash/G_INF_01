@@ -124,7 +124,8 @@ Responsabilidades:
 - recuperar únicamente el contexto necesario;
 - revisar la documentación relevante;
 - comprobar el estado del repositorio;
-- crear o utilizar la branch indicada;
+- verificar y reutilizar el checkout/workspace existente proporcionado por el canal de implementación autorizado;
+- crear o utilizar la branch indicada dentro de ese mismo checkout verificado;
 - implementar únicamente el alcance autorizado;
 - ejecutar las pruebas correspondientes;
 - revisar su propio diff;
@@ -142,6 +143,41 @@ probar
 revisar diff
 publicar evidencia
 ```
+
+### Regla de checkout del Implementador
+
+Durante el bootstrap o recovery normal, el Agente implementador debe utilizar el checkout/workspace existente del repositorio proporcionado por el canal de implementación autorizado.
+
+`git clone` **no es una acción normal de bootstrap ni de recuperación**.
+
+Antes de modificar archivos debe verificar en el checkout existente:
+
+- ubicación/cwd del repositorio;
+- `origin` esperado para este repositorio;
+- `git status`;
+- HEAD actual;
+- branch actual;
+- base requerida por el Work Item.
+
+Está permitido ejecutar `git fetch origin` para actualizar referencias remotas y crear/cambiar la branch del Work Item dentro del mismo checkout verificado.
+
+No debe, por iniciativa propia:
+
+- crear un segundo clone;
+- reconstruir o copiar el repositorio en otro directorio/workspace;
+- trabajar desde un `origin` distinto o no verificado.
+
+Si no existe un checkout utilizable, o no puede verificar de forma confiable su identidad/estado:
+
+```text
+STOP → Supervisor
+
+RESULT: BLOCKED
+CLASSIFICATION: IMPLEMENTER_ENVIRONMENT
+REASON: CANONICAL_CHECKOUT_UNAVAILABLE
+```
+
+Un `git clone` sólo puede utilizarse como recuperación excepcional cuando el Supervisor lo autoriza expresamente para ese caso después de determinar que no existe un checkout utilizable.
 
 No debe:
 
@@ -374,6 +410,20 @@ Antes de modificar código debe responder internamente estas preguntas:
 8. ¿Qué pruebas debo ejecutar?
 9. ¿Cuál es la branch/base correcta?
 10. ¿Existen cambios previos que no pertenecen a esta tarea?
+
+Además, antes de editar debe aplicar la **Regla de checkout del Implementador** de §4:
+
+```text
+checkout existente del canal autorizado
+↓
+verificar cwd/origin/status/HEAD/branch/base
+↓
+git fetch origin si necesita refrescar referencias
+↓
+crear o usar la branch del Work Item en ese mismo checkout
+```
+
+No ejecuta `git clone` como recuperación automática. Si el checkout no existe o no es verificable, usa `STOP → Supervisor` con `CLASSIFICATION: IMPLEMENTER_ENVIRONMENT` y `REASON: CANONICAL_CHECKOUT_UNAVAILABLE`.
 
 Si no puede responder una pregunta material, debe detenerse y pedir aclaración.
 
@@ -782,6 +832,8 @@ tests
 ```
 
 No necesita transcript anterior.
+
+La nueva sesión aplica también la Regla de checkout del Implementador de §4 y el bootstrap de §11: reutiliza el checkout existente del canal autorizado, verifica cwd/origin/status/HEAD/branch/base y no ejecuta `git clone` como recuperación automática. Si no existe un checkout utilizable o verificable, devuelve control al Supervisor con el blocker de entorno definido en §4.
 
 Debe responder nuevamente las diez preguntas de bootstrap antes de continuar.
 
