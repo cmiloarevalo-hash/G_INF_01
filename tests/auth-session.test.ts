@@ -1,13 +1,19 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AuthSessionControl, createAuthRuntime } from '../src/components/AuthSessionControl.js';
+import { AuthSessionControl } from '../src/components/AuthSessionControl.js';
 import {
   FIREBASE_ENVIRONMENT_KEYS,
   loadFirebaseWebConfig,
   resolveFirebaseWebConfig,
 } from '../src/services/auth/config.js';
+import { AuthSessionProvider } from '../src/services/auth/context.js';
+import {
+  createAuthSessionController,
+  createAuthRuntime,
+} from '../src/services/auth/session.js';
 import {
   adaptFirebaseUser,
   authErrorMessage,
@@ -20,6 +26,8 @@ function createFakeDriver() {
   let observer: ((user: FirebaseUserLike | null) => void) | null = null;
   let signOutCalls = 0;
   let signInCalls = 0;
+  let observeCalls = 0;
+  let unsubscribeCalls = 0;
 
   const signedInUser: FirebaseUserLike = {
     uid: 'firebase-uid-123',
@@ -30,8 +38,10 @@ function createFakeDriver() {
 
   const driver: AuthDriver = {
     observe(listener) {
+      observeCalls += 1;
       observer = listener;
       return () => {
+        unsubscribeCalls += 1;
         observer = null;
       };
     },
@@ -57,6 +67,31 @@ function createFakeDriver() {
     get signOutCalls() {
       return signOutCalls;
     },
+    get observeCalls() {
+      return observeCalls;
+    },
+    get unsubscribeCalls() {
+      return unsubscribeCalls;
+    },
+  };
+}
+
+function completeResolution() {
+  return {
+    available: true as const,
+    config: {
+      apiKey: 'test-api-key',
+      authDomain: 'test.firebaseapp.test',
+      projectId: 'test-project',
+      appId: 'test-app-id',
+    },
+  };
+}
+
+function missingResolution() {
+  return {
+    available: false as const,
+    missing: Object.values(FIREBASE_ENVIRONMENT_KEYS),
   };
 }
 
@@ -160,10 +195,7 @@ test('failed runtime Firebase config fetch preserves unavailable guest-safe reso
 test('missing Firebase config never constructs a Firebase driver', () => {
   let factoryCalls = 0;
   const runtime = createAuthRuntime(
-    {
-      available: false,
-      missing: Object.values(FIREBASE_ENVIRONMENT_KEYS),
-    },
+    missingResolution(),
     () => {
       factoryCalls += 1;
       throw new Error('driver should not be created');
@@ -173,6 +205,123 @@ test('missing Firebase config never constructs a Firebase driver', () => {
   assert.equal(runtime.available, false);
   assert.equal(runtime.service, null);
   assert.equal(factoryCalls, 0);
+});
+
+test('shared session preserves checking until Auth observation resolves', async () => {
+  const fake = createFakeDriver();
+  const controller = createAuthSessionController({
+    initialResolution: completeResolution(),
+    loadResolution: async () => completeResolution(),
+    driverFactory: () => fake.driver,
+  });
+
+  assert.deepEqual(controller.getSnapshot().session, { status: 'checking' });
+  await controller.start();
+  assert.deepEqual(controller.getSnapshot().session, { status: 'checking' });
+  assert.equal(fake.observeCalls, 1);
+
+  controller.stop();
+});
+
+test('shared session exposes unauthenticated distinctly from checking', async () => {
+  const fake = createFakeDriver();
+  const controller = createAuthSessionController({
+    initialResolution: completeResolution(),
+    loadResolution: async () => completeResolution(),
+    driverFactory: () => fake.driver,
+  });
+
+  await controller.start();
+  fake.emit(null);
+
+  assert.deepEqual(controller.getSnapshot().session, { status: 'unauthenticated' });
+  controller.stop();
+});
+
+test('shared authenticated session exposes UID and stable identity fields without token', async () => {
+  const fake = createFakeDriver();
+  const controller = createAuthSessionController({
+    initialResolution: completeResolution(),
+    loadResolution: async () => completeResolution(),
+    driverFactory: () => fake.driver,
+  });
+
+  await controller.start();
+  fake.emit({
+    uid: 'shared-uid',
+    displayName: 'Shared User',
+    email: 'shared@example.com',
+    photoURL: null,
+  });
+
+  const snapshot = controller.getSnapshot();
+  assert.equal(snapshot.session.status, 'authenticated');
+  if (snapshot.session.status !== 'authenticated') return;
+
+  assert.deepEqual(snapshot.session.user, {
+    uid: 'shared-uid',
+    displayName: 'Shared User',
+    email: 'shared@example.com',
+    photoURL: null,
+  });
+  assert.equal('token' in snapshot.session.user, false);
+  assert.equal('accessToken' in snapshot.session.user, false);
+
+  controller.stop();
+});
+
+test('shared controller owns only one active Auth observer lifecycle', async () => {
+  const fake = createFakeDriver();
+  const controller = createAuthSessionController({
+    initialResolution: completeResolution(),
+    loadResolution: async () => completeResolution(),
+    driverFactory: () => fake.driver,
+  });
+
+  await controller.start();
+  await controller.start();
+  assert.equal(fake.observeCalls, 1);
+
+  controller.stop();
+  assert.equal(fake.unsubscribeCalls, 1);
+
+  await controller.start();
+  assert.equal(fake.observeCalls, 2);
+  controller.stop();
+  assert.equal(fake.unsubscribeCalls, 2);
+});
+
+test('AuthSessionControl consumes shared auth state and contains no independent observer setup', () => {
+  const source = readFileSync(
+    new URL('../src/components/AuthSessionControl.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /useAuthSession\(\)/);
+  assert.doesNotMatch(source, /\.observe\s*\(/);
+  assert.doesNotMatch(source, /createFirebaseAuthDriver/);
+  assert.doesNotMatch(source, /loadBrowserFirebaseConfig/);
+  assert.doesNotMatch(source, /resolveBrowserFirebaseConfig/);
+});
+
+test('shared sign-in and sign-out delegate through the existing Auth service contract', async () => {
+  const fake = createFakeDriver();
+  const controller = createAuthSessionController({
+    initialResolution: completeResolution(),
+    loadResolution: async () => completeResolution(),
+    driverFactory: () => fake.driver,
+  });
+
+  await controller.start();
+  await controller.signIn();
+  assert.equal(fake.signInCalls, 1);
+  assert.equal(controller.getSnapshot().session.status, 'authenticated');
+
+  await controller.signOut();
+  assert.equal(fake.signOutCalls, 1);
+  assert.deepEqual(controller.getSnapshot().session, { status: 'unauthenticated' });
+
+  controller.stop();
 });
 
 test('session adapter exposes only stable identity fields and no auth token', () => {
@@ -245,30 +394,30 @@ test('popup cancellation and blocking are controlled auth errors', () => {
   );
 });
 
-test('guest entry remains rendered when Firebase browser config is absent', () => {
-  const runtimeGlobal = globalThis as typeof globalThis & { React?: typeof React };
-  const previousReact = runtimeGlobal.React;
-  runtimeGlobal.React = React;
+test('guest entry remains rendered when Firebase config is unavailable', () => {
+  const controller = createAuthSessionController({
+    initialResolution: missingResolution(),
+    loadResolution: async () => missingResolution(),
+    driverFactory: () => {
+      throw new Error('driver should not be created');
+    },
+  });
 
-  try {
-    const html = renderToStaticMarkup(
+  const html = renderToStaticMarkup(
+    React.createElement(
+      AuthSessionProvider,
+      { controller },
       React.createElement(
         React.Fragment,
         null,
         React.createElement(AuthSessionControl),
         React.createElement(HomePage, { onOpenGuestDocuments: () => undefined }),
       ),
-    );
+    ),
+  );
 
-    assert.match(html, /Modo invitado/);
-    assert.match(html, /Google no configurado/);
-    assert.match(html, /Disponible sin iniciar sesión/);
-    assert.match(html, /Abrir documentos del invitado/);
-  } finally {
-    if (previousReact === undefined) {
-      delete runtimeGlobal.React;
-    } else {
-      runtimeGlobal.React = previousReact;
-    }
-  }
+  assert.match(html, /Modo invitado/);
+  assert.match(html, /Google no configurado/);
+  assert.match(html, /Disponible sin iniciar sesión/);
+  assert.match(html, /Abrir documentos del invitado/);
 });
