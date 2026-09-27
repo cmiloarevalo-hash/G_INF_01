@@ -29,10 +29,10 @@ const currentFixture: GitHubRoadmapIssue[] = [
     'M2: publicar y comprobar el piloto en Google AI Studio Starter Tier',
     'open',
     [
-      '- [x] **M2.1 · Preparar la versión.**',
-      '- [x] **M2.2 · Configurar acceso seguro.**',
-      '- [ ] **M2.3 · Publicar y probar.**',
-      '- [ ] **M2.4 · Registrar y decidir.**',
+      '- [x] **M2.1 · Preparar la versión.** Confirmar el SHA vigente de main y verificar el entorno real.',
+      '- [x] **M2.2 · Configurar acceso seguro.** Usar sólo Secrets del entorno bajo control del propietario.',
+      '- [ ] **M2.3 · Publicar y probar.** Verificar desde la URL compartida efectiva que el cliente y health respondan.',
+      '- [ ] **M2.4 · Registrar y decidir.** Publicar evidencia saneada y obtener la decisión formal correspondiente.',
     ].join('\n'),
   ),
   issue(34, 'M2.2: configurar y verificar acceso seguro en AI Studio', 'closed'),
@@ -42,10 +42,10 @@ const currentFixture: GitHubRoadmapIssue[] = [
     'M3: resultado e informe para invitado',
     'closed',
     [
-      '- [x] M3.1 · Contrato de presentación',
-      '- [x] M3.2 · Vista web enriquecida TITLE_STUDY',
-      '- [x] M3.3 · Renderer y descarga DOCX',
-      '- [x] M3.4 · Verificación integrada y revisión humana',
+      '- [x] M3.1 · Contrato de presentación. Definir el contrato visual y estructural antes del renderer.',
+      '- [x] M3.2 · Vista web enriquecida TITLE_STUDY. Presentar el resultado validado de forma navegable.',
+      '- [x] M3.3 · Renderer y descarga DOCX. Generar el documento determinista sin nueva llamada LLM.',
+      '- [x] M3.4 · Verificación integrada y revisión humana. Verificar coherencia UI/DOCX y registrar evidencia.',
     ].join('\n'),
   ),
   issue(10, 'M3.1: contrato de presentación', 'closed'),
@@ -85,6 +85,33 @@ test('computes the current weighted roadmap as 50% from canonical Issue state', 
     'PENDIENTE',
     0,
   ]);
+});
+
+test('derives compact labels from realistic long parent-checklist acceptance criteria', () => {
+  const snapshot = computeRoadmapSnapshot(
+    currentFixture,
+    'source-sha',
+    '2026-09-27T01:00:00.000Z',
+  );
+
+  const m2 = snapshot.metas.find((meta) => meta.id === 'M2');
+  const m3 = snapshot.metas.find((meta) => meta.id === 'M3');
+
+  assert.equal(m2?.children?.find((child) => child.id === 'M2.1')?.label, 'Preparar la versión');
+  assert.equal(m2?.children?.find((child) => child.id === 'M2.3')?.label, 'Publicar y probar');
+  assert.equal(
+    m3?.children?.find((child) => child.id === 'M3.4')?.label,
+    'Verificación integrada y revisión humana',
+  );
+
+  const allLabels = [...(m2?.children ?? []), ...(m3?.children ?? [])]
+    .map((child) => child.label ?? '')
+    .join(' | ');
+
+  assert.doesNotMatch(allLabels, /Confirmar el SHA|Verificar desde la URL|Presentar el resultado|registrar evidencia/i);
+  assert.equal(snapshot.overallPercent, 50);
+  assert.equal(m2?.pointsEarned, 10);
+  assert.equal(m3?.pointsEarned, 20);
 });
 
 test('a newly closed canonical subtask contributes its equal share without changing meta weight', () => {
