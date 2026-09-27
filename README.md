@@ -31,6 +31,12 @@ Comandos ejecutables soportados por la baseline (`package.json`):
 Endpoint de salud:
 - `GET /api/health`: Responde HTTP 200 con el estado del proceso HTTP (`{"status":"ok", ...}`). No consulta ni afirma el estado de servicios externos.
 
+### Configuración pública de Firebase Authentication
+
+M4.1 conserva el contrato de cuatro variables `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` y `VITE_FIREBASE_APP_ID`. Una configuración build-time completa sigue funcionando como antes. Cuando no está disponible, el cliente consulta `GET /api/firebase-config`; el servidor resuelve esas mismas cuatro entradas desde su entorno de runtime y devuelve únicamente `apiKey`, `authDomain`, `projectId` y `appId` con `Cache-Control: no-store`.
+
+La configuración Web de Firebase es configuración pública del cliente, no una credencial Gemini/LLM. No guardar valores reales en archivos versionados ni reutilizar una Firebase API key para Gemini. Si las cuatro entradas no están completas o el endpoint no está disponible, el modo autenticado permanece deshabilitado y el flujo invitado continúa disponible.
+
 ## Verificación
 
 Las obligaciones y la evidencia esperada se describen en [Verification Specification](docs/engineering/VERIFICATION_SPECIFICATION.md). Con la integración de la baseline inicial (Work Item #1), se cuenta con evidencia local para:

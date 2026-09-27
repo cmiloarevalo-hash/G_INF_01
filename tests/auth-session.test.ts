@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { AuthSessionControl, createAuthRuntime } from '../src/components/AuthSessionControl.js';
 import {
   FIREBASE_ENVIRONMENT_KEYS,
+  loadFirebaseWebConfig,
   resolveFirebaseWebConfig,
 } from '../src/services/auth/config.js';
 import {
@@ -92,6 +93,68 @@ test('Firebase config is explicit and incomplete configuration disables authenti
       appId: '1:123:web:abc',
     },
   });
+});
+
+test('complete build-time Firebase config does not fetch runtime config', async () => {
+  let fetchCalls = 0;
+  const resolution = await loadFirebaseWebConfig(
+    {
+      VITE_FIREBASE_API_KEY: 'build-api-key',
+      VITE_FIREBASE_AUTH_DOMAIN: 'build.firebaseapp.test',
+      VITE_FIREBASE_PROJECT_ID: 'build-project',
+      VITE_FIREBASE_APP_ID: 'build-app-id',
+    },
+    async () => {
+      fetchCalls += 1;
+      return Response.json({});
+    },
+  );
+
+  assert.equal(resolution.available, true);
+  assert.equal(fetchCalls, 0);
+  if (!resolution.available) return;
+  assert.equal(resolution.config.projectId, 'build-project');
+});
+
+test('missing build-time Firebase config falls back to same-origin runtime config', async () => {
+  const requested: string[] = [];
+  const resolution = await loadFirebaseWebConfig(
+    {},
+    async (input) => {
+      requested.push(String(input));
+      return Response.json({
+        apiKey: 'runtime-api-key',
+        authDomain: 'runtime.firebaseapp.test',
+        projectId: 'runtime-project',
+        appId: 'runtime-app-id',
+        ignored: 'not-used',
+      });
+    },
+  );
+
+  assert.deepEqual(requested, ['/api/firebase-config']);
+  assert.deepEqual(resolution, {
+    available: true,
+    config: {
+      apiKey: 'runtime-api-key',
+      authDomain: 'runtime.firebaseapp.test',
+      projectId: 'runtime-project',
+      appId: 'runtime-app-id',
+    },
+  });
+});
+
+test('failed runtime Firebase config fetch preserves unavailable guest-safe resolution', async () => {
+  const resolution = await loadFirebaseWebConfig(
+    {},
+    async () => {
+      throw new Error('runtime unavailable');
+    },
+  );
+
+  assert.equal(resolution.available, false);
+  if (resolution.available) return;
+  assert.deepEqual(resolution.missing.sort(), Object.values(FIREBASE_ENVIRONMENT_KEYS).sort());
 });
 
 test('missing Firebase config never constructs a Firebase driver', () => {

@@ -134,8 +134,8 @@ La implementación de M4.1 incorpora la base de identidad autenticada mediante F
 - sign-out;
 - estado mínimo de sesión con UID estable y nombre/email/foto sólo cuando Firebase los entrega;
 - servicio acotado bajo `src/services/auth/**`;
-- configuración cliente explícita mediante `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` y `VITE_FIREBASE_APP_ID`;
-- ausencia o incompletitud de esa configuración deshabilita únicamente el modo autenticado y conserva el modo invitado;
+- configuración cliente explícita mediante `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` y `VITE_FIREBASE_APP_ID`; una configuración build-time completa se usa directamente y, si falta, el cliente puede obtener la misma configuración pública desde `GET /api/firebase-config`, resuelta por el servidor desde su entorno de runtime;
+- ausencia/incompletitud tanto en build-time como en runtime, o fallo del endpoint, deshabilita únicamente el modo autenticado y conserva el modo invitado;
 - no se persisten manualmente tokens de autenticación ni credenciales LLM;
 - no se incorporan Firestore, Drive, Picker ni scopes Drive en M4.1.
 

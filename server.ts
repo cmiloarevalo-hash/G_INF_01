@@ -4,6 +4,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { analyzeGuestDocuments, type GeminiFetch, type GuestDocumentInput } from './src/services/ai/gemini.js';
 import { selectionLimitError } from './src/shared/guest-limits.js';
+import { resolveFirebaseWebConfig } from './src/services/auth/config.js';
 import {
   InvalidTitleStudyReportError,
   renderTitleStudyDocx,
@@ -59,6 +60,15 @@ export function createServerApp(options: { fetchImpl?: GeminiFetch; env?: AliasE
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     });
+  });
+
+  app.get('/api/firebase-config', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const resolution = resolveFirebaseWebConfig(env);
+    if (!resolution.available) {
+      return res.status(503).json({ error: 'Firebase Authentication no está configurado.' });
+    }
+    return res.status(200).json(resolution.config);
   });
 
   app.get('/api/guest/key-aliases', (req, res) => {
