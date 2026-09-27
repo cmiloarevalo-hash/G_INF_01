@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import type { ProjectDriveFolders } from '../src/services/drive/types.js';
+import { projectFromSnapshot } from '../src/services/firestore/firebase.js';
 import {
   createProjectRepository,
   ProjectRepositoryInputError,
@@ -9,17 +12,39 @@ import type {
   ProjectMetadata,
 } from '../src/services/firestore/types.js';
 
-function project(id: string, name: string): ProjectMetadata {
+function driveFolders(overrides: Partial<ProjectDriveFolders> = {}): ProjectDriveFolders {
+  return {
+    applicationRootId: 'app-root',
+    projectsRootId: 'projects-root',
+    projectFolderId: 'project-folder',
+    documentsFolderId: 'documents-folder',
+    analysisFolderId: 'analysis-folder',
+    reportsFolderId: 'reports-folder',
+    ...overrides,
+  };
+}
+
+function project(
+  id: string,
+  name: string,
+  folders?: ProjectDriveFolders,
+): ProjectMetadata {
   return {
     id,
     name,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+    ...(folders ? { driveFolders: folders } : {}),
   };
 }
 
 function createFakeDriver(recordsByUid: Record<string, ProjectMetadata[]> = {}) {
-  const calls: Array<{ operation: string; uid: string; value?: string }> = [];
+  const calls: Array<{
+    operation: 'create' | 'list' | 'get' | 'updateDriveFolders';
+    uid: string;
+    value?: string;
+    driveFolders?: ProjectDriveFolders;
+  }> = [];
   let createCounter = 0;
 
   const driver: ProjectDriver = {
@@ -40,9 +65,31 @@ function createFakeDriver(recordsByUid: Record<string, ProjectMetadata[]> = {}) 
       calls.push({ operation: 'get', uid, value: projectId });
       return (recordsByUid[uid] ?? []).find((item) => item.id === projectId) ?? null;
     },
+
+    async updateDriveFolders(uid, projectId, folders) {
+      calls.push({
+        operation: 'updateDriveFolders',
+        uid,
+        value: projectId,
+        driveFolders: folders,
+      });
+      const records = recordsByUid[uid] ?? [];
+      const index = records.findIndex((item) => item.id === projectId);
+      if (index < 0) return null;
+
+      const updated = {
+        ...records[index],
+        driveFolders: folders,
+        updatedAt: new Date('2026-01-03T00:00:00.000Z'),
+      };
+      recordsByUid[uid] = records.map((item, itemIndex) => (
+        itemIndex === index ? updated : item
+      ));
+      return updated;
+    },
   };
 
-  return { driver, calls };
+  return { driver, calls, recordsByUid };
 }
 
 test('blank UID is rejected before project driver access', async () => {
@@ -112,6 +159,96 @@ test('get is scoped to UID and project ID', async () => {
   ]);
 });
 
+test('complete Drive folder refs are normalized and delegated to the project driver', async () => {
+  const fake = createFakeDriver({
+    'uid-a': [project('project-a', 'Proyecto A')],
+  });
+  const repository = createProjectRepository(fake.driver);
+  const input = driveFolders({
+    applicationRootId: '  app-root  ',
+    documentsFolderId: '  documents-folder  ',
+  });
+
+  const result = await repository.updateDriveFolders(
+    '  uid-a  ',
+    '  project-a  ',
+    input,
+  );
+
+  const expected = driveFolders();
+  assert.deepEqual(result?.driveFolders, expected);
+  assert.deepEqual(fake.calls, [{
+    operation: 'updateDriveFolders',
+    uid: 'uid-a',
+    value: 'project-a',
+    driveFolders: expected,
+  }]);
+});
+
+test('every blank or missing Drive folder ID is rejected before driver access', async () => {
+  const keys: Array<keyof ProjectDriveFolders> = [
+    'applicationRootId',
+    'projectsRootId',
+    'projectFolderId',
+    'documentsFolderId',
+    'analysisFolderId',
+    'reportsFolderId',
+  ];
+
+  for (const key of keys) {
+    const blankFake = createFakeDriver();
+    const blankRepository = createProjectRepository(blankFake.driver);
+    await assert.rejects(
+      blankRepository.updateDriveFolders(
+        'uid-a',
+        'project-a',
+        driveFolders({ [key]: '   ' }),
+      ),
+      (error) => error instanceof ProjectRepositoryInputError,
+    );
+    assert.deepEqual(blankFake.calls, []);
+
+    const missingFake = createFakeDriver();
+    const missingRepository = createProjectRepository(missingFake.driver);
+    const incomplete = { ...driveFolders() } as Record<string, string>;
+    delete incomplete[key];
+    await assert.rejects(
+      missingRepository.updateDriveFolders(
+        'uid-a',
+        'project-a',
+        incomplete as unknown as ProjectDriveFolders,
+      ),
+      (error) => error instanceof ProjectRepositoryInputError,
+    );
+    assert.deepEqual(missingFake.calls, []);
+  }
+});
+
+test('Drive folder update persists the complete refs on an existing project', async () => {
+  const fake = createFakeDriver({
+    'uid-a': [project('project-a', 'Proyecto A')],
+  });
+  const repository = createProjectRepository(fake.driver);
+  const folders = driveFolders();
+
+  const updated = await repository.updateDriveFolders('uid-a', 'project-a', folders);
+  const persisted = await repository.get('uid-a', 'project-a');
+
+  assert.deepEqual(updated?.driveFolders, folders);
+  assert.deepEqual(persisted?.driveFolders, folders);
+});
+
+test('Drive folder update returns null for a missing project and never creates it', async () => {
+  const fake = createFakeDriver({ 'uid-a': [] });
+  const repository = createProjectRepository(fake.driver);
+
+  assert.equal(
+    await repository.updateDriveFolders('uid-a', 'missing', driveFolders()),
+    null,
+  );
+  assert.deepEqual(fake.recordsByUid['uid-a'], []);
+});
+
 test('project not found is null while external driver failure remains an error', async () => {
   const repository = createProjectRepository(createFakeDriver().driver);
   assert.equal(await repository.get('uid-a', 'missing'), null);
@@ -126,11 +263,90 @@ test('project not found is null while external driver failure remains an error',
     async get() {
       throw new Error('firestore unavailable');
     },
+    async updateDriveFolders() {
+      throw new Error('firestore unavailable');
+    },
   };
   const failingRepository = createProjectRepository(failingDriver);
 
   await assert.rejects(
-    failingRepository.get('uid-a', 'project-a'),
+    failingRepository.updateDriveFolders('uid-a', 'project-a', driveFolders()),
     /firestore unavailable/,
   );
+});
+
+test('old project snapshots without Drive refs remain readable', () => {
+  const created = new Date('2026-01-01T00:00:00.000Z');
+  const updated = new Date('2026-01-02T00:00:00.000Z');
+
+  const result = projectFromSnapshot({
+    id: 'legacy-project',
+    data: () => ({
+      name: ' Legacy ',
+      createdAt: { toDate: () => created },
+      updatedAt: { toDate: () => updated },
+    }),
+  });
+
+  assert.deepEqual(result, {
+    id: 'legacy-project',
+    name: 'Legacy',
+    createdAt: created,
+    updatedAt: updated,
+  });
+});
+
+test('valid stored Drive refs are parsed into canonical ProjectMetadata', () => {
+  const result = projectFromSnapshot({
+    id: 'project-a',
+    data: () => ({
+      name: 'Proyecto A',
+      driveFolders: driveFolders({ reportsFolderId: '  reports-folder  ' }),
+    }),
+  });
+
+  assert.deepEqual(result.driveFolders, driveFolders());
+});
+
+test('invalid or incomplete stored Drive refs never become fabricated valid state', () => {
+  assert.throws(
+    () => projectFromSnapshot({
+      id: 'project-a',
+      data: () => ({
+        name: 'Proyecto A',
+        driveFolders: {
+          applicationRootId: 'app-root',
+          projectsRootId: 'projects-root',
+        },
+      }),
+    }),
+    /referencias Drive persistidas/,
+  );
+
+  assert.throws(
+    () => projectFromSnapshot({
+      id: 'project-a',
+      data: () => ({
+        name: 'Proyecto A',
+        driveFolders: driveFolders({ analysisFolderId: '   ' }),
+      }),
+    }),
+    /referencias Drive persistidas/,
+  );
+});
+
+test('Firestore project source introduces no credential, owner override, or document-byte persistence', () => {
+  const source = [
+    '../src/services/firestore/types.ts',
+    '../src/services/firestore/service.ts',
+    '../src/services/firestore/authenticated.ts',
+    '../src/services/firestore/firebase.ts',
+  ]
+    .map((path) => readFileSync(new URL(path, import.meta.url), 'utf8'))
+    .join('\n');
+
+  assert.doesNotMatch(source, /ownerUid|uidOverride/);
+  assert.doesNotMatch(source, /accessToken|idToken|refreshToken/);
+  assert.doesNotMatch(source, /documentBytes|fileBytes|fileBody/);
+  assert.doesNotMatch(source, /localStorage|sessionStorage/);
 });

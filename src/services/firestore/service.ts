@@ -1,3 +1,4 @@
+import type { ProjectDriveFolders } from '../drive/types.js';
 import type { ProjectDriver, ProjectRepository } from './types.js';
 
 export class ProjectRepositoryInputError extends Error {
@@ -19,6 +20,29 @@ function requireProjectId(projectId: string): string {
   return normalized;
 }
 
+function requireDriveFolderId(value: unknown, label: string): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new ProjectRepositoryInputError(`Se requiere un identificador válido para ${label}.`);
+  }
+  return value.trim();
+}
+
+function normalizeDriveFolders(value: ProjectDriveFolders): ProjectDriveFolders {
+  if (!value || typeof value !== 'object') {
+    throw new ProjectRepositoryInputError('Se requieren referencias Drive completas.');
+  }
+
+  const record = value as unknown as Record<string, unknown>;
+  return {
+    applicationRootId: requireDriveFolderId(record.applicationRootId, 'applicationRootId'),
+    projectsRootId: requireDriveFolderId(record.projectsRootId, 'projectsRootId'),
+    projectFolderId: requireDriveFolderId(record.projectFolderId, 'projectFolderId'),
+    documentsFolderId: requireDriveFolderId(record.documentsFolderId, 'documentsFolderId'),
+    analysisFolderId: requireDriveFolderId(record.analysisFolderId, 'analysisFolderId'),
+    reportsFolderId: requireDriveFolderId(record.reportsFolderId, 'reportsFolderId'),
+  };
+}
+
 export function normalizeProjectName(name: string): string {
   const normalized = name.trim();
   if (!normalized) throw new ProjectRepositoryInputError('El nombre del proyecto no puede estar vacío.');
@@ -37,6 +61,14 @@ export function createProjectRepository(driver: ProjectDriver): ProjectRepositor
 
     async get(uid, projectId) {
       return driver.get(requireUid(uid), requireProjectId(projectId));
+    },
+
+    async updateDriveFolders(uid, projectId, driveFolders) {
+      return driver.updateDriveFolders(
+        requireUid(uid),
+        requireProjectId(projectId),
+        normalizeDriveFolders(driveFolders),
+      );
     },
   };
 }
