@@ -13,12 +13,21 @@ import {
   getDoc,
   getDocs,
   setDoc,
+  updateDoc,
 } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-g-inf-01';
 const USER_A = 'user-a';
 const USER_B = 'user-b';
 const PROJECT_A = 'project-a';
+const DRIVE_FOLDERS = {
+  applicationRootId: 'app-root',
+  projectsRootId: 'projects-root',
+  projectFolderId: 'project-folder',
+  documentsFolderId: 'documents-folder',
+  analysisFolderId: 'analysis-folder',
+  reportsFolderId: 'reports-folder',
+};
 
 let testEnv: RulesTestEnvironment;
 
@@ -107,6 +116,34 @@ test('authenticated user A can list own project collection', async () => {
     getDocs(collection(db, 'users', USER_A, 'projects')),
   );
   assert.equal(snapshot.size, 1);
+});
+
+test('authenticated user can update Drive refs on own existing project', async () => {
+  await seedOwnProject();
+  const db = testEnv.authenticatedContext(USER_A).firestore();
+  const ref = projectDocument(db, USER_A, PROJECT_A);
+
+  await assertSucceeds(
+    updateDoc(ref, {
+      driveFolders: DRIVE_FOLDERS,
+      updatedAt: 'updated',
+    }),
+  );
+
+  const snapshot = await assertSucceeds(getDoc(ref));
+  assert.deepEqual(snapshot.data()?.driveFolders, DRIVE_FOLDERS);
+});
+
+test('user B cannot update Drive refs on user A project', async () => {
+  await seedOwnProject();
+  const db = testEnv.authenticatedContext(USER_B).firestore();
+
+  await assertFails(
+    updateDoc(projectDocument(db, USER_A, PROJECT_A), {
+      driveFolders: DRIVE_FOLDERS,
+      updatedAt: 'denied',
+    }),
+  );
 });
 
 test('user B cannot read user A project', async () => {
