@@ -1,6 +1,6 @@
 # Workflow canónico — Supervisor + GitHub + Agente implementador + AI_STUDIO_OPERATOR
 
-> **Estado:** candidato de reemplazo para Issue #47. No sustituye la fuente vigente hasta revisión independiente y merge autorizado.
+> **Estado:** workflow canónico activo del proyecto desde la integración de Issue #47 mediante PR #49 en `main@866d7aaa793cb9d1a2675965f911c6ddb37275e9`.
 >
 > **Baseline:** `WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md` en `main@ff1a7d46c3f9992adbcc41b933cc13c3501fc617` (blob `d6fd666d5be7659784f6f20021ba4a3515d45f14`).
 >
@@ -17,12 +17,12 @@ Ya están integradas en el baseline y se preservan sin reimplementarlas:
 - Issue #32 / PR #33 — `AI_STUDIO_OPERATOR` subordinado y no-write;
 - Issue #36 / PR #38 — contrato residente, bootstrap/recovery, `CANONICAL_GIT_CHECKOUT`, `MANAGED_PREVIEW_ROOT`, materialización one-way, cwd/process safety, SHA Gate, PUBLISH y reporting.
 
-Reglas operativas verificadas, pendientes de integración canónica antes de este candidato:
+Reglas operativas verificadas que estaban pendientes de integración canónica antes de la consolidación de Issue #47:
 
 - Issue #35 — `RESEARCH_GATE + STRATEGIC_RATIONALE`;
 - Issue #39 — `TECHNICAL PERMISSION != WORKFLOW AUTHORITY` y `AI_STUDIO_ALLOWED_REPOSITORY_WRITES = NONE`.
 
-Issue #35 y Issue #39 permanecen OPEN durante esta propuesta. Su incorporación aquí no debe describirse como integración previa; sólo adquirirían efecto canónico general si este candidato completa el lifecycle válido y se integra.
+Issue #35 y Issue #39 permanecen OPEN. Antes de PR #49 sus reglas eran operativamente vigentes pero todavía no estaban integradas canónicamente; quedaron incorporadas a este workflow mediante la integración de Issue #47. Su estado OPEN no equivale a ausencia de esa integración y su cierre conserva su propio lifecycle.
 
 El registro `recomendaciones/MEJORAS_WORKFLOW.md` es provenance de recomendaciones. Según la revisión histórica validada en #47, sólo la recomendación de CI fue adoptada mediante #26; las restantes recomendaciones no se importan por el solo hecho de estar documentadas.
 
@@ -1143,7 +1143,7 @@ AI Studio puede incluir una sección opcional `IMPLEMENTER_SUGGESTION` con una p
 
 # 30. RESEARCH_GATE + STRATEGIC_RATIONALE
 
-**Provenance:** Issue #35. Antes de la integración de este candidato, Issue #35 permanece OPEN y esta regla existe como decisión humana operativamente vigente. Este documento propone consolidarla canónicamente sin afirmar que hubiese estado integrada previamente.
+**Provenance:** Issue #35. Antes de la integración de PR #49, Issue #35 permanecía OPEN y esta regla existía como decisión humana operativamente vigente, todavía no integrada canónicamente. La regla quedó consolidada en el workflow canónico mediante Issue #47 / PR #49. Issue #35 permanece OPEN.
 
 ## 30.1 Cuándo se activa RESEARCH_GATE
 
@@ -1283,7 +1283,7 @@ Este protocolo no concede nueva autoridad de escritura, merge, scope o decisión
 
 # 31. TECHNICAL PERMISSION != WORKFLOW AUTHORITY
 
-**Provenance:** Issue #39. Antes de la integración de este candidato, Issue #39 permanece OPEN y esta regla existe como decisión humana operativamente vigente. PR #40 fue cerrado sin merge y no constituye integración canónica. Este documento propone consolidar la regla sin reutilizar PR #40 como evidencia válida de implementación.
+**Provenance:** Issue #39. Antes de la integración de PR #49, Issue #39 permanecía OPEN y esta regla existía como decisión humana operativamente vigente, todavía no integrada canónicamente. PR #40 fue cerrado sin merge y no constituye integración canónica. La regla quedó consolidada en el workflow canónico mediante Issue #47 / PR #49, sin reutilizar PR #40 como evidencia válida de implementación. Issue #39 permanece OPEN.
 
 Regla:
 
@@ -1385,34 +1385,34 @@ Es menos robusto mecánicamente que el workflow completo porque **scope, selecci
 
 # Apéndice A — Provenance de mejoras consolidadas
 
-| Fuente | Estado antes de este candidato | Evidencia de integración / estado | Tratamiento en este documento |
+| Fuente | Estado antes de la consolidación de #47 | Evidencia de integración / estado actual | Tratamiento en este documento |
 |---|---|---|---|
 | Issue #4 / PR #5 | CANONICAL | PR #5 merged; merge `7ceb98e7cff1621f21b3d9b5929acc7a264af739` | PRESERVED en §24 |
 | Issue #26 / PR #27 | CANONICAL | PR #27 merged; merge `3fa731a13fd2a77531392fd5b22fd240c9091ba6` | PRESERVED en §22 |
 | Issue #32 / PR #33 | CANONICAL | PR #33 merged; merge `d2325a23232e72599ffecc96a354c41490b5f527` | PRESERVED en §29 |
 | Issue #36 / PR #38 | CANONICAL | PR #38 merged; merge `1a4167c1e29b46efaf09662b8fb11919bfac44cf` | PRESERVED en §29 + `AI_STUDIO_OPERATOR.md` |
-| Issue #35 | OPERATIONAL_PENDING | Human decision persisted; Issue OPEN; no merged canonical integration found | NEW §30, proposed canonical consolidation |
-| Issue #39 | OPERATIONAL_PENDING | Human decision persisted; Issue OPEN; PR #40 closed/not merged | NEW §31, proposed canonical consolidation |
+| Issue #35 | OPERATIONAL_PENDING | Regla integrada canónicamente por Issue #47 / PR #49; Issue permanece OPEN | NEW §30, consolidado canónicamente por PR #49 |
+| Issue #39 | OPERATIONAL_PENDING | Regla integrada canónicamente por Issue #47 / PR #49; Issue permanece OPEN; PR #40 siguió closed/not merged | NEW §31, consolidado canónicamente por PR #49 |
 | PR #40 | SUPERSEDED as implementation evidence | Persisted #39 handoff invalidates reuse after role-separation violation | Excluded as canonical integration evidence |
-| PR #49 | PROPOSED | Open/unmerged | Working vehicle for Issue #47 |
+| PR #49 | PROPOSED antes del merge | MERGED; merge `866d7aaa793cb9d1a2675965f911c6ddb37275e9` | Vehículo de integración canónica de Issue #47 |
 
 
 ---
 
 # Apéndice B — Handover canónico
 
-Hasta que este cambio sea revisado y merged, la fuente normativa vigente continúa siendo:
+Desde la integración de PR #49 en `main@866d7aaa793cb9d1a2675965f911c6ddb37275e9`, la fuente normativa vigente es:
 
-`WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md` en `main`.
+`WORKFLOW_CANONICO_SUPERVISOR_GITHUB_IMPLEMENTADOR_AI_STUDIO.md` en `main`.
 
-Cuando el reemplazo se integre válidamente en `main`:
+El handover canónico quedó aplicado así:
 
-- `WORKFLOW_CANONICO_SUPERVISOR_GITHUB_IMPLEMENTADOR_AI_STUDIO.md` pasa a ser la fuente canónica activa del workflow;
+- `WORKFLOW_CANONICO_SUPERVISOR_GITHUB_IMPLEMENTADOR_AI_STUDIO.md` es la fuente canónica activa del workflow;
 - `WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md` queda retenido únicamente para trazabilidad histórica y contiene una referencia explícita al nuevo archivo;
 - no deben tratarse ambos archivos como workflows canónicos simultáneamente;
 - el merge de #47 no cierra automáticamente Issues #35 o #39; su cierre requiere evidencia y decisión conforme a su estado real.
 
-La branch o PR de este candidato no tiene autoridad canónica por sí misma.
+La autoridad canónica descrita aquí proviene del estado integrado en `main`, no de la antigua branch o PR de trabajo.
 
 
 ---
@@ -1480,10 +1480,10 @@ Para las 49 secciones/subsecciones estructurales del baseline, `PRESERVED` es el
 | 29.9 Regla absoluta de no escritura | PRESERVED | 29.9 Regla absoluta de no escritura | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
 | 29.10 Fin: AI_STUDIO_REPORT y evidencia | PRESERVED | 29.10 Fin: AI_STUDIO_REPORT y evidencia | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
 | Resultado | PRESERVED | Resultado | Contenido operativo del baseline conservado; sin cambio silencioso de autoridad o lifecycle. |
-| Issue #35 — RESEARCH_GATE + STRATEGIC_RATIONALE | NEW | §30 | Regla operativa humana validada; OPEN antes de este candidato; propuesta de consolidación canónica vía #47. |
-| Issue #39 — TECHNICAL PERMISSION != WORKFLOW AUTHORITY | NEW | §31 | Regla operativa humana validada; OPEN antes de este candidato; PR #40 no se usa como integración canónica. |
+| Issue #35 — RESEARCH_GATE + STRATEGIC_RATIONALE | NEW | §30 | Regla operativa humana validada; OPEN antes de PR #49; integrada canónicamente vía Issue #47 / PR #49; Issue permanece OPEN. |
+| Issue #39 — TECHNICAL PERMISSION != WORKFLOW AUTHORITY | NEW | §31 | Regla operativa humana validada; OPEN antes de PR #49; integrada canónicamente vía Issue #47 / PR #49; PR #40 no se usa como integración canónica; Issue permanece OPEN. |
 | Provenance histórica validada | NEW | Apéndice A | Metadato de trazabilidad; no crea autoridad nueva. |
-| Handover old → new | NEW | Apéndice B | Mecánica de reemplazo autorizada por #47; evita dos fuentes aparentemente canónicas después del merge. |
+| Handover old → new | NEW | Apéndice B | Mecánica de reemplazo ejecutada mediante el merge de PR #49; evita dos fuentes aparentemente canónicas. |
 
 Resumen:
 
