@@ -5,8 +5,8 @@ Frozen base: `dccf75921c6eb38ffcdd17677d4968679e74112c`
 | Phase | Prompt | Status | Commit |
 |---|---|---|---|
 | 01 | DRIVE_FOUNDATION | PASS | `3584a13f0ec916755f3df262d943933d73bfb4d8` |
-| 02 | LOCAL_FILE_TO_DRIVE | PASS | SELF (resolved next phase/final audit) |
-| 03 | GOOGLE_PICKER_ADAPTER | PENDING | — |
+| 02 | LOCAL_FILE_TO_DRIVE | PASS | `a95f5f1ba65924d0b2c868c894d62103a0571984` |
+| 03 | GOOGLE_PICKER_ADAPTER | PASS | SELF (resolved next phase/final audit) |
 | 04 | DRIVE_REFS_FIRESTORE | PENDING | — |
 | 05 | DOCUMENTS_UI | PENDING | — |
 | 06 | ANALYSIS_REPORT_HISTORY_STORAGE | PENDING | — |
