@@ -1137,6 +1137,18 @@ STOP → BLOCKED → Supervisor
 
 `TECHNICAL PERMISSION != WORKFLOW AUTHORITY` permanece vigente antes, durante y después de toda escalación.
 
+## 29.12 Compatibilidad operacional inmediata — Issue #53
+
+La decisión humana de Issue #60 ya es operativamente vigente y supersede cualquier request anterior incompatible.
+
+Para Issue #53:
+
+- el HOLD por cuota de AI Studio permanece vigente hasta decisión humana expresa;
+- ningún request pendiente de Preview o Publish se reanuda automáticamente;
+- si AI Studio vuelve a estar disponible, cualquier nueva intervención requiere primero un intento del Web Implementer, bloqueo intrínseco demostrado, verificación del Supervisor y un nuevo `AI_STUDIO_REQUEST` mínimo conforme a §29.2;
+- una antigua autorización `PUBLISH` de AI Studio queda sin efecto;
+- cualquier publicación eventual es acción exclusiva del Humano conforme a §29.7.
+
 ---
 
 # 30. RESEARCH_GATE + STRATEGIC_RATIONALE
