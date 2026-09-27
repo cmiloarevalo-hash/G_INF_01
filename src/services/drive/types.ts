@@ -71,3 +71,21 @@ export type ProjectDriveProvisioningStage =
   | 'documents-folder'
   | 'analysis-folder'
   | 'reports-folder';
+
+export interface DriveLocalFileUploadInput {
+  name: string;
+  mimeType: string;
+  byteLength: number;
+  body: BodyInit;
+  documentsFolderId: string;
+}
+
+export interface ConfirmedDriveFile {
+  id: string;
+  name?: string;
+  mimeType?: string;
+}
+
+export interface DriveLocalFileUploadService {
+  upload(input: DriveLocalFileUploadInput): Promise<ConfirmedDriveFile>;
+}
