@@ -1,5 +1,9 @@
 import * as React from 'react';
-import { resolveBrowserFirebaseConfig, type FirebaseConfigResolution } from '../services/auth/config.js';
+import {
+  loadBrowserFirebaseConfig,
+  resolveBrowserFirebaseConfig,
+  type FirebaseConfigResolution,
+} from '../services/auth/config.js';
 import { createFirebaseAuthDriver } from '../services/auth/firebase.js';
 import { authErrorMessage, createAuthService } from '../services/auth/service.js';
 import type { AuthDriver, AuthService, AuthSessionState } from '../services/auth/types.js';
@@ -39,15 +43,34 @@ export function createAuthRuntime(
 }
 
 export const AuthSessionControl: React.FC = () => {
-  const runtime = React.useMemo(
-    () => createAuthRuntime(resolveBrowserFirebaseConfig()),
+  const initialResolution = React.useMemo(
+    () => resolveBrowserFirebaseConfig(),
     [],
+  );
+  const [runtime, setRuntime] = React.useState<AuthRuntime>(
+    () => createAuthRuntime(initialResolution),
   );
   const [session, setSession] = React.useState<AuthSessionState>(
     runtime.available ? { status: 'checking' } : { status: 'unauthenticated' },
   );
   const [pendingAction, setPendingAction] = React.useState<'sign-in' | 'sign-out' | null>(null);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (initialResolution.available) return;
+
+    let active = true;
+    void loadBrowserFirebaseConfig().then((resolution) => {
+      if (!active) return;
+      const nextRuntime = createAuthRuntime(resolution);
+      setRuntime(nextRuntime);
+      setSession(nextRuntime.available ? { status: 'checking' } : { status: 'unauthenticated' });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [initialResolution]);
 
   React.useEffect(() => {
     if (!runtime.service) return;
