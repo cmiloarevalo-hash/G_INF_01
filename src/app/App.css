@@ -1164,3 +1164,137 @@ body {
     justify-content: center;
   }
 }
+
+
+/* Authenticated project UI */
+.project-page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.project-page-heading {
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+
+.project-page-heading h2 {
+  margin-bottom: 0.35rem;
+  font-size: 1.5rem;
+}
+
+.project-page-heading p,
+.project-state-card {
+  color: var(--text-secondary);
+}
+
+.project-form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 38rem;
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+
+.project-form label {
+  font-weight: 600;
+}
+
+.project-form input {
+  min-height: 2.75rem;
+  padding: 0.65rem 0.8rem;
+  color: var(--text-main);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+}
+
+.project-form .btn-primary {
+  justify-self: start;
+}
+
+.project-state-card,
+.project-error,
+.project-result {
+  padding: 1rem 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+
+.project-state-card {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.project-error {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.project-result {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.project-list {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+}
+
+.project-list > li {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.project-open-button {
+  justify-self: start;
+}
+
+.project-metadata-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+
+.project-metadata-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.project-metadata-heading h3 {
+  overflow-wrap: anywhere;
+}
+
+.project-metadata-heading code {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.project-metadata-dates {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .project-metadata-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .project-form {
+    max-width: none;
+  }
+}
