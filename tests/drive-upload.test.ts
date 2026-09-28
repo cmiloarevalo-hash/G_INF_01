@@ -245,7 +245,8 @@ test('final non-success response never becomes upload success', async () => {
     (error) => (
       error instanceof DriveUploadError &&
       error.stage === 'content' &&
-      error.status === 507
+      error.status === 507 &&
+      error.kind === 'storage'
     ),
   );
 });
@@ -354,4 +355,31 @@ test('focused upload verification uses injected transport and fake authorization
   const result = await service.upload(uploadInput());
   assert.equal(result.id, 'fake-id');
   assert.equal(transportCalls, 2);
+});
+
+
+test('Drive upload exposes quota and authorization failure kinds explicitly', async () => {
+  const quota = createDriveLocalFileUploadService(
+    authorizedService(),
+    async () => new Response('quota', { status: 429 }),
+  );
+  await assert.rejects(
+    quota.upload(uploadInput()),
+    (error) =>
+      error instanceof DriveUploadError &&
+      error.kind === 'quota' &&
+      error.status === 429,
+  );
+
+  const authorizationFailure = createDriveLocalFileUploadService(
+    authorizedService(),
+    async () => new Response('unauthorized', { status: 401 }),
+  );
+  await assert.rejects(
+    authorizationFailure.upload(uploadInput()),
+    (error) =>
+      error instanceof DriveUploadError &&
+      error.kind === 'authorization' &&
+      error.status === 401,
+  );
 });
