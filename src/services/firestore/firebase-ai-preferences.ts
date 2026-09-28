@@ -49,7 +49,10 @@ export function createAiPreferenceRepositoryWithRuntime(
 
     async set(uid, preference) {
       const confirmed = requireSupportedAiPreference(preference);
-      await runtime.set(preferencePath(uid), confirmed);
+      await runtime.set(preferencePath(uid), {
+        provider: confirmed.provider,
+        model: confirmed.model,
+      });
       return confirmed;
     },
   };
