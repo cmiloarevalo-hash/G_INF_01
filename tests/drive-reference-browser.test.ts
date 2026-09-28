@@ -118,29 +118,31 @@ test('Drive reference reader returns confirmed metadata/content and enforces byt
 
 test('Drive reference reader rejects confirmed Content-Length above limit before consuming body', async () => {
   const auth = authorization();
-  let metadataCalls = 0;
-  let bodyPulls = 0;
+  let calls = 0;
+  let bodyReads = 0;
   let bodyCancelled = false;
   const reader = createDriveReferenceReader(
     auth.service,
     async () => {
-      metadataCalls += 1;
-      if (metadataCalls === 1) {
+      calls += 1;
+      if (calls === 1) {
         return Response.json({ id: 'file-1' });
       }
 
-      const body = new ReadableStream<Uint8Array>({
-        pull(controller) {
-          bodyPulls += 1;
-          controller.enqueue(new Uint8Array([1, 2, 3]));
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'Content-Length': '10' }),
+        body: {
+          async cancel() {
+            bodyCancelled = true;
+          },
+          getReader() {
+            bodyReads += 1;
+            throw new Error('body must not be read');
+          },
         },
-        cancel() {
-          bodyCancelled = true;
-        },
-      });
-      return new Response(body, {
-        headers: { 'Content-Length': '10' },
-      });
+      } as unknown as Response;
     },
     4,
   );
@@ -151,7 +153,7 @@ test('Drive reference reader rejects confirmed Content-Length above limit before
       error instanceof DriveReferenceError &&
       error.kind === 'too-large',
   );
-  assert.equal(bodyPulls, 0);
+  assert.equal(bodyReads, 0);
   assert.equal(bodyCancelled, true);
 });
 
@@ -165,16 +167,9 @@ test('Drive reference reader rejects oversized body during streaming without Con
       calls += 1;
       if (calls === 1) return Response.json({ id: 'file-1' });
 
-      const chunks = [
-        new Uint8Array([1, 2, 3]),
-        new Uint8Array([4, 5, 6]),
-      ];
-      let index = 0;
       return new Response(new ReadableStream<Uint8Array>({
         pull(controller) {
-          const chunk = chunks[index++];
-          if (chunk) controller.enqueue(chunk);
-          else controller.close();
+          controller.enqueue(new Uint8Array([1, 2, 3]));
         },
         cancel() {
           cancelled = true;
@@ -203,16 +198,15 @@ test('Drive reference reader rejects real body above limit even when Content-Len
       calls += 1;
       if (calls === 1) return Response.json({ id: 'file-1' });
 
-      const chunks = [
-        new Uint8Array([1, 2]),
-        new Uint8Array([3, 4, 5]),
-      ];
-      let index = 0;
+      let pulls = 0;
       return new Response(new ReadableStream<Uint8Array>({
         pull(controller) {
-          const chunk = chunks[index++];
-          if (chunk) controller.enqueue(chunk);
-          else controller.close();
+          pulls += 1;
+          controller.enqueue(
+            pulls === 1
+              ? new Uint8Array([1, 2])
+              : new Uint8Array([3, 4, 5]),
+          );
         },
         cancel() {
           cancelled = true;
