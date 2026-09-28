@@ -327,8 +327,8 @@ test('unrelated nested project subcollections remain denied', async () => {
         USER_A,
         'projects',
         PROJECT_A,
-        'analyses',
-        'analysis-a',
+        'drafts',
+        'draft-a',
       ),
       { value: true },
     ),
@@ -348,4 +348,176 @@ test('unrelated Firestore paths remain denied', async () => {
 test('rules do not introduce recursive wildcard authorization', () => {
   const source = readFileSync('firestore.rules', 'utf8');
   assert.doesNotMatch(source, /\{document=\*\*\}/);
+});
+
+
+function artifactDocument(
+  db: ReturnType<RulesTestEnvironment['authenticatedContext']>['firestore'],
+  userId: string,
+  projectId: string,
+  collectionName: 'analyses' | 'reports',
+  artifactId: string,
+) {
+  return doc(
+    db,
+    'users',
+    userId,
+    'projects',
+    projectId,
+    collectionName,
+    artifactId,
+  );
+}
+
+function artifactCollection(
+  db: ReturnType<RulesTestEnvironment['authenticatedContext']>['firestore'],
+  userId: string,
+  projectId: string,
+  collectionName: 'analyses' | 'reports',
+) {
+  return collection(
+    db,
+    'users',
+    userId,
+    'projects',
+    projectId,
+    collectionName,
+  );
+}
+
+const ARTIFACT_METADATA = {
+  driveFileId: 'drive-artifact-1',
+  name: 'artifact',
+  mimeType: 'application/octet-stream',
+  createdAt: 'seed',
+  updatedAt: 'seed',
+};
+
+for (const collectionName of ['analyses', 'reports'] as const) {
+  test(`unauthenticated ${collectionName} create/read/list are denied`, async () => {
+    const unauthenticated = testEnv.unauthenticatedContext().firestore();
+
+    await assertFails(
+      setDoc(
+        artifactDocument(
+          unauthenticated,
+          USER_A,
+          PROJECT_A,
+          collectionName,
+          'artifact-a',
+        ),
+        ARTIFACT_METADATA,
+      ),
+    );
+
+    const owner = testEnv.authenticatedContext(USER_A).firestore();
+    await assertSucceeds(
+      setDoc(
+        artifactDocument(owner, USER_A, PROJECT_A, collectionName, 'artifact-a'),
+        ARTIFACT_METADATA,
+      ),
+    );
+
+    await assertFails(
+      getDoc(
+        artifactDocument(
+          unauthenticated,
+          USER_A,
+          PROJECT_A,
+          collectionName,
+          'artifact-a',
+        ),
+      ),
+    );
+    await assertFails(
+      getDocs(
+        artifactCollection(
+          unauthenticated,
+          USER_A,
+          PROJECT_A,
+          collectionName,
+        ),
+      ),
+    );
+  });
+
+  test(`owner can create/read/list ${collectionName} metadata`, async () => {
+    const db = testEnv.authenticatedContext(USER_A).firestore();
+    const ref = artifactDocument(
+      db,
+      USER_A,
+      PROJECT_A,
+      collectionName,
+      'artifact-a',
+    );
+
+    await assertSucceeds(setDoc(ref, ARTIFACT_METADATA));
+    await assertSucceeds(getDoc(ref));
+    const listed = await assertSucceeds(
+      getDocs(artifactCollection(db, USER_A, PROJECT_A, collectionName)),
+    );
+    assert.equal(listed.size, 1);
+  });
+
+  test(`cross-user ${collectionName} read/list/write are denied`, async () => {
+    const owner = testEnv.authenticatedContext(USER_A).firestore();
+    await assertSucceeds(
+      setDoc(
+        artifactDocument(owner, USER_A, PROJECT_A, collectionName, 'artifact-a'),
+        ARTIFACT_METADATA,
+      ),
+    );
+
+    const other = testEnv.authenticatedContext(USER_B).firestore();
+    await assertFails(
+      getDoc(
+        artifactDocument(other, USER_A, PROJECT_A, collectionName, 'artifact-a'),
+      ),
+    );
+    await assertFails(
+      getDocs(artifactCollection(other, USER_A, PROJECT_A, collectionName)),
+    );
+    await assertFails(
+      setDoc(
+        artifactDocument(other, USER_A, PROJECT_A, collectionName, 'artifact-b'),
+        ARTIFACT_METADATA,
+      ),
+    );
+  });
+}
+
+test('AI preference rules isolate exact user preference document', async () => {
+  const owner = testEnv.authenticatedContext(USER_A).firestore();
+  const other = testEnv.authenticatedContext(USER_B).firestore();
+  const unauthenticated = testEnv.unauthenticatedContext().firestore();
+  const preference = doc(owner, 'users', USER_A, 'preferences', 'ai');
+
+  await assertSucceeds(setDoc(preference, {
+    provider: 'gemini',
+    model: 'gemini-3.6-flash',
+  }));
+  await assertSucceeds(getDoc(preference));
+
+  await assertFails(
+    getDoc(doc(other, 'users', USER_A, 'preferences', 'ai')),
+  );
+  await assertFails(
+    setDoc(doc(other, 'users', USER_A, 'preferences', 'ai'), {
+      provider: 'gemini',
+      model: 'gemini-3.6-flash',
+    }),
+  );
+  await assertFails(
+    getDoc(doc(unauthenticated, 'users', USER_A, 'preferences', 'ai')),
+  );
+});
+
+test('unrelated preference documents remain denied', async () => {
+  const db = testEnv.authenticatedContext(USER_A).firestore();
+
+  await assertFails(
+    setDoc(doc(db, 'users', USER_A, 'preferences', 'other'), {
+      value: true,
+    }),
+  );
 });

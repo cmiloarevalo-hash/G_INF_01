@@ -3,6 +3,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { titleStudySchema, toTitleStudyJsonSchema, type TitleStudy } from '../../report-types/title-study/schema.js';
 import { selectionLimitError } from '../../shared/guest-limits.js';
+import {
+  SUPPORTED_AI_MODEL,
+  SUPPORTED_AI_PROVIDER,
+  type SupportedAiModel,
+  type SupportedAiProvider,
+} from './preferences.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,7 +30,7 @@ export async function loadTitleStudyPrompt(): Promise<string> {
   throw new Error('No se pudo encontrar la plantilla prompt.md del estudio de títulos.');
 }
 
-export const GEMINI_MODEL = 'gemini-3.6-flash';
+export const GEMINI_MODEL = SUPPORTED_AI_MODEL;
 export const GEMINI_INTERACTIONS_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 
 export type GeminiFetch = typeof fetch;
@@ -44,11 +50,16 @@ export interface GeminiInputPart {
   mime_type?: string;
 }
 
-function userFacingProviderError(status: number, message: string, apiKey: string): Error {
+function userFacingProviderError(
+  status: number,
+  message: string,
+  apiKey: string,
+  model: SupportedAiModel,
+): Error {
   const clean = message.replace(/AIza[\w-]{20,}/g, '[clave omitida]')
     .split(apiKey).join('[clave omitida]').slice(0, 500);
   if (status === 429) return new Error(`Gemini no pudo completar el análisis por cuota o límite de solicitudes (HTTP 429): ${clean}`);
-  if (status === 401 || status === 403) return new Error(`Gemini rechazó la clave o no tiene acceso al modelo ${GEMINI_MODEL} (HTTP ${status}): ${clean}`);
+  if (status === 401 || status === 403) return new Error(`Gemini rechazó la clave o no tiene acceso al modelo ${model} (HTTP ${status}): ${clean}`);
   return new Error(`Gemini devolvió un error HTTP ${status}: ${clean}`);
 }
 
@@ -95,7 +106,13 @@ export function extractInteractionOutputText(body: Record<string, unknown>): str
   throw new Error('Gemini no devolvió texto estructurado completo.');
 }
 
-async function callGemini(apiKey: string, input: GeminiInputPart[], schema: unknown, fetchImpl: GeminiFetch): Promise<unknown> {
+async function callGemini(
+  apiKey: string,
+  input: GeminiInputPart[],
+  schema: unknown,
+  fetchImpl: GeminiFetch,
+  model: SupportedAiModel,
+): Promise<unknown> {
   let response: Response;
   try {
     response = await fetchImpl(GEMINI_INTERACTIONS_URL, {
@@ -103,7 +120,7 @@ async function callGemini(apiKey: string, input: GeminiInputPart[], schema: unkn
       headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
       signal: AbortSignal.timeout(120_000),
       body: JSON.stringify({
-        model: GEMINI_MODEL,
+        model,
         store: false,
         input,
         response_format: { type: 'text', mime_type: 'application/json', schema: toGeminiJsonSchema(schema) },
@@ -116,7 +133,12 @@ async function callGemini(apiKey: string, input: GeminiInputPart[], schema: unkn
   const body = await response.json().catch(() => ({})) as Record<string, unknown>;
   if (!response.ok) {
     const errorBody = body.error as { message?: unknown } | undefined;
-    throw userFacingProviderError(response.status, typeof errorBody?.message === 'string' ? errorBody.message : 'Error del proveedor.', apiKey);
+    throw userFacingProviderError(
+      response.status,
+      typeof errorBody?.message === 'string' ? errorBody.message : 'Error del proveedor.',
+      apiKey,
+      model,
+    );
   }
   const rawText = extractInteractionOutputText(body);
   try {
@@ -124,6 +146,32 @@ async function callGemini(apiKey: string, input: GeminiInputPart[], schema: unkn
   } catch {
     throw new Error('Gemini devolvió JSON inválido o truncado; no se muestra como resultado.');
   }
+}
+
+export interface AnalysisInvocationOptions {
+  provider?: SupportedAiProvider;
+  model?: SupportedAiModel;
+  additionalInstruction?: string;
+}
+
+function normalizeAnalysisOptions(
+  options: AnalysisInvocationOptions,
+): {
+  provider: SupportedAiProvider;
+  model: SupportedAiModel;
+  additionalInstruction?: string;
+} {
+  const provider = options.provider ?? SUPPORTED_AI_PROVIDER;
+  const model = options.model ?? SUPPORTED_AI_MODEL;
+  if (provider !== SUPPORTED_AI_PROVIDER || model !== SUPPORTED_AI_MODEL) {
+    throw new Error('El proveedor o modelo seleccionado no está soportado.');
+  }
+  const additionalInstruction = options.additionalInstruction?.trim();
+  return {
+    provider,
+    model,
+    ...(additionalInstruction ? { additionalInstruction } : {}),
+  };
 }
 
 export type DocumentStatus = {
@@ -173,7 +221,9 @@ export async function analyzeGuestDocuments(
   apiKey: string,
   files: GuestDocumentInput[],
   fetchImpl: GeminiFetch = fetch,
+  options: AnalysisInvocationOptions = {},
 ): Promise<{ report?: TitleStudy; statuses: DocumentStatus[]; partial: boolean; error?: string }> {
+  const normalizedOptions = normalizeAnalysisOptions(options);
   const limit = selectionLimitError(files);
   if (limit) return { statuses: files.map(({ id, name }) => ({ id, name, status: 'No analizado', submissionAttempted: false, sourceIdentified: false, contentVerified: false, reason: limit })), partial: false, error: limit };
   if (!apiKey.trim()) throw new Error('Ingresa tu clave de Gemini para esta sesión.');
@@ -195,7 +245,23 @@ export async function analyzeGuestDocuments(
   try {
     const prompt = await loadTitleStudyPrompt();
     submissionAttempted = true;
-    const response = await callGemini(apiKey, [{ type: 'text', text: prompt }, ...input], toTitleStudyJsonSchema(), fetchImpl);
+    const configuredInput: GeminiInputPart[] = [
+      { type: 'text', text: prompt },
+      ...(normalizedOptions.additionalInstruction
+        ? [{
+            type: 'text' as const,
+            text: `Instrucción adicional del usuario: ${normalizedOptions.additionalInstruction}`,
+          }]
+        : []),
+      ...input,
+    ];
+    const response = await callGemini(
+      apiKey,
+      configuredInput,
+      toTitleStudyJsonSchema(),
+      fetchImpl,
+      normalizedOptions.model,
+    );
     const parsed = titleStudySchema.parse(response);
     const expectedDocuments = new Map(sent.map((item) => [item.id, item.name]));
     if (parsed.sourceDocuments.length !== expectedDocuments.size || parsed.sourceDocuments.some((source) => expectedDocuments.get(source.id) !== source.name)) {
