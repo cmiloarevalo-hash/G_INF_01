@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  documentId,
   getDoc,
   getDocs,
   getFirestore,
@@ -176,7 +175,6 @@ export function createFirestoreProjectDocumentDriver(
       const documents = query(
         collection(db, collectionPath),
         orderBy('updatedAt', 'desc'),
-        orderBy(documentId(), 'asc'),
       );
       const snapshot = await getDocs(documents);
       return snapshot.docs;

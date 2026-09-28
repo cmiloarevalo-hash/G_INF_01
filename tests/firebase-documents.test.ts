@@ -282,3 +282,13 @@ test('document driver source contains no redundant owner/project body fields or 
   assert.doesNotMatch(source, /documentBytes|fileBytes|binaryContent|fileBody/);
   assert.doesNotMatch(source, /sessionUrl|pickerSession/i);
 });
+
+test('Firestore list ordering uses updatedAt descending without document ID tiebreaker', () => {
+  const source = readFileSync(
+    'src/services/firestore/firebase-documents.ts',
+    'utf8',
+  );
+
+  assert.match(source, /orderBy\('updatedAt', 'desc'\)/);
+  assert.doesNotMatch(source, /orderBy\(documentId\(\), 'asc'\)/);
+});
