@@ -115,6 +115,165 @@ test('Drive reference reader returns confirmed metadata/content and enforces byt
   );
 });
 
+
+test('Drive reference reader rejects confirmed Content-Length above limit before consuming body', async () => {
+  const auth = authorization();
+  let metadataCalls = 0;
+  let bodyPulls = 0;
+  let bodyCancelled = false;
+  const reader = createDriveReferenceReader(
+    auth.service,
+    async () => {
+      metadataCalls += 1;
+      if (metadataCalls === 1) {
+        return Response.json({ id: 'file-1' });
+      }
+
+      const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          bodyPulls += 1;
+          controller.enqueue(new Uint8Array([1, 2, 3]));
+        },
+        cancel() {
+          bodyCancelled = true;
+        },
+      });
+      return new Response(body, {
+        headers: { 'Content-Length': '10' },
+      });
+    },
+    4,
+  );
+
+  await assert.rejects(
+    reader.read('file-1'),
+    (error) =>
+      error instanceof DriveReferenceError &&
+      error.kind === 'too-large',
+  );
+  assert.equal(bodyPulls, 0);
+  assert.equal(bodyCancelled, true);
+});
+
+test('Drive reference reader rejects oversized body during streaming without Content-Length', async () => {
+  const auth = authorization();
+  let calls = 0;
+  let cancelled = false;
+  const reader = createDriveReferenceReader(
+    auth.service,
+    async () => {
+      calls += 1;
+      if (calls === 1) return Response.json({ id: 'file-1' });
+
+      const chunks = [
+        new Uint8Array([1, 2, 3]),
+        new Uint8Array([4, 5, 6]),
+      ];
+      let index = 0;
+      return new Response(new ReadableStream<Uint8Array>({
+        pull(controller) {
+          const chunk = chunks[index++];
+          if (chunk) controller.enqueue(chunk);
+          else controller.close();
+        },
+        cancel() {
+          cancelled = true;
+        },
+      }));
+    },
+    4,
+  );
+
+  await assert.rejects(
+    reader.read('file-1'),
+    (error) =>
+      error instanceof DriveReferenceError &&
+      error.kind === 'too-large',
+  );
+  assert.equal(cancelled, true);
+});
+
+test('Drive reference reader rejects real body above limit even when Content-Length is falsely small', async () => {
+  const auth = authorization();
+  let calls = 0;
+  let cancelled = false;
+  const reader = createDriveReferenceReader(
+    auth.service,
+    async () => {
+      calls += 1;
+      if (calls === 1) return Response.json({ id: 'file-1' });
+
+      const chunks = [
+        new Uint8Array([1, 2]),
+        new Uint8Array([3, 4, 5]),
+      ];
+      let index = 0;
+      return new Response(new ReadableStream<Uint8Array>({
+        pull(controller) {
+          const chunk = chunks[index++];
+          if (chunk) controller.enqueue(chunk);
+          else controller.close();
+        },
+        cancel() {
+          cancelled = true;
+        },
+      }), {
+        headers: { 'Content-Length': '2' },
+      });
+    },
+    4,
+  );
+
+  await assert.rejects(
+    reader.read('file-1'),
+    (error) =>
+      error instanceof DriveReferenceError &&
+      error.kind === 'too-large',
+  );
+  assert.equal(cancelled, true);
+});
+
+test('Drive reference reader streams valid content at or below the limit', async () => {
+  const auth = authorization();
+  let calls = 0;
+  const reader = createDriveReferenceReader(
+    auth.service,
+    async () => {
+      calls += 1;
+      if (calls === 1) {
+        return Response.json({
+          id: 'file-1',
+          name: 'small.bin',
+          mimeType: 'application/octet-stream',
+        });
+      }
+
+      const chunks = [
+        new Uint8Array([1, 2]),
+        new Uint8Array([3, 4]),
+      ];
+      let index = 0;
+      return new Response(new ReadableStream<Uint8Array>({
+        pull(controller) {
+          const chunk = chunks[index++];
+          if (chunk) controller.enqueue(chunk);
+          else controller.close();
+        },
+      }));
+    },
+    4,
+  );
+
+  const result = await reader.read('file-1');
+  assert.equal(result.status, 'available');
+  if (result.status === 'available') {
+    assert.deepEqual(
+      Array.from(new Uint8Array(result.file.content)),
+      [1, 2, 3, 4],
+    );
+  }
+});
+
 test('Drive reference reader exposes quota/network failures explicitly', async () => {
   const auth = authorization();
   const quota = createDriveReferenceReader(

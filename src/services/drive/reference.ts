@@ -89,6 +89,89 @@ function optionalText(value: unknown): string | undefined {
   return normalized || undefined;
 }
 
+type ResizableArrayBufferLike = ArrayBuffer & {
+  readonly resizable: boolean;
+  resize(newByteLength: number): void;
+};
+
+function createResizableBuffer(maxBytes: number): ResizableArrayBufferLike {
+  const BufferConstructor = ArrayBuffer as unknown as new (
+    byteLength: number,
+    options: { maxByteLength: number },
+  ) => ResizableArrayBufferLike;
+  const buffer = new BufferConstructor(0, { maxByteLength: maxBytes });
+  if (!buffer.resizable || typeof buffer.resize !== 'function') {
+    throw new DriveReferenceError(
+      'This runtime cannot enforce bounded streaming Drive reads.',
+      'invalid-response',
+    );
+  }
+  return buffer;
+}
+
+function confirmedContentLength(response: Response): number | null {
+  const raw = response.headers.get('Content-Length');
+  if (raw === null) return null;
+  const normalized = raw.trim();
+  if (!/^\d+$/.test(normalized)) return null;
+
+  const value = Number(normalized);
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+async function readBodyBounded(
+  response: Response,
+  maxBytes: number,
+): Promise<ArrayBuffer> {
+  const contentLength = confirmedContentLength(response);
+  if (contentLength !== null && contentLength > maxBytes) {
+    await response.body?.cancel().catch(() => undefined);
+    throw new DriveReferenceError(
+      'Drive file exceeds the configured in-memory read limit.',
+      'too-large',
+      response.status,
+    );
+  }
+
+  if (!response.body) {
+    return new ArrayBuffer(0);
+  }
+
+  const reader = response.body.getReader();
+  const content = createResizableBuffer(maxBytes);
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+
+      const chunk = result.value;
+      if (chunk.byteLength > maxBytes - totalBytes) {
+        await reader.cancel().catch(() => undefined);
+        throw new DriveReferenceError(
+          'Drive file exceeds the configured in-memory read limit.',
+          'too-large',
+          response.status,
+        );
+      }
+
+      const previousLength = totalBytes;
+      totalBytes += chunk.byteLength;
+      content.resize(totalBytes);
+      new Uint8Array(
+        content,
+        previousLength,
+        chunk.byteLength,
+      ).set(chunk);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return content;
+}
+
 export function createDriveReferenceReader(
   authorization: DriveAuthorizationService,
   transport: DriveTransport,
@@ -200,25 +283,10 @@ export function createDriveReferenceReader(
         );
       }
 
-      const contentLength = Number(
-        contentResponse.headers.get('Content-Length') ?? '',
+      const content = await readBodyBounded(
+        contentResponse,
+        maxBytes,
       );
-      if (Number.isFinite(contentLength) && contentLength > maxBytes) {
-        throw new DriveReferenceError(
-          'Drive file exceeds the configured in-memory read limit.',
-          'too-large',
-          contentResponse.status,
-        );
-      }
-
-      const content = await contentResponse.arrayBuffer();
-      if (content.byteLength > maxBytes) {
-        throw new DriveReferenceError(
-          'Drive file exceeds the configured in-memory read limit.',
-          'too-large',
-          contentResponse.status,
-        );
-      }
 
       const name = optionalText(record.name);
       const mimeType = optionalText(record.mimeType);
