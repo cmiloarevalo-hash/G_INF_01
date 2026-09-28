@@ -20,6 +20,7 @@ const PROJECT_ID = 'demo-g-inf-01';
 const USER_A = 'user-a';
 const USER_B = 'user-b';
 const PROJECT_A = 'project-a';
+const DOCUMENT_A = 'document-a';
 const DRIVE_FOLDERS = {
   applicationRootId: 'app-root',
   projectsRootId: 'projects-root',
@@ -28,11 +29,48 @@ const DRIVE_FOLDERS = {
   analysisFolderId: 'analysis-folder',
   reportsFolderId: 'reports-folder',
 };
+const DOCUMENT_METADATA = {
+  driveFileId: 'drive-file-1',
+  name: 'Documento.pdf',
+  mimeType: 'application/pdf',
+  source: 'local-upload',
+  createdAt: 'seed',
+  updatedAt: 'seed',
+};
 
 let testEnv: RulesTestEnvironment;
 
-function projectDocument(db: ReturnType<RulesTestEnvironment['authenticatedContext']>['firestore'], userId: string, projectId: string) {
+function projectDocument(
+  db: ReturnType<RulesTestEnvironment['authenticatedContext']>['firestore'],
+  userId: string,
+  projectId: string,
+) {
   return doc(db, 'users', userId, 'projects', projectId);
+}
+
+function projectDocumentMetadata(
+  db: ReturnType<RulesTestEnvironment['authenticatedContext']>['firestore'],
+  userId: string,
+  projectId: string,
+  documentId: string,
+) {
+  return doc(
+    db,
+    'users',
+    userId,
+    'projects',
+    projectId,
+    'documents',
+    documentId,
+  );
+}
+
+function projectDocumentsCollection(
+  db: ReturnType<RulesTestEnvironment['authenticatedContext']>['firestore'],
+  userId: string,
+  projectId: string,
+) {
+  return collection(db, 'users', userId, 'projects', projectId, 'documents');
 }
 
 async function seedOwnProject(userId = USER_A, projectId = PROJECT_A) {
@@ -42,6 +80,19 @@ async function seedOwnProject(userId = USER_A, projectId = PROJECT_A) {
       name: 'Proyecto A',
       createdAt: 'seed',
       updatedAt: 'seed',
+    }),
+  );
+}
+
+async function seedOwnDocument(
+  userId = USER_A,
+  projectId = PROJECT_A,
+  documentId = DOCUMENT_A,
+) {
+  const db = testEnv.authenticatedContext(userId).firestore();
+  await assertSucceeds(
+    setDoc(projectDocumentMetadata(db, userId, projectId, documentId), {
+      ...DOCUMENT_METADATA,
     }),
   );
 }
@@ -170,6 +221,120 @@ test('user A cannot write under user B project path', async () => {
   );
 });
 
+test('unauthenticated document create is denied', async () => {
+  const db = testEnv.unauthenticatedContext().firestore();
+
+  await assertFails(
+    setDoc(projectDocumentMetadata(db, USER_A, PROJECT_A, DOCUMENT_A), {
+      ...DOCUMENT_METADATA,
+    }),
+  );
+});
+
+test('unauthenticated document read is denied', async () => {
+  await seedOwnDocument();
+  const db = testEnv.unauthenticatedContext().firestore();
+
+  await assertFails(
+    getDoc(projectDocumentMetadata(db, USER_A, PROJECT_A, DOCUMENT_A)),
+  );
+});
+
+test('unauthenticated document list is denied', async () => {
+  await seedOwnDocument();
+  const db = testEnv.unauthenticatedContext().firestore();
+
+  await assertFails(
+    getDocs(projectDocumentsCollection(db, USER_A, PROJECT_A)),
+  );
+});
+
+test('authenticated owner can create and read own document metadata', async () => {
+  const db = testEnv.authenticatedContext(USER_A).firestore();
+  const ref = projectDocumentMetadata(db, USER_A, PROJECT_A, DOCUMENT_A);
+
+  await assertSucceeds(setDoc(ref, { ...DOCUMENT_METADATA }));
+  const snapshot = await assertSucceeds(getDoc(ref));
+
+  assert.equal(snapshot.data()?.driveFileId, 'drive-file-1');
+});
+
+test('authenticated owner can list own document metadata', async () => {
+  await seedOwnDocument();
+  const db = testEnv.authenticatedContext(USER_A).firestore();
+
+  const snapshot = await assertSucceeds(
+    getDocs(projectDocumentsCollection(db, USER_A, PROJECT_A)),
+  );
+  assert.equal(snapshot.size, 1);
+});
+
+test('authenticated owner can update own document metadata', async () => {
+  await seedOwnDocument();
+  const db = testEnv.authenticatedContext(USER_A).firestore();
+  const ref = projectDocumentMetadata(db, USER_A, PROJECT_A, DOCUMENT_A);
+
+  await assertSucceeds(updateDoc(ref, { updatedAt: 'updated' }));
+});
+
+test('user B cannot read user A document metadata', async () => {
+  await seedOwnDocument();
+  const db = testEnv.authenticatedContext(USER_B).firestore();
+
+  await assertFails(
+    getDoc(projectDocumentMetadata(db, USER_A, PROJECT_A, DOCUMENT_A)),
+  );
+});
+
+test('user B cannot list user A document metadata', async () => {
+  await seedOwnDocument();
+  const db = testEnv.authenticatedContext(USER_B).firestore();
+
+  await assertFails(
+    getDocs(projectDocumentsCollection(db, USER_A, PROJECT_A)),
+  );
+});
+
+test('user B cannot write user A document metadata', async () => {
+  const db = testEnv.authenticatedContext(USER_B).firestore();
+
+  await assertFails(
+    setDoc(projectDocumentMetadata(db, USER_A, PROJECT_A, DOCUMENT_A), {
+      ...DOCUMENT_METADATA,
+      driveFileId: 'cross-user-denied',
+    }),
+  );
+});
+
+test('user A cannot write document metadata under user B project path', async () => {
+  const db = testEnv.authenticatedContext(USER_A).firestore();
+
+  await assertFails(
+    setDoc(projectDocumentMetadata(db, USER_B, 'project-b', DOCUMENT_A), {
+      ...DOCUMENT_METADATA,
+    }),
+  );
+});
+
+test('unrelated nested project subcollections remain denied', async () => {
+  const db = testEnv.authenticatedContext(USER_A).firestore();
+
+  await assertFails(
+    setDoc(
+      doc(
+        db,
+        'users',
+        USER_A,
+        'projects',
+        PROJECT_A,
+        'analyses',
+        'analysis-a',
+      ),
+      { value: true },
+    ),
+  );
+});
+
 test('unrelated Firestore paths remain denied', async () => {
   const db = testEnv.authenticatedContext(USER_A).firestore();
 
@@ -178,4 +343,9 @@ test('unrelated Firestore paths remain denied', async () => {
       value: true,
     }),
   );
+});
+
+test('rules do not introduce recursive wildcard authorization', () => {
+  const source = readFileSync('firestore.rules', 'utf8');
+  assert.doesNotMatch(source, /\{document=\*\*\}/);
 });
