@@ -1,10 +1,13 @@
 import * as React from 'react';
+import { TitleStudyResult } from '../components/TitleStudyResult.js';
+import type { TitleStudy } from '../report-types/title-study/schema.js';
 import type { ProjectDocumentMetadata } from '../services/firestore/document-types.js';
 import type { ProjectMetadata } from '../services/firestore/types.js';
 import { useAuthSession } from '../services/auth/context.js';
 import { useProductRuntime } from '../services/application/product-runtime.js';
+import { PersistedProjectAnalysisError } from '../services/application/project-analysis.js';
 
-type WorkspaceTab = 'resumen' | 'documentos';
+type WorkspaceTab = 'resumen' | 'documentos' | 'resultado';
 
 type DocumentReferenceState =
   | 'unchecked'
@@ -63,6 +66,11 @@ export function ProjectWorkspacePage({
   const [documents, setDocuments] = React.useState<ProjectDocumentMetadata[]>([]);
   const [listState, setListState] = React.useState<'idle' | 'loading' | 'empty' | 'loaded' | 'error'>('idle');
   const [operation, setOperation] = React.useState<OperationState>({ status: 'idle' });
+  const [analysisReport, setAnalysisReport] = React.useState<TitleStudy | null>(null);
+  const [analysisMetadataId, setAnalysisMetadataId] = React.useState<string | null>(null);
+  const [analysisError, setAnalysisError] = React.useState<string | null>(null);
+  const [analysisPending, setAnalysisPending] = React.useState(false);
+  const [apiKey, setApiKey] = React.useState('');
   const [referenceStates, setReferenceStates] = React.useState<Record<string, DocumentReferenceState>>({});
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const pendingRef = React.useRef(false);
@@ -250,6 +258,44 @@ export function ProjectWorkspacePage({
     }
   };
 
+
+  const analyzePersistedDocuments = async () => {
+    if (analysisPending || pendingRef.current) return;
+    if (!apiKey.trim() && !services.aiCredentials.get()) {
+      setAnalysisError('Ingresa tu clave de Gemini para esta sesión.');
+      return;
+    }
+
+    setAnalysisPending(true);
+    setAnalysisError(null);
+    setAnalysisMetadataId(null);
+    setAnalysisReport(null);
+    try {
+      if (apiKey.trim()) {
+        services.aiCredentials.set(apiKey);
+      }
+      const result = await services.projectAnalysis.analyze(
+        session,
+        project.id,
+      );
+      setAnalysisReport(result.report);
+      setAnalysisMetadataId(result.metadata.id);
+    } catch (error) {
+      if (
+        error instanceof PersistedProjectAnalysisError &&
+        error.validatedReport
+      ) {
+        setAnalysisReport(error.validatedReport);
+      }
+      setAnalysisError(errorMessage(
+        error,
+        'No se confirmó un resultado analítico.',
+      ));
+    } finally {
+      setAnalysisPending(false);
+    }
+  };
+
   const pending = operation.status === 'pending';
 
   return (
@@ -271,6 +317,7 @@ export function ProjectWorkspacePage({
         {([
           ['resumen', 'Resumen'],
           ['documentos', 'Documentos'],
+          ['resultado', 'Resultado'],
         ] as const).map(([id, label]) => (
           <button
             type="button"
@@ -413,6 +460,70 @@ export function ProjectWorkspacePage({
                 );
               })}
             </ul>
+          )}
+        </section>
+      )}
+
+      {activeTab === 'resultado' && (
+        <section className="workspace-panel" aria-labelledby="workspace-result-title">
+          <h3 id="workspace-result-title">Resultado</h3>
+          <p>
+            El análisis usa únicamente documentos persistidos del proyecto.
+            Sólo se muestra un resultado que cumple TITLE_STUDY; su metadata se
+            confirma después de guardar el JSON en Drive.
+          </p>
+
+          <label className="guest-api-key-label" htmlFor="workspace-gemini-key">
+            Clave Gemini para esta sesión
+          </label>
+          <input
+            id="workspace-gemini-key"
+            className="guest-api-key"
+            type="password"
+            autoComplete="off"
+            value={apiKey}
+            disabled={analysisPending}
+            onChange={(event) => setApiKey(event.target.value)}
+          />
+
+          <div className="workspace-actions">
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={analysisPending || documents.length === 0}
+              onClick={() => void analyzePersistedDocuments()}
+            >
+              {analysisPending ? 'Analizando…' : 'Analizar documentos persistidos'}
+            </button>
+            {documents.length === 0 && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setActiveTab('documentos');
+                  void refreshDocuments();
+                }}
+              >
+                Ir a Documentos
+              </button>
+            )}
+          </div>
+
+          {analysisMetadataId && (
+            <div className="project-state-card" role="status">
+              Análisis validado y persistido. Metadata: {analysisMetadataId}
+            </div>
+          )}
+          {analysisError && (
+            <div className="project-error" role="alert">
+              {analysisError}
+              {analysisReport
+                ? ' El JSON mostrado es válido, pero no debe interpretarse como persistido.'
+                : ''}
+            </div>
+          )}
+          {analysisReport && (
+            <TitleStudyResult report={analysisReport} partial={false} />
           )}
         </section>
       )}

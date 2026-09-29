@@ -1,6 +1,12 @@
 import * as React from 'react';
 import { loadBrowserFirebaseConfig } from '../auth/config.js';
 import {
+  createAuthenticatedAiPreferenceService,
+  createMemoryAiCredentialStore,
+  type AuthenticatedAiPreferenceService,
+  type SessionAiCredentialStore,
+} from '../ai/preferences.js';
+import {
   createDriveAuthorizationService,
 } from '../drive/authorization.js';
 import {
@@ -11,7 +17,10 @@ import {
 import { createDriveClient } from '../drive/client.js';
 import { createDrivePickerService } from '../drive/picker.js';
 import { createProjectDriveFolderService } from '../drive/project-folders.js';
-import { createDriveReferenceReader } from '../drive/reference.js';
+import {
+  createDriveReferenceReader,
+  type DriveReferenceReader,
+} from '../drive/reference.js';
 import type {
   DriveAuthorizationService,
   DrivePickerService,
@@ -19,23 +28,47 @@ import type {
 } from '../drive/types.js';
 import { createDriveLocalFileUploadService } from '../drive/upload.js';
 import {
+  createAnalysisPersistenceService,
   createDocumentIncorporationService,
+  type AnalysisPersistenceService,
   type DocumentIncorporationService,
 } from './authenticated-capabilities.js';
+import {
+  createAuthenticatedAnalysisHttpService,
+} from './http-analysis.js';
+import {
+  createPersistedProjectAnalysisService,
+  type PersistedProjectAnalysisService,
+} from './project-analysis.js';
 import {
   createAuthenticatedProjectDocumentService,
   type AuthenticatedProjectDocumentService,
 } from '../firestore/authenticated-documents.js';
+import {
+  createAuthenticatedProjectAnalysisService,
+  createProjectAnalysisRepository,
+  type AuthenticatedProjectAnalysisService,
+} from '../firestore/artifacts.js';
 import { createProjectDocumentRepository } from '../firestore/document-service.js';
+import {
+  createFirestoreAiPreferenceRepository,
+} from '../firestore/firebase-ai-preferences.js';
+import {
+  createFirestoreProjectAnalysisDriver,
+} from '../firestore/firebase-artifacts.js';
 import { createFirestoreProjectDocumentDriver } from '../firestore/firebase-documents.js';
 import { createProjectService } from '../firestore/runtime.js';
 import type { AuthenticatedProjectService } from '../firestore/authenticated.js';
-import type { DriveReferenceReader } from '../drive/reference.js';
 
 export interface ProductRuntimeServices {
   projects: AuthenticatedProjectService;
   documents: AuthenticatedProjectDocumentService;
+  analyses: AuthenticatedProjectAnalysisService;
   incorporation: DocumentIncorporationService;
+  analysisPersistence: AnalysisPersistenceService;
+  projectAnalysis: PersistedProjectAnalysisService;
+  aiPreferences: AuthenticatedAiPreferenceService;
+  aiCredentials: SessionAiCredentialStore;
   driveAuthorization: DriveAuthorizationService;
   driveFolders: ProjectDriveFolderService;
   driveReader: DriveReferenceReader;
@@ -78,6 +111,15 @@ async function createBrowserProductServices(): Promise<ProductRuntimeServices> {
       createFirestoreProjectDocumentDriver(firebaseResolution.config),
     ),
   );
+  const analyses = createAuthenticatedProjectAnalysisService(
+    createProjectAnalysisRepository(
+      createFirestoreProjectAnalysisDriver(firebaseResolution.config),
+    ),
+  );
+  const aiPreferences = createAuthenticatedAiPreferenceService(
+    createFirestoreAiPreferenceRepository(firebaseResolution.config),
+  );
+  const aiCredentials = createMemoryAiCredentialStore();
 
   const picker: DrivePickerService = {
     async open() {
@@ -93,15 +135,36 @@ async function createBrowserProductServices(): Promise<ProductRuntimeServices> {
     },
   };
 
+  const incorporation = createDocumentIncorporationService(
+    projects,
+    upload,
+    picker,
+    documents,
+  );
+  const analysisPersistence = createAnalysisPersistenceService(
+    projects,
+    upload,
+    analyses,
+  );
+  const configuredAnalysis = createAuthenticatedAnalysisHttpService(
+    aiPreferences,
+    aiCredentials,
+  );
+
   return {
     projects,
     documents,
-    incorporation: createDocumentIncorporationService(
-      projects,
-      upload,
-      picker,
+    analyses,
+    incorporation,
+    analysisPersistence,
+    projectAnalysis: createPersistedProjectAnalysisService(
       documents,
+      driveReader,
+      configuredAnalysis,
+      analysisPersistence,
     ),
+    aiPreferences,
+    aiCredentials,
     driveAuthorization,
     driveFolders,
     driveReader,
