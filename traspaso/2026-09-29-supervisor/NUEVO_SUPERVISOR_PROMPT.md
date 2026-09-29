@@ -12,7 +12,13 @@ ANTES DE HACER CUALQUIER AFIRMACIÓN DE ESTADO MUTABLE:
    - Issue #84
    - Issue #95
    - Issue #96
+   - PR #97
    - traspaso/2026-09-29-supervisor/CONVERSACION_Y_ESTADO.md
+
+   Si PR #97 todavía NO está mergeado, lee los archivos de traspaso desde:
+   branch: handoff/issue-96-supervisor-2026-09-29
+
+   No asumas que la carpeta ya existe en main mientras #97 siga abierto.
 
 2. Revalida en GitHub:
    - current main SHA;
