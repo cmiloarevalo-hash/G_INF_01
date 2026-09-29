@@ -12,7 +12,9 @@ import { ReportsPage } from '../pages/ReportsPage.js';
 import type { ProjectMetadata } from '../services/firestore/types.js';
 import { useAuthSession } from '../services/auth/context.js';
 import {
+  authenticatedSessionUid,
   createSessionIsolationGuard,
+  sessionOwnsState,
   type SessionIsolationGuard,
 } from '../services/application/session-isolation.js';
 import { UnavailablePage } from '../pages/UnavailablePage.js';
@@ -25,11 +27,14 @@ export function App() {
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
   const [isHealthOk, setIsHealthOk] = useState<boolean | null>(null);
   const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
+  const [selectedProjectOwnerUid, setSelectedProjectOwnerUid] = useState<string | null>(null);
+  const sessionUid = authenticatedSessionUid(session);
   const sessionUiIsolationRef = useRef<SessionIsolationGuard | null>(null);
 
   if (!sessionUiIsolationRef.current) {
     sessionUiIsolationRef.current = createSessionIsolationGuard(() => {
       setSelectedProject(null);
+      setSelectedProjectOwnerUid(null);
       setCurrentSection('inicio');
       setIsMobileOpen(false);
     });
@@ -55,8 +60,13 @@ export function App() {
   }, []);
 
   const activeItem = NAV_ITEMS.find((item) => item.id === currentSection) || NAV_ITEMS[0];
+  const sessionProject =
+    selectedProject !== null &&
+    sessionOwnsState(session, selectedProjectOwnerUid)
+      ? selectedProject
+      : null;
   const currentTitle = currentSection === 'workspace-proyecto'
-    ? selectedProject?.name ?? 'Proyecto'
+    ? sessionProject?.name ?? 'Proyecto'
     : activeItem.label;
 
   return (
@@ -85,22 +95,33 @@ export function App() {
               ) : currentSection === 'documentos-invitado' ? (
                 <GuestDocumentsPage />
               ) : currentSection === 'nuevo-proyecto' ? (
-                <NewProjectPage onCreated={(project) => {
-                  setSelectedProject(project);
-                  setCurrentSection('workspace-proyecto');
-                }} />
+                <NewProjectPage
+                  key={sessionUid ?? 'anonymous'}
+                  onCreated={(project) => {
+                    if (!sessionUid) return;
+                    setSelectedProject(project);
+                    setSelectedProjectOwnerUid(sessionUid);
+                    setCurrentSection('workspace-proyecto');
+                  }}
+                />
               ) : currentSection === 'mis-proyectos' ? (
-                <ProjectsPage onOpenProject={(project) => {
-                  setSelectedProject(project);
-                  setCurrentSection('workspace-proyecto');
-                }} />
+                <ProjectsPage
+                  key={sessionUid ?? 'anonymous'}
+                  onOpenProject={(project) => {
+                    if (!sessionUid) return;
+                    setSelectedProject(project);
+                    setSelectedProjectOwnerUid(sessionUid);
+                    setCurrentSection('workspace-proyecto');
+                  }}
+                />
               ) : currentSection === 'mis-informes' ? (
-                <ReportsPage />
+                <ReportsPage key={sessionUid ?? 'anonymous'} />
               ) : currentSection === 'apis-modelos' ? (
-                <ApisModelsPage />
-              ) : currentSection === 'workspace-proyecto' && selectedProject ? (
+                <ApisModelsPage key={sessionUid ?? 'anonymous'} />
+              ) : currentSection === 'workspace-proyecto' && sessionProject ? (
                 <ProjectWorkspacePage
-                  initialProject={selectedProject}
+                  key={`${sessionUid}:${sessionProject.id}`}
+                  initialProject={sessionProject}
                   onBack={() => setCurrentSection('mis-proyectos')}
                   onOpenApisModels={() => setCurrentSection('apis-modelos')}
                   onOpenReports={() => setCurrentSection('mis-informes')}

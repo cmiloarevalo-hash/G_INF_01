@@ -12,6 +12,7 @@ import {
 import {
   clearProductSessionEphemeralState,
   createSessionIsolationGuard,
+  sessionOwnsState,
 } from '../src/services/application/session-isolation.js';
 
 const sessionA: AuthSessionState = {
@@ -95,6 +96,8 @@ test('session boundary clears Drive token, AI credential/instruction and selecte
 
   assert.equal(runtimeBoundary.getCurrentUid(), 'uid-b');
   assert.equal(uiBoundary.getCurrentUid(), 'uid-b');
+  assert.equal(sessionOwnsState(sessionB, 'uid-a'), false);
+  assert.equal(sessionOwnsState(sessionB, 'uid-b'), true);
   assert.equal(driveAuthorization.getAccessToken(), null);
   assert.equal(aiCredentials.get(), null);
   assert.equal(aiInstruction.get(), '');

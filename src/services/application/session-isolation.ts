@@ -28,6 +28,14 @@ export function authenticatedSessionUid(
   return session.status === 'authenticated' ? session.user.uid : null;
 }
 
+export function sessionOwnsState(
+  session: AuthSessionState,
+  ownerUid: string | null,
+): boolean {
+  const uid = authenticatedSessionUid(session);
+  return uid !== null && ownerUid === uid;
+}
+
 export interface SessionIsolationGuard {
   transition(session: AuthSessionState): boolean;
   getCurrentUid(): string | null;
