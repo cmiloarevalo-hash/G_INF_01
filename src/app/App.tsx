@@ -6,6 +6,8 @@ import { HomePage } from '../pages/HomePage.js';
 import { GuestDocumentsPage } from '../pages/GuestDocumentsPage.js';
 import { NewProjectPage } from '../pages/NewProjectPage.js';
 import { ProjectsPage } from '../pages/ProjectsPage.js';
+import { ProjectWorkspacePage } from '../pages/ProjectWorkspacePage.js';
+import type { ProjectMetadata } from '../services/firestore/types.js';
 import { UnavailablePage } from '../pages/UnavailablePage.js';
 import './App.css';
 
@@ -14,6 +16,7 @@ export function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
   const [isHealthOk, setIsHealthOk] = useState<boolean | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
 
   // Check health status for header badge
   useEffect(() => {
@@ -31,6 +34,9 @@ export function App() {
   }, []);
 
   const activeItem = NAV_ITEMS.find((item) => item.id === currentSection) || NAV_ITEMS[0];
+  const currentTitle = currentSection === 'workspace-proyecto'
+    ? selectedProject?.name ?? 'Proyecto'
+    : activeItem.label;
 
   return (
     <div className="app-layout">
@@ -45,7 +51,7 @@ export function App() {
 
       <div className="main-content-wrapper">
         <Header
-          currentSectionTitle={activeItem.label}
+          currentSectionTitle={currentTitle}
           onOpenMobileMenu={() => setIsMobileOpen(true)}
           isHealthOk={isHealthOk}
         />
@@ -60,7 +66,15 @@ export function App() {
               ) : currentSection === 'nuevo-proyecto' ? (
                 <NewProjectPage />
               ) : currentSection === 'mis-proyectos' ? (
-                <ProjectsPage />
+                <ProjectsPage onOpenProject={(project) => {
+                  setSelectedProject(project);
+                  setCurrentSection('workspace-proyecto');
+                }} />
+              ) : currentSection === 'workspace-proyecto' && selectedProject ? (
+                <ProjectWorkspacePage
+                  initialProject={selectedProject}
+                  onBack={() => setCurrentSection('mis-proyectos')}
+                />
               ) : (
                 <UnavailablePage
                   sectionId={activeItem.id}
