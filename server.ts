@@ -99,15 +99,31 @@ export function createServerApp(options: { fetchImpl?: GeminiFetch; env?: AliasE
       id: z.string().min(1), name: z.string().min(1), mimeType: z.string(),
       size: z.number().int().nonnegative(), data: z.string(),
     });
-    const parsed = z.strictObject({ files: z.array(fileSchema).min(1) }).safeParse(req.body);
+    const parsed = z.strictObject({
+      files: z.array(fileSchema).min(1),
+      provider: z.literal('gemini').optional(),
+      model: z.literal('gemini-3.6-flash').optional(),
+      additionalInstruction: z.string().max(4000).optional(),
+    }).safeParse(req.body);
     if (!credential.key) return res.status(credential.status ?? 400).json({ error: credential.error });
-    if (!parsed.success) return res.status(400).json({ error: 'La selección de archivos no es válida.' });
+    if (!parsed.success) return res.status(400).json({ error: 'La solicitud de análisis no es válida.' });
     const files = parsed.data.files as GuestDocumentInput[];
     if (new Set(files.map((file) => file.id)).size !== files.length) return res.status(400).json({ error: 'La selección contiene identificadores de archivo duplicados.' });
     const limit = selectionLimitError(files);
     if (limit) return res.status(413).json({ error: limit, statuses: files.map(({ id, name }) => ({ id, name, status: 'No analizado', submissionAttempted: false, sourceIdentified: false, contentVerified: false, reason: limit })) });
     try {
-      const result = await analyzeGuestDocuments(credential.key, files, fetchImpl);
+      const result = await analyzeGuestDocuments(
+        credential.key,
+        files,
+        fetchImpl,
+        {
+          ...(parsed.data.provider ? { provider: parsed.data.provider } : {}),
+          ...(parsed.data.model ? { model: parsed.data.model } : {}),
+          ...(parsed.data.additionalInstruction?.trim()
+            ? { additionalInstruction: parsed.data.additionalInstruction.trim() }
+            : {}),
+        },
+      );
       return res.status(result.report ? 200 : result.error === 'Ningún archivo técnicamente legible se envió a Gemini.' ? 422 : 502).json(result);
     } catch (error) {
       return res.status(502).json({ error: error instanceof Error ? error.message : 'Error de análisis.' });

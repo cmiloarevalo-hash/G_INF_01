@@ -59,7 +59,11 @@ export function ProjectListContent({
   );
 }
 
-export function ProjectsPage() {
+export function ProjectsPage({
+  onOpenProject,
+}: {
+  onOpenProject?: (project: ProjectMetadata) => void;
+} = {}) {
   const { session } = useAuthSession();
   const runtime = useProjectRuntime();
   const availability = projectUiAvailability(session, runtime);
@@ -128,6 +132,7 @@ export function ProjectsPage() {
           ? { status: 'selected', project }
           : { status: 'not-found', projectId },
       );
+      if (project) onOpenProject?.(project);
     } catch (cause) {
       setSelected({
         status: 'error',
