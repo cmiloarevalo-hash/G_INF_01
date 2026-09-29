@@ -161,24 +161,10 @@ export function ProjectWorkspacePage({
     pendingRef.current = true;
     setOperation({ status: 'pending', label: 'Preparando carpetas del proyecto…' });
     try {
-      if (!services.driveAuthorization.getAccessToken()) {
-        await services.driveAuthorization.authorize();
-      }
-      const folders = await services.driveFolders.provision({
-        applicationRootName: 'Analisis Documental',
-        projectId: project.id,
-        projectName: project.name,
-      });
-      const updated = await services.projects.updateDriveFolders(
+      const updated = await services.driveFolderLinks.prepare(
         session,
-        project.id,
-        folders,
+        project,
       );
-      if (!updated) {
-        throw new Error(
-          'Drive confirmó las carpetas, pero Firestore no confirmó la metadata del proyecto.',
-        );
-      }
       setProject(updated);
       setOperation({
         status: 'success',

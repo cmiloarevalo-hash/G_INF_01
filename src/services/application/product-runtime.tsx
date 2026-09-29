@@ -48,6 +48,10 @@ import {
   type PersistedProjectAnalysisService,
 } from './project-analysis.js';
 import {
+  createProjectDriveFolderLinkService,
+  type ProjectDriveFolderLinkService,
+} from './project-drive-folders.js';
+import {
   createAuthenticatedProjectDocumentService,
   type AuthenticatedProjectDocumentService,
 } from '../firestore/authenticated-documents.js';
@@ -105,6 +109,7 @@ export interface ProductRuntimeServices {
   aiInstruction: SessionInstructionStore;
   driveAuthorization: DriveAuthorizationService;
   driveFolders: ProjectDriveFolderService;
+  driveFolderLinks: ProjectDriveFolderLinkService;
   driveReader: DriveReferenceReader;
 }
 
@@ -139,6 +144,11 @@ async function createBrowserProductServices(): Promise<ProductRuntimeServices> {
   const driveFolders = createProjectDriveFolderService(
     driveAuthorization,
     createDriveClient(fetch),
+  );
+  const driveFolderLinks = createProjectDriveFolderLinkService(
+    projects,
+    driveAuthorization,
+    driveFolders,
   );
   const documents = createAuthenticatedProjectDocumentService(
     createProjectDocumentRepository(
@@ -217,6 +227,7 @@ async function createBrowserProductServices(): Promise<ProductRuntimeServices> {
     aiInstruction,
     driveAuthorization,
     driveFolders,
+    driveFolderLinks,
     driveReader,
   };
 }

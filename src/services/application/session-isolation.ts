@@ -10,6 +10,7 @@ export interface ProductSessionEphemeralState {
   driveAuthorization: Pick<DriveAuthorizationService, 'clear'>;
   aiCredentials: Pick<SessionAiCredentialStore, 'clear'>;
   aiInstruction: SessionInstructionClearable;
+  driveFolderLinks?: SessionInstructionClearable;
 }
 
 export function clearProductSessionEphemeralState(
@@ -18,6 +19,7 @@ export function clearProductSessionEphemeralState(
   state.driveAuthorization.clear();
   state.aiCredentials.clear();
   state.aiInstruction.clear();
+  state.driveFolderLinks?.clear();
 }
 
 export function authenticatedSessionUid(
