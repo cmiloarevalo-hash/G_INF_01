@@ -12,7 +12,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { id: 'nuevo-proyecto', label: 'Nuevo proyecto', group: 'Proyectos', isAvailable: true },
   { id: 'mis-proyectos', label: 'Mis proyectos', group: 'Proyectos', isAvailable: true },
   { id: 'mis-informes', label: 'Mis informes', group: 'Informes', isAvailable: false },
-  { id: 'apis-modelos', label: 'APIs y modelos', group: 'IA', isAvailable: false },
+  { id: 'apis-modelos', label: 'APIs y modelos', group: 'IA', isAvailable: true },
   { id: 'documentos-invitado', label: 'PDF locales (invitado)', group: 'Documentos', isAvailable: true },
   { id: 'google-drive', label: 'Google Drive', group: 'Documentos', isAvailable: false },
   { id: 'configuracion', label: 'Configuración', group: 'Configuración', isAvailable: false },

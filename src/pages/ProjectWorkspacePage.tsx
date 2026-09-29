@@ -72,7 +72,6 @@ export function ProjectWorkspacePage({
   const [analysisMetadataId, setAnalysisMetadataId] = React.useState<string | null>(null);
   const [analysisError, setAnalysisError] = React.useState<string | null>(null);
   const [analysisPending, setAnalysisPending] = React.useState(false);
-  const [apiKey, setApiKey] = React.useState('');
   const [reportMetadataId, setReportMetadataId] = React.useState<string | null>(null);
   const [reportPending, setReportPending] = React.useState(false);
   const [reportError, setReportError] = React.useState<string | null>(null);
@@ -272,8 +271,8 @@ export function ProjectWorkspacePage({
 
   const analyzePersistedDocuments = async () => {
     if (analysisPending || pendingRef.current) return;
-    if (!apiKey.trim() && !services.aiCredentials.get()) {
-      setAnalysisError('Ingresa tu clave de Gemini para esta sesión.');
+    if (!services.aiCredentials.get()) {
+      setAnalysisError('Configura una clave Gemini en APIs y modelos antes de analizar.');
       return;
     }
 
@@ -282,12 +281,10 @@ export function ProjectWorkspacePage({
     setAnalysisMetadataId(null);
     setAnalysisReport(null);
     try {
-      if (apiKey.trim()) {
-        services.aiCredentials.set(apiKey);
-      }
       const result = await services.projectAnalysis.analyze(
         session,
         project.id,
+        services.aiInstruction.get(),
       );
       setAnalysisReport(result.report);
       setAnalysisMetadataId(result.metadata.id);
@@ -633,19 +630,10 @@ export function ProjectWorkspacePage({
             Sólo se muestra un resultado que cumple TITLE_STUDY; su metadata se
             confirma después de guardar el JSON en Drive.
           </p>
-
-          <label className="guest-api-key-label" htmlFor="workspace-gemini-key">
-            Clave Gemini para esta sesión
-          </label>
-          <input
-            id="workspace-gemini-key"
-            className="guest-api-key"
-            type="password"
-            autoComplete="off"
-            value={apiKey}
-            disabled={analysisPending}
-            onChange={(event) => setApiKey(event.target.value)}
-          />
+          <div className="project-state-card">
+            Configuración AI: clave {services.aiCredentials.get() ? 'cargada en memoria' : 'no cargada'} ·
+            instrucción adicional {services.aiInstruction.get() ? 'activa' : 'vacía'}.
+          </div>
 
           <div className="workspace-actions">
             <button

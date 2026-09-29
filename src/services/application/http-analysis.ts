@@ -39,6 +39,7 @@ export function createAuthenticatedAnalysisHttpService(
     async analyze(
       session: AuthSessionState,
       files: GuestDocumentInput[],
+      additionalInstruction?: string,
     ) {
       const credential = credentials.get();
       if (!credential) {
@@ -62,7 +63,14 @@ export function createAuthenticatedAnalysisHttpService(
           'content-type': 'application/json',
           'x-gemini-api-key': credential,
         },
-        body: JSON.stringify({ files }),
+        body: JSON.stringify({
+          files,
+          provider: preference.provider,
+          model: preference.model,
+          ...(additionalInstruction?.trim()
+            ? { additionalInstruction: additionalInstruction.trim() }
+            : {}),
+        }),
       });
 
       const payload = await response.json().catch(() => ({

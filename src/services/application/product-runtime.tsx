@@ -63,6 +63,27 @@ import { createFirestoreProjectDocumentDriver } from '../firestore/firebase-docu
 import { createProjectService } from '../firestore/runtime.js';
 import type { AuthenticatedProjectService } from '../firestore/authenticated.js';
 
+export interface SessionInstructionStore {
+  get(): string;
+  set(value: string): void;
+  clear(): void;
+}
+
+function createMemoryInstructionStore(): SessionInstructionStore {
+  let instruction = '';
+  return {
+    get() {
+      return instruction;
+    },
+    set(value) {
+      instruction = value.trim();
+    },
+    clear() {
+      instruction = '';
+    },
+  };
+}
+
 export interface ProductRuntimeServices {
   projects: AuthenticatedProjectService;
   documents: AuthenticatedProjectDocumentService;
@@ -75,6 +96,7 @@ export interface ProductRuntimeServices {
   projectAnalysis: PersistedProjectAnalysisService;
   aiPreferences: AuthenticatedAiPreferenceService;
   aiCredentials: SessionAiCredentialStore;
+  aiInstruction: SessionInstructionStore;
   driveAuthorization: DriveAuthorizationService;
   driveFolders: ProjectDriveFolderService;
   driveReader: DriveReferenceReader;
@@ -131,6 +153,7 @@ async function createBrowserProductServices(): Promise<ProductRuntimeServices> {
     createFirestoreAiPreferenceRepository(firebaseResolution.config),
   );
   const aiCredentials = createMemoryAiCredentialStore();
+  const aiInstruction = createMemoryInstructionStore();
 
   const picker: DrivePickerService = {
     async open() {
@@ -185,6 +208,7 @@ async function createBrowserProductServices(): Promise<ProductRuntimeServices> {
     ),
     aiPreferences,
     aiCredentials,
+    aiInstruction,
     driveAuthorization,
     driveFolders,
     driveReader,

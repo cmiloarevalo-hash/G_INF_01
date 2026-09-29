@@ -7,6 +7,7 @@ import { GuestDocumentsPage } from '../pages/GuestDocumentsPage.js';
 import { NewProjectPage } from '../pages/NewProjectPage.js';
 import { ProjectsPage } from '../pages/ProjectsPage.js';
 import { ProjectWorkspacePage } from '../pages/ProjectWorkspacePage.js';
+import { ApisModelsPage } from '../pages/ApisModelsPage.js';
 import type { ProjectMetadata } from '../services/firestore/types.js';
 import { UnavailablePage } from '../pages/UnavailablePage.js';
 import './App.css';
@@ -70,6 +71,8 @@ export function App() {
                   setSelectedProject(project);
                   setCurrentSection('workspace-proyecto');
                 }} />
+              ) : currentSection === 'apis-modelos' ? (
+                <ApisModelsPage />
               ) : currentSection === 'workspace-proyecto' && selectedProject ? (
                 <ProjectWorkspacePage
                   initialProject={selectedProject}
