@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Sidebar, NAV_ITEMS } from '../components/Sidebar.js';
 import { Header } from '../components/Header.js';
 import { RoadmapStatusPanel } from '../components/RoadmapStatusPanel.js';
@@ -10,15 +10,34 @@ import { ProjectWorkspacePage } from '../pages/ProjectWorkspacePage.js';
 import { ApisModelsPage } from '../pages/ApisModelsPage.js';
 import { ReportsPage } from '../pages/ReportsPage.js';
 import type { ProjectMetadata } from '../services/firestore/types.js';
+import { useAuthSession } from '../services/auth/context.js';
+import {
+  createSessionIsolationGuard,
+  type SessionIsolationGuard,
+} from '../services/application/session-isolation.js';
 import { UnavailablePage } from '../pages/UnavailablePage.js';
 import './App.css';
 
 export function App() {
+  const { session } = useAuthSession();
   const [currentSection, setCurrentSection] = useState<string>('inicio');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
   const [isHealthOk, setIsHealthOk] = useState<boolean | null>(null);
   const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
+  const sessionUiIsolationRef = useRef<SessionIsolationGuard | null>(null);
+
+  if (!sessionUiIsolationRef.current) {
+    sessionUiIsolationRef.current = createSessionIsolationGuard(() => {
+      setSelectedProject(null);
+      setCurrentSection('inicio');
+      setIsMobileOpen(false);
+    });
+  }
+
+  useEffect(() => {
+    sessionUiIsolationRef.current?.transition(session);
+  }, [session]);
 
   // Check health status for header badge
   useEffect(() => {

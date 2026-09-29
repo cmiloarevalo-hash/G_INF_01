@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { loadBrowserFirebaseConfig } from '../auth/config.js';
+import { useAuthSession } from '../auth/context.js';
 import {
   createAuthenticatedAiPreferenceService,
   createMemoryAiCredentialStore,
@@ -38,6 +39,11 @@ import {
 import { createBrowserTitleStudyReportRenderer } from './browser-report.js';
 import { createAuthenticatedAnalysisHttpService } from './http-analysis.js';
 import {
+  clearProductSessionEphemeralState,
+  createSessionIsolationGuard,
+  type SessionIsolationGuard,
+} from './session-isolation.js';
+import {
   createPersistedProjectAnalysisService,
   type PersistedProjectAnalysisService,
 } from './project-analysis.js';
@@ -69,7 +75,7 @@ export interface SessionInstructionStore {
   clear(): void;
 }
 
-function createMemoryInstructionStore(): SessionInstructionStore {
+export function createMemoryInstructionStore(): SessionInstructionStore {
   let instruction = '';
   return {
     get() {
@@ -222,15 +228,34 @@ export function ProductRuntimeProvider({
 }: {
   children?: React.ReactNode;
 }) {
+  const { session } = useAuthSession();
   const [state, setState] = React.useState<ProductRuntimeState>({
     status: 'checking',
   });
+  const servicesRef = React.useRef<ProductRuntimeServices | null>(null);
+  const isolationRef = React.useRef<SessionIsolationGuard | null>(null);
+
+  if (!isolationRef.current) {
+    isolationRef.current = createSessionIsolationGuard(() => {
+      const services = servicesRef.current;
+      if (services) clearProductSessionEphemeralState(services);
+    });
+  }
+
+  React.useEffect(() => {
+    isolationRef.current?.transition(session);
+  }, [session]);
 
   React.useEffect(() => {
     let active = true;
     void createBrowserProductServices()
       .then((services) => {
-        if (active) setState({ status: 'available', services });
+        if (!active) {
+          clearProductSessionEphemeralState(services);
+          return;
+        }
+        servicesRef.current = services;
+        setState({ status: 'available', services });
       })
       .catch((error) => {
         if (!active) return;
@@ -243,6 +268,9 @@ export function ProductRuntimeProvider({
       });
     return () => {
       active = false;
+      const services = servicesRef.current;
+      servicesRef.current = null;
+      if (services) clearProductSessionEphemeralState(services);
     };
   }, []);
 
