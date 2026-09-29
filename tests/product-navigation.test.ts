@@ -19,8 +19,8 @@ test('M5.1-2 app connects project creation/reopen to the authenticated workspace
   assert.match(source, /onCreated=\{\(project\)/);
   assert.match(source, /onOpenProject=\{\(project\)/);
   assert.match(source, /setCurrentSection\('workspace-proyecto'\)/);
-  assert.match(source, /<ReportsPage \/>/);
-  assert.match(source, /<ApisModelsPage \/>/);
+  assert.match(source, /<ReportsPage\\b/);
+  assert.match(source, /<ApisModelsPage\\b/);
 });
 
 test('M5.2 workspace exposes canonical product areas and contextual navigation', () => {
