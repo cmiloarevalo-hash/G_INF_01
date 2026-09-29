@@ -247,7 +247,8 @@ test('project navigation entries are available while unrelated future entries re
   const byId = new Map(NAV_ITEMS.map((item) => [item.id, item]));
   assert.equal(byId.get('nuevo-proyecto')?.isAvailable, true);
   assert.equal(byId.get('mis-proyectos')?.isAvailable, true);
-  assert.equal(byId.get('mis-informes')?.isAvailable, false);
+  assert.equal(byId.get('mis-informes')?.isAvailable, true);
+  assert.equal(byId.get('apis-modelos')?.isAvailable, true);
   assert.equal(byId.get('google-drive')?.isAvailable, false);
 });
 
