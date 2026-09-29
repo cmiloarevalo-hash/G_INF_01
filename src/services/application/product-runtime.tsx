@@ -6,9 +6,7 @@ import {
   type AuthenticatedAiPreferenceService,
   type SessionAiCredentialStore,
 } from '../ai/preferences.js';
-import {
-  createDriveAuthorizationService,
-} from '../drive/authorization.js';
+import { createDriveAuthorizationService } from '../drive/authorization.js';
 import {
   createBrowserDriveAuthorizationAdapter,
   loadBrowserDrivePickerRuntime,
@@ -29,13 +27,16 @@ import type {
 import { createDriveLocalFileUploadService } from '../drive/upload.js';
 import {
   createAnalysisPersistenceService,
+  createArtifactHistoryService,
   createDocumentIncorporationService,
+  createReportPersistenceService,
   type AnalysisPersistenceService,
+  type ArtifactHistoryService,
   type DocumentIncorporationService,
+  type ReportPersistenceService,
 } from './authenticated-capabilities.js';
-import {
-  createAuthenticatedAnalysisHttpService,
-} from './http-analysis.js';
+import { createBrowserTitleStudyReportRenderer } from './browser-report.js';
+import { createAuthenticatedAnalysisHttpService } from './http-analysis.js';
 import {
   createPersistedProjectAnalysisService,
   type PersistedProjectAnalysisService,
@@ -46,15 +47,17 @@ import {
 } from '../firestore/authenticated-documents.js';
 import {
   createAuthenticatedProjectAnalysisService,
+  createAuthenticatedProjectReportService,
   createProjectAnalysisRepository,
+  createProjectReportRepository,
   type AuthenticatedProjectAnalysisService,
+  type AuthenticatedProjectReportService,
 } from '../firestore/artifacts.js';
 import { createProjectDocumentRepository } from '../firestore/document-service.js';
-import {
-  createFirestoreAiPreferenceRepository,
-} from '../firestore/firebase-ai-preferences.js';
+import { createFirestoreAiPreferenceRepository } from '../firestore/firebase-ai-preferences.js';
 import {
   createFirestoreProjectAnalysisDriver,
+  createFirestoreProjectReportDriver,
 } from '../firestore/firebase-artifacts.js';
 import { createFirestoreProjectDocumentDriver } from '../firestore/firebase-documents.js';
 import { createProjectService } from '../firestore/runtime.js';
@@ -64,8 +67,11 @@ export interface ProductRuntimeServices {
   projects: AuthenticatedProjectService;
   documents: AuthenticatedProjectDocumentService;
   analyses: AuthenticatedProjectAnalysisService;
+  reports: AuthenticatedProjectReportService;
   incorporation: DocumentIncorporationService;
   analysisPersistence: AnalysisPersistenceService;
+  reportPersistence: ReportPersistenceService;
+  history: ArtifactHistoryService;
   projectAnalysis: PersistedProjectAnalysisService;
   aiPreferences: AuthenticatedAiPreferenceService;
   aiCredentials: SessionAiCredentialStore;
@@ -116,6 +122,11 @@ async function createBrowserProductServices(): Promise<ProductRuntimeServices> {
       createFirestoreProjectAnalysisDriver(firebaseResolution.config),
     ),
   );
+  const reports = createAuthenticatedProjectReportService(
+    createProjectReportRepository(
+      createFirestoreProjectReportDriver(firebaseResolution.config),
+    ),
+  );
   const aiPreferences = createAuthenticatedAiPreferenceService(
     createFirestoreAiPreferenceRepository(firebaseResolution.config),
   );
@@ -146,6 +157,12 @@ async function createBrowserProductServices(): Promise<ProductRuntimeServices> {
     upload,
     analyses,
   );
+  const reportPersistence = createReportPersistenceService(
+    projects,
+    upload,
+    reports,
+    createBrowserTitleStudyReportRenderer(),
+  );
   const configuredAnalysis = createAuthenticatedAnalysisHttpService(
     aiPreferences,
     aiCredentials,
@@ -155,8 +172,11 @@ async function createBrowserProductServices(): Promise<ProductRuntimeServices> {
     projects,
     documents,
     analyses,
+    reports,
     incorporation,
     analysisPersistence,
+    reportPersistence,
+    history: createArtifactHistoryService(analyses, reports, driveReader),
     projectAnalysis: createPersistedProjectAnalysisService(
       documents,
       driveReader,

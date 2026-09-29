@@ -3,11 +3,13 @@ import { TitleStudyResult } from '../components/TitleStudyResult.js';
 import type { TitleStudy } from '../report-types/title-study/schema.js';
 import type { ProjectDocumentMetadata } from '../services/firestore/document-types.js';
 import type { ProjectMetadata } from '../services/firestore/types.js';
+import type { ProjectAnalysisMetadata, ProjectReportMetadata } from '../services/firestore/artifacts.js';
 import { useAuthSession } from '../services/auth/context.js';
 import { useProductRuntime } from '../services/application/product-runtime.js';
 import { PersistedProjectAnalysisError } from '../services/application/project-analysis.js';
+import { AuthenticatedCapabilityError } from '../services/application/authenticated-capabilities.js';
 
-type WorkspaceTab = 'resumen' | 'documentos' | 'resultado';
+type WorkspaceTab = 'resumen' | 'documentos' | 'resultado' | 'informe' | 'historial';
 
 type DocumentReferenceState =
   | 'unchecked'
@@ -71,6 +73,13 @@ export function ProjectWorkspacePage({
   const [analysisError, setAnalysisError] = React.useState<string | null>(null);
   const [analysisPending, setAnalysisPending] = React.useState(false);
   const [apiKey, setApiKey] = React.useState('');
+  const [reportMetadataId, setReportMetadataId] = React.useState<string | null>(null);
+  const [reportPending, setReportPending] = React.useState(false);
+  const [reportError, setReportError] = React.useState<string | null>(null);
+  const [analysisHistory, setAnalysisHistory] = React.useState<ProjectAnalysisMetadata[]>([]);
+  const [reportHistory, setReportHistory] = React.useState<ProjectReportMetadata[]>([]);
+  const [historyStatus, setHistoryStatus] = React.useState<'idle' | 'loading' | 'loaded' | 'empty' | 'failure'>('idle');
+  const [historyMessage, setHistoryMessage] = React.useState<string | null>(null);
   const [referenceStates, setReferenceStates] = React.useState<Record<string, DocumentReferenceState>>({});
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const pendingRef = React.useRef(false);
@@ -100,7 +109,9 @@ export function ProjectWorkspacePage({
   }, [project.id, runtime, session]);
 
   React.useEffect(() => {
-    if (activeTab === 'documentos') void refreshDocuments();
+    if (activeTab === 'documentos' || activeTab === 'resultado') {
+      void refreshDocuments();
+    }
   }, [activeTab, refreshDocuments]);
 
   if (session.status !== 'authenticated') {
@@ -296,6 +307,154 @@ export function ProjectWorkspacePage({
     }
   };
 
+  const generateAndPersistReport = async () => {
+    if (reportPending || !analysisReport || !analysisMetadataId) return;
+    setReportPending(true);
+    setReportError(null);
+    setReportMetadataId(null);
+    try {
+      const metadata = await services.reportPersistence.persist(
+        session,
+        project.id,
+        analysisReport,
+      );
+      setReportMetadataId(metadata.id);
+    } catch (error) {
+      if (
+        error instanceof AuthenticatedCapabilityError &&
+        error.confirmedDriveFileId
+      ) {
+        setReportError(
+          `${error.message} Drive confirmó ${error.confirmedDriveFileId}, pero el cierre de metadata quedó incompleto.`,
+        );
+      } else {
+        setReportError(errorMessage(
+          error,
+          'No se confirmó la generación y persistencia del informe.',
+        ));
+      }
+    } finally {
+      setReportPending(false);
+    }
+  };
+
+  const refreshHistory = React.useCallback(async () => {
+    setHistoryStatus('loading');
+    setHistoryMessage(null);
+    const [analysesResult, reportsResult] = await Promise.all([
+      services.history.listAnalyses(session, project.id),
+      services.history.listReports(session, project.id),
+    ]);
+
+    if (
+      analysesResult.status === 'failure' ||
+      reportsResult.status === 'failure'
+    ) {
+      setAnalysisHistory(
+        analysesResult.status === 'items' ? analysesResult.items : [],
+      );
+      setReportHistory(
+        reportsResult.status === 'items' ? reportsResult.items : [],
+      );
+      setHistoryStatus('failure');
+      setHistoryMessage('No fue posible cargar todo el historial persistido.');
+      return;
+    }
+
+    const analysesItems =
+      analysesResult.status === 'items' ? analysesResult.items : [];
+    const reportsItems =
+      reportsResult.status === 'items' ? reportsResult.items : [];
+    setAnalysisHistory(analysesItems);
+    setReportHistory(reportsItems);
+    setHistoryStatus(
+      analysesItems.length === 0 && reportsItems.length === 0
+        ? 'empty'
+        : 'loaded',
+    );
+  }, [project.id, services.history, session]);
+
+  React.useEffect(() => {
+    if (activeTab === 'historial') void refreshHistory();
+  }, [activeTab, refreshHistory]);
+
+  const reopenAnalysis = async (metadataId: string) => {
+    setHistoryMessage('Reabriendo análisis…');
+    const result = await services.history.reopenAnalysis(
+      session,
+      project.id,
+      metadataId,
+    );
+    if (result.status === 'available') {
+      setAnalysisReport(result.content);
+      setAnalysisMetadataId(result.metadata.id);
+      setHistoryMessage(null);
+      setActiveTab('resultado');
+      return;
+    }
+    if (result.status === 'not-found') {
+      setHistoryMessage('El análisis ya no existe en Firestore.');
+      return;
+    }
+    if (result.status === 'stale') {
+      setHistoryMessage(
+        result.reason === 'not-found'
+          ? 'El análisis conserva metadata, pero su archivo Drive está obsoleto.'
+          : 'El análisis conserva metadata, pero su archivo Drive no está disponible.',
+      );
+      return;
+    }
+    if (result.status === 'authorization-required') {
+      setHistoryMessage('Drive requiere autorización para reabrir el análisis.');
+      return;
+    }
+    setHistoryMessage('No fue posible reabrir el análisis.');
+  };
+
+  const reopenReport = async (metadataId: string) => {
+    setHistoryMessage('Abriendo informe…');
+    const result = await services.history.reopenReport(
+      session,
+      project.id,
+      metadataId,
+    );
+    if (result.status === 'available') {
+      const blob = new Blob(
+        [result.content],
+        {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        },
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.metadata.name ?? 'estudio-de-titulos.docx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setHistoryMessage('Informe disponible: se preparó la descarga.');
+      return;
+    }
+    if (result.status === 'not-found') {
+      setHistoryMessage('El informe ya no existe en Firestore.');
+      return;
+    }
+    if (result.status === 'stale') {
+      setHistoryMessage(
+        result.reason === 'not-found'
+          ? 'El informe conserva metadata, pero su archivo Drive está obsoleto.'
+          : 'El informe conserva metadata, pero su archivo Drive no está disponible.',
+      );
+      return;
+    }
+    if (result.status === 'authorization-required') {
+      setHistoryMessage('Drive requiere autorización para abrir el informe.');
+      return;
+    }
+    setHistoryMessage('No fue posible abrir el informe.');
+  };
+
   const pending = operation.status === 'pending';
 
   return (
@@ -318,6 +477,8 @@ export function ProjectWorkspacePage({
           ['resumen', 'Resumen'],
           ['documentos', 'Documentos'],
           ['resultado', 'Resultado'],
+          ['informe', 'Informe'],
+          ['historial', 'Historial'],
         ] as const).map(([id, label]) => (
           <button
             type="button"
@@ -524,6 +685,130 @@ export function ProjectWorkspacePage({
           )}
           {analysisReport && (
             <TitleStudyResult report={analysisReport} partial={false} />
+          )}
+        </section>
+      )}
+
+      {activeTab === 'informe' && (
+        <section className="workspace-panel" aria-labelledby="workspace-report-title">
+          <h3 id="workspace-report-title">Informe</h3>
+          <p>
+            El DOCX sólo se genera desde un análisis TITLE_STUDY validado y
+            persistido. Drive debe confirmar el archivo antes de guardar su metadata.
+          </p>
+          <div className="workspace-actions">
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={reportPending || !analysisReport || !analysisMetadataId}
+              onClick={() => void generateAndPersistReport()}
+            >
+              {reportPending ? 'Generando y guardando…' : 'Generar y persistir DOCX'}
+            </button>
+            {!analysisMetadataId && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setActiveTab('resultado')}
+              >
+                Ir a Resultado
+              </button>
+            )}
+          </div>
+          {reportMetadataId && (
+            <div className="project-state-card" role="status">
+              Informe confirmado en Drive y metadata persistida: {reportMetadataId}
+            </div>
+          )}
+          {reportError && (
+            <div className="project-error" role="alert">{reportError}</div>
+          )}
+        </section>
+      )}
+
+      {activeTab === 'historial' && (
+        <section className="workspace-panel" aria-labelledby="workspace-history-title">
+          <h3 id="workspace-history-title">Historial</h3>
+          <p>
+            Reapertura controlada de análisis e informes persistidos.
+          </p>
+          <div className="workspace-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={historyStatus === 'loading'}
+              onClick={() => void refreshHistory()}
+            >
+              Actualizar historial
+            </button>
+          </div>
+          {historyMessage && (
+            <div
+              className={historyStatus === 'failure' ? 'project-error' : 'project-state-card'}
+              role={historyStatus === 'failure' ? 'alert' : 'status'}
+            >
+              {historyMessage}
+            </div>
+          )}
+          {historyStatus === 'loading' && (
+            <div className="project-state-card">Cargando historial…</div>
+          )}
+          {historyStatus === 'empty' && (
+            <div className="project-state-card">
+              No hay análisis ni informes persistidos.
+            </div>
+          )}
+          {(historyStatus === 'loaded' || historyStatus === 'failure') && (
+            <div className="workspace-history-grid">
+              <section>
+                <h4>Análisis</h4>
+                {analysisHistory.length === 0 ? (
+                  <p className="guest-empty-state">Sin análisis persistidos.</p>
+                ) : (
+                  <ul className="workspace-list">
+                    {analysisHistory.map((item) => (
+                      <li key={item.id}>
+                        <div>
+                          <strong>{item.name ?? item.id}</strong>
+                          <span>{item.id}</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => void reopenAnalysis(item.id)}
+                        >
+                          Reabrir análisis
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+              <section>
+                <h4>Informes</h4>
+                {reportHistory.length === 0 ? (
+                  <p className="guest-empty-state">Sin informes persistidos.</p>
+                ) : (
+                  <ul className="workspace-list">
+                    {reportHistory.map((item) => (
+                      <li key={item.id}>
+                        <div>
+                          <strong>{item.name ?? item.id}</strong>
+                          <span>{item.id}</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => void reopenReport(item.id)}
+                        >
+                          Abrir informe
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
           )}
         </section>
       )}
