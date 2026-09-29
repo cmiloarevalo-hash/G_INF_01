@@ -57,9 +57,13 @@ export function driveReferenceStateLabel(
 export function ProjectWorkspacePage({
   initialProject,
   onBack,
+  onOpenApisModels,
+  onOpenReports,
 }: {
   initialProject: ProjectMetadata;
   onBack(): void;
+  onOpenApisModels?(): void;
+  onOpenReports?(): void;
 }) {
   const { session } = useAuthSession();
   const runtime = useProductRuntime();
@@ -523,6 +527,24 @@ export function ProjectWorkspacePage({
                 onClick={() => void prepareDriveFolders()}
               >
                 Preparar carpetas Drive
+              </button>
+            )}
+            {onOpenApisModels && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={onOpenApisModels}
+              >
+                APIs y modelos
+              </button>
+            )}
+            {onOpenReports && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={onOpenReports}
+              >
+                Mis informes
               </button>
             )}
           </div>

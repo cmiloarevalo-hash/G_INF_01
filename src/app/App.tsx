@@ -8,6 +8,7 @@ import { NewProjectPage } from '../pages/NewProjectPage.js';
 import { ProjectsPage } from '../pages/ProjectsPage.js';
 import { ProjectWorkspacePage } from '../pages/ProjectWorkspacePage.js';
 import { ApisModelsPage } from '../pages/ApisModelsPage.js';
+import { ReportsPage } from '../pages/ReportsPage.js';
 import type { ProjectMetadata } from '../services/firestore/types.js';
 import { UnavailablePage } from '../pages/UnavailablePage.js';
 import './App.css';
@@ -58,25 +59,32 @@ export function App() {
         />
 
         <main className="main-content">
-          <div className="main-content-grid">
+          <div className={currentSection === 'inicio' ? 'main-content-grid' : 'main-content-grid main-content-grid-wide'}>
             <div className="main-content-primary">
               {currentSection === 'inicio' ? (
                 <HomePage onOpenGuestDocuments={() => setCurrentSection('documentos-invitado')} />
               ) : currentSection === 'documentos-invitado' ? (
                 <GuestDocumentsPage />
               ) : currentSection === 'nuevo-proyecto' ? (
-                <NewProjectPage />
+                <NewProjectPage onCreated={(project) => {
+                  setSelectedProject(project);
+                  setCurrentSection('workspace-proyecto');
+                }} />
               ) : currentSection === 'mis-proyectos' ? (
                 <ProjectsPage onOpenProject={(project) => {
                   setSelectedProject(project);
                   setCurrentSection('workspace-proyecto');
                 }} />
+              ) : currentSection === 'mis-informes' ? (
+                <ReportsPage />
               ) : currentSection === 'apis-modelos' ? (
                 <ApisModelsPage />
               ) : currentSection === 'workspace-proyecto' && selectedProject ? (
                 <ProjectWorkspacePage
                   initialProject={selectedProject}
                   onBack={() => setCurrentSection('mis-proyectos')}
+                  onOpenApisModels={() => setCurrentSection('apis-modelos')}
+                  onOpenReports={() => setCurrentSection('mis-informes')}
                 />
               ) : (
                 <UnavailablePage
@@ -86,7 +94,7 @@ export function App() {
                 />
               )}
             </div>
-            <RoadmapStatusPanel />
+            {currentSection === 'inicio' && <RoadmapStatusPanel />}
           </div>
         </main>
       </div>

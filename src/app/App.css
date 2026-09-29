@@ -1401,3 +1401,8 @@ body {
   resize: vertical;
   font-family: inherit;
 }
+
+
+.main-content-grid-wide {
+  grid-template-columns: minmax(0, 1fr);
+}

@@ -9,7 +9,11 @@ import {
 } from './projectFlow.js';
 import { ProjectMetadataCard } from './ProjectMetadataCard.js';
 
-export function NewProjectPage() {
+export function NewProjectPage({
+  onCreated,
+}: {
+  onCreated?: (project: ProjectMetadata) => void;
+} = {}) {
   const { session } = useAuthSession();
   const runtime = useProjectRuntime();
   const availability = projectUiAvailability(session, runtime);
@@ -52,6 +56,7 @@ export function NewProjectPage() {
       if (result.status === 'completed') {
         setCreated(result.value);
         setName('');
+        onCreated?.(result.value);
       }
     } catch {
       // unreachable: errors reject before a completed result is returned
