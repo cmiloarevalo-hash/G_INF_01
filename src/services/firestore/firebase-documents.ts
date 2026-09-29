@@ -3,14 +3,13 @@ import {
   doc,
   getDoc,
   getDocs,
-  getFirestore,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
 } from 'firebase/firestore';
 import type { FirebaseWebConfig } from '../auth/config.js';
-import { getOrInitializeFirebaseApp } from '../firebase/app.js';
+import { getConfiguredFirestore } from './database.js';
 import type {
   CreateProjectDocumentInput,
   ProjectDocumentDriver,
@@ -160,7 +159,7 @@ export function createProjectDocumentDriverWithRuntime(
 export function createFirestoreProjectDocumentDriver(
   config: FirebaseWebConfig,
 ): ProjectDocumentDriver {
-  const db = getFirestore(getOrInitializeFirebaseApp(config));
+  const db = getConfiguredFirestore(config);
 
   return createProjectDocumentDriverWithRuntime({
     serverTimestamp,

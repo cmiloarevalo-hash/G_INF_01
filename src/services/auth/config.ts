@@ -3,6 +3,7 @@ export interface FirebaseWebConfig {
   authDomain: string;
   projectId: string;
   appId: string;
+  databaseId?: string;
 }
 
 export type FirebaseConfigResolution =
@@ -15,6 +16,9 @@ export const FIREBASE_ENVIRONMENT_KEYS = {
   projectId: 'VITE_FIREBASE_PROJECT_ID',
   appId: 'VITE_FIREBASE_APP_ID',
 } as const;
+
+export const FIREBASE_DATABASE_ID_ENVIRONMENT_KEY =
+  'VITE_FIREBASE_DATABASE_ID';
 
 export type FirebaseEnvironment = Record<string, string | undefined>;
 export type FirebaseConfigFetch = typeof fetch;
@@ -35,7 +39,16 @@ export function resolveFirebaseWebConfig(env: FirebaseEnvironment): FirebaseConf
     return { available: false, missing };
   }
 
-  return { available: true, config: values };
+  const databaseId =
+    env[FIREBASE_DATABASE_ID_ENVIRONMENT_KEY]?.trim() ?? '';
+
+  return {
+    available: true,
+    config: {
+      ...values,
+      ...(databaseId ? { databaseId } : {}),
+    },
+  };
 }
 
 function runtimePayloadConfig(payload: unknown): FirebaseWebConfig | null {
@@ -49,7 +62,15 @@ function runtimePayloadConfig(payload: unknown): FirebaseWebConfig | null {
     appId: typeof source.appId === 'string' ? source.appId.trim() : '',
   };
 
-  return Object.values(config).every(Boolean) ? config : null;
+  if (!Object.values(config).every(Boolean)) return null;
+
+  const databaseId =
+    typeof source.databaseId === 'string' ? source.databaseId.trim() : '';
+
+  return {
+    ...config,
+    ...(databaseId ? { databaseId } : {}),
+  };
 }
 
 export async function loadFirebaseWebConfig(

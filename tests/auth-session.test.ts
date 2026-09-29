@@ -5,6 +5,7 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AuthSessionControl } from '../src/components/AuthSessionControl.js';
 import {
+  FIREBASE_DATABASE_ID_ENVIRONMENT_KEY,
   FIREBASE_ENVIRONMENT_KEYS,
   loadFirebaseWebConfig,
   resolveFirebaseWebConfig,
@@ -126,6 +127,46 @@ test('Firebase config is explicit and incomplete configuration disables authenti
       authDomain: 'project.firebaseapp.com',
       projectId: 'project-id',
       appId: '1:123:web:abc',
+    },
+  });
+});
+
+test('Firebase config remains valid without optional Firestore databaseId', () => {
+  const resolution = resolveFirebaseWebConfig({
+    VITE_FIREBASE_API_KEY: 'api-key',
+    VITE_FIREBASE_AUTH_DOMAIN: 'project.firebaseapp.test',
+    VITE_FIREBASE_PROJECT_ID: 'project-id',
+    VITE_FIREBASE_APP_ID: 'app-id',
+  });
+
+  assert.deepEqual(resolution, {
+    available: true,
+    config: {
+      apiKey: 'api-key',
+      authDomain: 'project.firebaseapp.test',
+      projectId: 'project-id',
+      appId: 'app-id',
+    },
+  });
+});
+
+test('Firebase config preserves optional named Firestore databaseId', () => {
+  const resolution = resolveFirebaseWebConfig({
+    VITE_FIREBASE_API_KEY: 'api-key',
+    VITE_FIREBASE_AUTH_DOMAIN: 'project.firebaseapp.test',
+    VITE_FIREBASE_PROJECT_ID: 'project-id',
+    VITE_FIREBASE_APP_ID: 'app-id',
+    [FIREBASE_DATABASE_ID_ENVIRONMENT_KEY]: ' test-database ',
+  });
+
+  assert.deepEqual(resolution, {
+    available: true,
+    config: {
+      apiKey: 'api-key',
+      authDomain: 'project.firebaseapp.test',
+      projectId: 'project-id',
+      appId: 'app-id',
+      databaseId: 'test-database',
     },
   });
 });
