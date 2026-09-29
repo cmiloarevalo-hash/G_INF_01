@@ -203,6 +203,7 @@ test('missing build-time Firebase config falls back to same-origin runtime confi
         authDomain: 'runtime.firebaseapp.test',
         projectId: 'runtime-project',
         appId: 'runtime-app-id',
+        databaseId: 'runtime-test-database',
         ignored: 'not-used',
       });
     },
@@ -216,6 +217,7 @@ test('missing build-time Firebase config falls back to same-origin runtime confi
       authDomain: 'runtime.firebaseapp.test',
       projectId: 'runtime-project',
       appId: 'runtime-app-id',
+      databaseId: 'runtime-test-database',
     },
   });
 });
