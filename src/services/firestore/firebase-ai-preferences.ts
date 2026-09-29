@@ -1,7 +1,6 @@
 import {
   doc,
   getDoc,
-  getFirestore,
   setDoc,
 } from 'firebase/firestore';
 import type { FirebaseWebConfig } from '../auth/config.js';
@@ -10,7 +9,7 @@ import {
   type AiPreference,
   type AiPreferenceRepository,
 } from '../ai/preferences.js';
-import { getOrInitializeFirebaseApp } from '../firebase/app.js';
+import { getConfiguredFirestore } from './database.js';
 
 interface PreferenceSnapshotLike {
   exists(): boolean;
@@ -61,7 +60,7 @@ export function createAiPreferenceRepositoryWithRuntime(
 export function createFirestoreAiPreferenceRepository(
   config: FirebaseWebConfig,
 ): AiPreferenceRepository {
-  const db = getFirestore(getOrInitializeFirebaseApp(config));
+  const db = getConfiguredFirestore(config);
 
   return createAiPreferenceRepositoryWithRuntime({
     async get(path) {

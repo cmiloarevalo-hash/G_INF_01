@@ -3,7 +3,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  getFirestore,
   orderBy,
   query,
   serverTimestamp,
@@ -13,7 +12,7 @@ import {
 } from 'firebase/firestore';
 import type { FirebaseWebConfig } from '../auth/config.js';
 import type { ProjectDriveFolders } from '../drive/types.js';
-import { getOrInitializeFirebaseApp } from '../firebase/app.js';
+import { getConfiguredFirestore } from './database.js';
 import type { ProjectDriver, ProjectMetadata } from './types.js';
 
 interface ProjectSnapshotLike {
@@ -74,7 +73,7 @@ export function projectFromSnapshot(snapshot: ProjectSnapshotLike): ProjectMetad
 }
 
 export function createFirestoreProjectDriver(config: FirebaseWebConfig): ProjectDriver {
-  const db = getFirestore(getOrInitializeFirebaseApp(config));
+  const db = getConfiguredFirestore(config);
 
   return {
     async create(uid, name) {

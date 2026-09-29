@@ -33,9 +33,13 @@ Endpoint de salud:
 
 ### Configuración pública de Firebase Authentication
 
-M4.1 conserva el contrato de cuatro variables `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` y `VITE_FIREBASE_APP_ID`. Una configuración build-time completa sigue funcionando como antes. Cuando no está disponible, el cliente consulta `GET /api/firebase-config`; el servidor resuelve esas mismas cuatro entradas desde su entorno de runtime y devuelve únicamente `apiKey`, `authDomain`, `projectId` y `appId` con `Cache-Control: no-store`.
+M4.1 conserva como obligatorias las cuatro variables `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID` y `VITE_FIREBASE_APP_ID`. `VITE_FIREBASE_DATABASE_ID` es **opcional** y no participa en la validez de Firebase Authentication.
 
-La configuración Web de Firebase es configuración pública del cliente, no una credencial Gemini/LLM. No guardar valores reales en archivos versionados ni reutilizar una Firebase API key para Gemini. Si las cuatro entradas no están completas o el endpoint no está disponible, el modo autenticado permanece deshabilitado y el flujo invitado continúa disponible.
+Si `VITE_FIREBASE_DATABASE_ID` no está configurado o está vacío, Firestore conserva el comportamiento existente y usa la base `(default)`. Si está configurado, la aplicación utiliza esa base Firestore nombrada.
+
+Cuando la configuración build-time obligatoria no está disponible, el cliente consulta `GET /api/firebase-config`. El servidor puede devolver `apiKey`, `authDomain`, `projectId`, `appId` y, sólo cuando exista una configuración no vacía, el campo opcional `databaseId`, siempre con `Cache-Control: no-store`.
+
+La configuración Web de Firebase es configuración pública del cliente, no una credencial Gemini/LLM. No guardar valores reales, database IDs reales, credenciales ni tokens en archivos versionados, ni reutilizar una Firebase API key para Gemini. Si las cuatro entradas obligatorias no están completas o el endpoint no está disponible, el modo autenticado permanece deshabilitado y el flujo invitado continúa disponible.
 
 ## Verificación
 

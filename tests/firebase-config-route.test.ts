@@ -47,6 +47,45 @@ test('GET /api/firebase-config returns only complete public Firebase Web config'
   );
 });
 
+test('GET /api/firebase-config returns databaseId only when configured', async () => {
+  await withFirebaseConfigServer(
+    {
+      VITE_FIREBASE_API_KEY: 'fake-public-api-key',
+      VITE_FIREBASE_AUTH_DOMAIN: 'fake-project.firebaseapp.test',
+      VITE_FIREBASE_PROJECT_ID: 'fake-project',
+      VITE_FIREBASE_APP_ID: 'fake-app-id',
+      VITE_FIREBASE_DATABASE_ID: 'test-database',
+    },
+    async (root) => {
+      const response = await fetch(`${root}/api/firebase-config`);
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), {
+        apiKey: 'fake-public-api-key',
+        authDomain: 'fake-project.firebaseapp.test',
+        projectId: 'fake-project',
+        appId: 'fake-app-id',
+        databaseId: 'test-database',
+      });
+    },
+  );
+
+  await withFirebaseConfigServer(
+    {
+      VITE_FIREBASE_API_KEY: 'fake-public-api-key',
+      VITE_FIREBASE_AUTH_DOMAIN: 'fake-project.firebaseapp.test',
+      VITE_FIREBASE_PROJECT_ID: 'fake-project',
+      VITE_FIREBASE_APP_ID: 'fake-app-id',
+      VITE_FIREBASE_DATABASE_ID: '   ',
+    },
+    async (root) => {
+      const response = await fetch(`${root}/api/firebase-config`);
+      assert.equal(response.status, 200);
+      const body = await response.json() as Record<string, unknown>;
+      assert.equal('databaseId' in body, false);
+    },
+  );
+});
+
 test('GET /api/firebase-config fails closed when server runtime config is incomplete', async () => {
   await withFirebaseConfigServer(
     {
