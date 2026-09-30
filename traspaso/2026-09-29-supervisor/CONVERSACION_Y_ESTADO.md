@@ -1,8 +1,8 @@
 # Traspaso de conversación y estado — Supervisor → nuevo chat
 
-**Repositorio:** `cmiloarevalo-hash/G_INF_01`  
-**Work Item de traspaso:** #96  
-**Corte del traspaso:** 2026-09-29 11:43 CLST (UTC-03:00)  
+**Repositorio:** `cmiloarevalo-hash/G_INF_01`
+**Work Item de traspaso:** #96
+**Corte del traspaso:** 2026-09-29 11:43 CLST (UTC-03:00)
 **Main revalidado al preparar el traspaso:** `3b846e3c086cd7c7ed2c4155d41b76eaa623e6a0`
 
 > Este archivo es una **reconstrucción estructurada de la conversación y de las decisiones relevantes**, preparada para continuidad operativa. **No es una transcripción literal palabra por palabra** del chat. Cuando un dato es mutable, el nuevo Supervisor debe revalidarlo en GitHub antes de usarlo como estado actual.
