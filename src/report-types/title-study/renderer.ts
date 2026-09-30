@@ -156,8 +156,86 @@ function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfCon
   const comparisons = report.comparisons ?? [];
   const conclusions = report.conclusions ?? [];
   const findingLabels = new Map(findings.map((finding, index) => [finding.id, `Hallazgo ${index + 1}`]));
+  const cachedEntries: Array<{ title: string; level: 1 | 2 }> = [];
 
-  const children: Array<Paragraph | Table | TableOfContents> = [
+  const reportHeading = (text: string, level: 1 | 2): Paragraph => {
+    cachedEntries.push({ title: text, level });
+    return heading(text, level === 1 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2);
+  };
+
+  const reportChildren: Array<Paragraph | Table> = [
+    reportHeading('Objetivo del informe', 1),
+    new Paragraph({
+      spacing: { after: 120, line: 276 },
+      children: [
+        new TextRun(
+          'Presentar de forma estructurada y legible el resultado TITLE_STUDY validado y conservar su trazabilidad con los documentos fuente.',
+        ),
+      ],
+    }),
+    reportHeading('Documentos fuente', 1),
+    table(
+      ['Documento', 'Tipo documental'],
+      report.sourceDocuments.map((document) => [document.name, document.documentType]),
+    ),
+  ];
+
+  if (findings.length > 0) {
+    reportChildren.push(reportHeading('Hallazgos', 1));
+    findings.forEach((finding, index) => {
+      reportChildren.push(reportHeading(`Hallazgo ${index + 1}: ${finding.statement}`, 2));
+      reportChildren.push(
+        mutedParagraph(
+          'Fuentes: ',
+          finding.sourceDocumentIds.map((id) => documentName(report, id)).join(' · '),
+        ),
+      );
+      if (finding.values?.length === 1) {
+        const value = finding.values[0];
+        reportChildren.push(
+          body(`${documentName(report, value.documentId)} — ${value.field}: ${value.original}`),
+        );
+        if (value.normalized !== undefined) {
+          reportChildren.push(mutedParagraph('Valor normalizado: ', value.normalized));
+        }
+      } else if (finding.values && finding.values.length > 1) {
+        reportChildren.push(valueTable(report, finding.values));
+      }
+    });
+  }
+
+  if (comparisons.length > 0) {
+    reportChildren.push(reportHeading('Diferencias y comparaciones', 1));
+    comparisons.forEach((comparison, index) => {
+      reportChildren.push(reportHeading(`Comparación ${index + 1}: ${comparison.field}`, 2));
+      reportChildren.push(mutedParagraph('Estado: ', comparisonLabels[comparison.result]));
+      reportChildren.push(valueTable(report, comparison.values));
+      if (comparison.explanation !== undefined) {
+        reportChildren.push(body(comparison.explanation));
+      }
+    });
+  }
+
+  if (conclusions.length > 0) {
+    reportChildren.push(reportHeading('Conclusiones', 1));
+    conclusions.forEach((conclusion) => {
+      reportChildren.push(
+        new Paragraph({
+          numbering: { reference: 'conclusions', level: 0 },
+          spacing: { after: 80, line: 276 },
+          children: [new TextRun(conclusion.statement)],
+        }),
+      );
+      reportChildren.push(
+        mutedParagraph(
+          'Hallazgos de respaldo: ',
+          conclusion.supportingFindingIds.map((id) => findingLabels.get(id) ?? id).join(' · '),
+        ),
+      );
+    });
+  }
+
+  return [
     new Paragraph({
       spacing: { before: 3000, after: 240 },
       children: [new TextRun({ text: 'Estudio de Títulos', bold: true, size: 48, color: COLORS.primary })],
@@ -177,78 +255,14 @@ function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfCon
       spacing: { after: 180 },
       children: [new TextRun({ text: 'Índice', bold: true, size: 32, color: COLORS.primary })],
     }),
-    new TableOfContents('Índice', { hyperlink: true, headingStyleRange: '1-2' }),
-    new Paragraph({ children: [new PageBreak()] }),
-    heading('Objetivo del informe', HeadingLevel.HEADING_1),
-    new Paragraph({
-      spacing: { after: 120, line: 276 },
-      children: [
-        new TextRun(
-          'Presentar de forma estructurada y legible el resultado TITLE_STUDY validado y conservar su trazabilidad con los documentos fuente.',
-        ),
-      ],
+    new TableOfContents('Índice', {
+      hyperlink: true,
+      headingStyleRange: '1-2',
+      cachedEntries,
     }),
-    heading('Documentos fuente', HeadingLevel.HEADING_1),
-    table(
-      ['Documento', 'Tipo documental'],
-      report.sourceDocuments.map((document) => [document.name, document.documentType]),
-    ),
+    new Paragraph({ children: [new PageBreak()] }),
+    ...reportChildren,
   ];
-
-  if (findings.length > 0) {
-    children.push(heading('Hallazgos', HeadingLevel.HEADING_1));
-    findings.forEach((finding, index) => {
-      children.push(heading(`Hallazgo ${index + 1}: ${finding.statement}`, HeadingLevel.HEADING_2));
-      children.push(
-        mutedParagraph(
-          'Fuentes: ',
-          finding.sourceDocumentIds.map((id) => documentName(report, id)).join(' · '),
-        ),
-      );
-      if (finding.values?.length === 1) {
-        const value = finding.values[0];
-        children.push(
-          body(`${documentName(report, value.documentId)} — ${value.field}: ${value.original}`),
-        );
-        if (value.normalized !== undefined) children.push(mutedParagraph('Valor normalizado: ', value.normalized));
-      } else if (finding.values && finding.values.length > 1) {
-        children.push(valueTable(report, finding.values));
-      }
-    });
-  }
-
-  if (comparisons.length > 0) {
-    children.push(heading('Diferencias y comparaciones', HeadingLevel.HEADING_1));
-    comparisons.forEach((comparison, index) => {
-      children.push(heading(`Comparación ${index + 1}: ${comparison.field}`, HeadingLevel.HEADING_2));
-      children.push(mutedParagraph('Estado: ', comparisonLabels[comparison.result]));
-      children.push(valueTable(report, comparison.values));
-      if (comparison.explanation !== undefined) {
-        children.push(body(comparison.explanation));
-      }
-    });
-  }
-
-  if (conclusions.length > 0) {
-    children.push(heading('Conclusiones', HeadingLevel.HEADING_1));
-    conclusions.forEach((conclusion) => {
-      children.push(
-        new Paragraph({
-          numbering: { reference: 'conclusions', level: 0 },
-          spacing: { after: 80, line: 276 },
-          children: [new TextRun(conclusion.statement)],
-        }),
-      );
-      children.push(
-        mutedParagraph(
-          'Hallazgos de respaldo: ',
-          conclusion.supportingFindingIds.map((id) => findingLabels.get(id) ?? id).join(' · '),
-        ),
-      );
-    });
-  }
-
-  return children;
 }
 
 function buildDocument(report: TitleStudy): Document {

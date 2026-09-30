@@ -126,6 +126,38 @@ test('V-026: valid TITLE_STUDY produces a non-empty DOCX with structured report 
   assert.match(documentXml, /w:fldChar[^>]*w:fldCharType="separate"/);
   assert.match(documentXml, /w:fldChar[^>]*w:fldCharType="end"/);
 
+  const tocField = documentXml.match(
+    /<w:sdt>[\s\S]*?<w:instrText[^>]*>TOC[^<]*\\h[^<]*\\o (?:&quot;|")1-2(?:&quot;|")[\s\S]*?<\/w:sdt>/,
+  )?.[0];
+  assert.ok(tocField, 'real TOC field with cached result not found');
+
+  const expectedCachedHeadings = [
+    'Objetivo del informe',
+    'Documentos fuente',
+    'Hallazgos',
+    'Hallazgo 1: Los documentos registran valores que deben cotejarse.',
+    'Diferencias y comparaciones',
+    'Comparación 1: campo-1',
+    'Comparación 2: campo-2',
+    'Comparación 3: campo-3',
+    'Comparación 4: campo-4',
+    'Comparación 5: campo-5',
+    'Conclusiones',
+  ];
+  expectedCachedHeadings.forEach((title) => assert.ok(tocField.includes(title), `cached TOC entry missing: ${title}`));
+
+  const tocParagraphs = [...tocField.matchAll(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g)].map((match) => match[0]);
+  const objectiveTocParagraph = tocParagraphs.find((paragraph) => paragraph.includes('Objetivo del informe'));
+  const findingTocParagraph = tocParagraphs.find((paragraph) =>
+    paragraph.includes('Hallazgo 1: Los documentos registran valores que deben cotejarse.'),
+  );
+  assert.ok(objectiveTocParagraph);
+  assert.ok(findingTocParagraph);
+  assert.match(objectiveTocParagraph, /w:pStyle[^>]*w:val="TOC1"/);
+  assert.match(findingTocParagraph, /w:pStyle[^>]*w:val="TOC2"/);
+  assert.doesNotMatch(tocField, /<w:tab\b[^>]*\/>\s*<w:t\b[^>]*>\s*\d+\s*<\/w:t>/);
+  assert.doesNotMatch(tocField, /PAGEREF/);
+
   const settingsXml = entries.get('word/settings.xml')?.toString('utf8');
   assert.ok(settingsXml);
   assert.match(settingsXml, /<w:updateFields(?:\s+w:val="(?:true|1)")?\s*\/>/);
