@@ -567,4 +567,3 @@ hasta que el Humano autorice el merge del PR de traspaso.
 Mientras no esté mergeado:
 - el nuevo Supervisor puede leer #96 y el PR asociado;
 - no asumir que estos archivos están en `main`.
-
