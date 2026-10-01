@@ -1,0 +1,72 @@
+name: V-028 TITLE_STUDY DOCX artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or SHA to generate from
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Generate TITLE_STUDY DOCX
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Show checkout SHA
+        shell: bash
+        run: echo "checkout_sha=$(git rev-parse HEAD)"
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify installed docx version
+        shell: bash
+        run: |
+          set -euo pipefail
+          docx_version="$(node -p "require('./node_modules/docx/package.json').version")"
+          echo "docx_version=${docx_version}"
+          if [[ "${docx_version}" != "9.6.0" ]]; then
+            echo "::error::Expected root docx version 9.6.0."
+            exit 1
+          fi
+
+      - name: Generate review DOCX
+        run: node --import tsx scripts/generate-title-study-review-docx.ts
+
+      - name: Verify and fingerprint DOCX
+        shell: bash
+        run: |
+          set -euo pipefail
+          docx_path="dist/review/title-study-review.docx"
+          if [[ ! -s "${docx_path}" ]]; then
+            echo "::error::Expected non-empty ${docx_path}."
+            exit 1
+          fi
+          echo "docx_size_bytes=$(stat -c%s "${docx_path}")"
+          echo "docx_sha256=$(sha256sum "${docx_path}" | awk '{print $1}')"
+
+      - name: Upload V-028 DOCX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v028-title-study-review
+          path: dist/review/title-study-review.docx
+          if-no-files-found: error
