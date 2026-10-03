@@ -1,8 +1,8 @@
 # Document Control Protocol
 
-**Status:** ACTIVE  
-**Authority:** Documentation governance for this repository  
-**Applies to:** Human operators, Web Supervisors, Coding Agents, GPT Work, and automation tools  
+**Status:** ACTIVE
+**Authority:** Documentation governance for this repository
+**Applies to:** Human operators, Web Supervisors, Coding Agents, GPT Work, and automation tools
 **Purpose:** Keep project documentation minimal, authoritative, traceable, and safe for AI consumption.
 
 ## 1. Governing principle
