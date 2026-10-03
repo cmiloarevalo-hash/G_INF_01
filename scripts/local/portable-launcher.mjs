@@ -147,6 +147,7 @@ export async function closePortableServer(server) {
       if (error) reject(error);
       else resolve();
     });
+    server.closeIdleConnections?.();
   });
 }
 
