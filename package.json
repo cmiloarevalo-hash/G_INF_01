@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.server.json && tsc --noEmit -p tsconfig.app.json && vite build && node -e \"import('node:fs').then(fs => { fs.mkdirSync('dist/src/report-types/title-study', { recursive: true }); fs.copyFileSync('src/report-types/title-study/prompt.md', 'dist/src/report-types/title-study/prompt.md'); })\"",
     "start": "node dist/server.js",
     "test": "node --import tsx --test tests/*.test.ts",
-    "test:firestore-rules": "npx --yes firebase-tools@15.31.0 emulators:exec --only firestore --project demo-g-inf-01 \"node --import tsx --test tests/firestore-rules/*.test.ts\""
+    "test:firestore-rules": "npx --yes firebase-tools@15.31.0 emulators:exec --only firestore --project demo-g-inf-01 \"node --import tsx --test tests/firestore-rules/*.test.ts\"",
+    "package:portable:win": "node scripts/local/package-windows.mjs"
   },
   "dependencies": {
     "express": "^5.0.1",
