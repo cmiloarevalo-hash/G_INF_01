@@ -2,7 +2,10 @@
 setlocal
 cd /d "%~dp0"
 
-".\runtime\node.exe" ".\app\portable-launcher.mjs"
+set "LAUNCHER_ARGS="
+if /I "%G_INF_PORTABLE_SMOKE%"=="1" set "LAUNCHER_ARGS=--smoke"
+
+".\runtime\node.exe" ".\app\portable-launcher.mjs" %LAUNCHER_ARGS%
 set "RC=%ERRORLEVEL%"
 
 if not "%RC%"=="0" (
