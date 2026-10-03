@@ -1,9 +1,9 @@
 # OCI Migration Strategy — G_INF_01
 
-**Work Item:** Issue #104 — STRATEGY_GATE: plan de traslado OCI antes de implementación  
-**Repository:** `cmiloarevalo-hash/G_INF_01`  
-**Base revisada:** `main@9f20b49e57aa065650fa3b0005b622b10dca33f8`  
-**Fecha de revisión externa:** 2026-10-03  
+**Work Item:** Issue #104 — STRATEGY_GATE: plan de traslado OCI antes de implementación
+**Repository:** `cmiloarevalo-hash/G_INF_01`
+**Base revisada:** `main@9f20b49e57aa065650fa3b0005b622b10dca33f8`
+**Fecha de revisión externa:** 2026-10-03
 **Estado del documento:** estrategia previa a implementación. No ejecuta migración ni concede autoridad para crear o modificar recursos externos.
 
 ## 0. Autoridad, propósito y reglas de no ejecución
