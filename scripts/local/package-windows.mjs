@@ -233,21 +233,22 @@ export async function packageWindowsPortable() {
   await assertPortableLayout(artifactRoot);
 
   const smoke = run(
-    path.join(runtimeRoot, 'node.exe'),
-    [path.join(appRoot, 'portable-launcher.mjs'), '--smoke'],
+    'cmd.exe',
+    ['/d', '/s', '/c', 'Start.cmd'],
     {
       cwd: artifactRoot,
       capture: true,
       env: {
         ...cleanEnv,
         NODE_ENV: 'production',
+        G_INF_PORTABLE_SMOKE: '1',
       },
       timeout: 30_000,
     },
   );
 
   if (!smoke.stdout.includes('PORTABLE_SMOKE_OK')) {
-    throw new Error(`El runtime incluido no confirmó el smoke test.\n${smoke.stdout}`);
+    throw new Error(`Start.cmd + runtime incluido no confirmaron el smoke test.\n${smoke.stdout}`);
   }
 
   await rm(zipPath, { force: true });
