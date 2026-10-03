@@ -256,17 +256,10 @@ export async function packageWindowsPortable() {
   }
 
   await rm(zipPath, { force: true });
-  const psPath = artifactRoot.replaceAll("'", "''");
-  const psZip = zipPath.replaceAll("'", "''");
   run(
-    'powershell.exe',
-    [
-      '-NoLogo',
-      '-NoProfile',
-      '-Command',
-      `Compress-Archive -LiteralPath '${psPath}' -DestinationPath '${psZip}' -Force`,
-    ],
-    { timeout: 120_000 },
+    'tar.exe',
+    ['-a', '-c', '-f', zipPath, '-C', outputRoot, PORTABLE_NAME],
+    { timeout: 180_000 },
   );
 
   const folderBytes = await directorySize(artifactRoot);
