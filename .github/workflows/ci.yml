@@ -84,3 +84,69 @@ jobs:
       - name: Check diff whitespace
         shell: bash
         run: git diff --check "${BASE_SHA}...${TARGET_SHA}"
+
+  portable-windows:
+    name: Portable Windows x64
+    runs-on: windows-latest
+    env:
+      TARGET_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.pull_request.head.sha }}
+
+    steps:
+      - name: Checkout target
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TARGET_REF }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Resolve target SHA
+        shell: pwsh
+        run: |
+          $targetSha = (git rev-parse HEAD).Trim()
+          "TARGET_SHA=$targetSha" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Target: $env:TARGET_REF -> $targetSha"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test portable launcher on Windows
+        run: node --import tsx --test tests/portable-local.test.ts
+
+      - name: Build and smoke portable package
+        shell: pwsh
+        run: |
+          npm run package:portable:win 2>&1 | Tee-Object -FilePath portable-package.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $artifact = "portable-out/G_INF_01_Portable-win-x64"
+          $zip = "portable-out/G_INF_01_Portable-win-x64.zip"
+          if (-not (Test-Path $artifact)) { throw "Portable folder was not created." }
+          if (-not (Test-Path $zip)) { throw "Portable ZIP was not created." }
+
+          $folderBytes = (Get-ChildItem -LiteralPath $artifact -File -Recurse | Measure-Object -Property Length -Sum).Sum
+          $zipInfo = Get-Item -LiteralPath $zip
+          $zipHash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+
+          "### Windows portable evidence" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          "- HEAD: ``$env:TARGET_SHA``" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          "- Folder bytes: ``$folderBytes``" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          "- ZIP bytes: ``$($zipInfo.Length)``" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          "- ZIP SHA256: ``$zipHash``" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          "- Bundled-runtime smoke: PASS" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: G_INF_01_Portable-win-x64-${{ env.TARGET_SHA }}
+          path: portable-out/G_INF_01_Portable-win-x64.zip
+          if-no-files-found: error
+          retention-days: 7
