@@ -999,3 +999,338 @@ Implementer
 → targeted local verification needed to develop the change
 → inspect complete task diff/state
 → commit/push when repository change exists
+CI / external evidence systems
+→ automated evidence for exact delivered state when configured
+
+Supervisor
+→ independent semantic review
+→ ACCEPT | REWORK | BLOCK | ESCALATE
+~~~
+
+The exact local/global test mix is project/risk-specific.
+
+### 18.4 Strict anti-overengineering rule
+
+Do not introduce a framework, database, service, daemon, plugin system, registry runtime, generalized event bus, repository abstraction hierarchy, new governance layer or automation merely because Generic V2 could support it.
+
+A new mechanism requires:
+
+- an observed operational problem;
+- a bounded Work Item;
+- explicit Authorized Scope;
+- evidence that a simpler existing mechanism is insufficient;
+- independent Supervisor review.
+
+Profiles are document/governance contracts first. They do not imply runtime orchestration.
+
+### 18.5 Temporary/support artifacts
+
+Temporary utilities, test adapters, generated processors, migration helpers, experiments and support artifacts must have an explicit lifecycle meaning.
+
+At minimum, be able to answer:
+
+~~~text
+Why does it exist?
+Which Work Item introduced it?
+Is it product or support?
+What depends on it?
+When should it be removed/reclassified?
+~~~
+
+Do not create a separate persistent register unless observed need justifies it.
+
+---
+
+## 19. GoFlow compatibility and current controls
+
+Generic V2 preserves existing GoFlow functions without changing their code.
+
+### 19.1 Context
+
+`wf begin` / `wf context` continue to read the canonical Issue grammar and route through `.workflow/index.json`.
+
+The Issue remains authority; the Project Index is routing metadata and must not duplicate technical truth.
+
+### 19.2 Scope
+
+`wf scope` continues to inspect committed/staged/unstaged/untracked paths against the Work Item Base SHA and Authorized Scope.
+
+Under current GoFlow, backticked bullet entries in `## Authorized Scope` are Path Scope only. Resource Scope must use the parser-safe representation defined in §3/§4.3 and is reviewed independently by actors/Supervisor.
+
+GoFlow Path Scope checks do not replace Generic V2 Semantic Scope or Resource Scope review. GoFlow does not mechanically validate Resource Scope.
+
+### 19.3 Verification
+
+`wf verify` continues to execute only explicitly configured checks from authorized Base SHA configuration and to detect stale evidence according to its engineering contract.
+
+Changing authorization/control files does not authorize itself.
+
+### 19.4 CI
+
+`wf ci` continues to bind PR/CI evidence to exact HEAD and distinguish:
+
+- unavailable/authentication failures;
+- absent PR;
+- mismatched PR HEAD;
+- `CI_NOT_CONFIGURED`;
+- pending;
+- fail;
+- pass.
+
+`CI_NOT_CONFIGURED` is not PASS.
+
+### 19.5 Review
+
+`wf review` continues to produce an ephemeral review package/signal.
+
+`READY_FOR_SUPERVISOR_REVIEW` means the mechanical review prerequisites are coherent enough for independent review. GoFlow never emits `ACCEPT`.
+
+---
+
+## 20. Handoff, rework and recovery
+
+### 20.1 Implementer handoff
+
+Keep handoff compact:
+
+~~~text
+WORK ITEM:
+BRANCH / PR:
+BASE:
+HEAD / VERSION:
+CHANGED PATHS / RESOURCES:
+ACTIVE PROFILES:
+VERIFICATION:
+CI:
+UNEXPECTED FINDINGS:
+UNRESOLVED:
+STATE: READY_FOR_SUPERVISOR_REVIEW | BLOCKED
+~~~
+
+GitHub stores the detailed evidence.
+
+### 20.2 REWORK
+
+If Supervisor returns `REWORK`:
+
+- keep the same Work Item/branch/PR when the objective remains valid;
+- make a focused correction;
+- rerun affected verification;
+- publish new exact-state handoff;
+- obtain a new Supervisor review.
+
+Prior review remains provenance, not acceptance of the new state.
+
+### 20.3 BLOCK / ESCALATE
+
+`BLOCK` records an objective inability to proceed validly.
+
+`ESCALATE` requests an authority/intent decision.
+
+Neither authorizes an improvised workaround.
+
+### 20.4 Replacement session
+
+A new Implementer/Supervisor uses §6.5 onboarding and should be able to recover without the previous chat transcript.
+
+The replacement must reconstruct the current thread/intent from GitHub durable state and pass the routing/identity gates before continuing.
+
+### 20.5 Durable continuity checkpoint
+
+Persist a derived recovery checkpoint in the active GitHub Work Item thread:
+
+~~~text
+CONTINUITY_CHECKPOINT
+
+REPOSITORY:
+WORK_ITEM:
+ACTIVITY:
+CURRENT_INTENT:
+CURRENT_DECISION_REFS:
+EXACT_STATE:
+ACTIVE_PROFILES: <0..N>
+OPEN_ITEMS:
+NEXT_ACTOR:
+NEXT_AUTHORIZED_ACTION:
+SOURCE_REFS:
+SUPERSEDES_CHECKPOINT:
+~~~
+
+Rules:
+
+- the checkpoint is a pointer-based recovery snapshot/index, not a new authority source;
+- Human decisions, the Work Item and applicable Supervisor decisions retain precedence;
+- `CURRENT_INTENT` should point to current Objective/Acceptance Criteria/decision refs rather than duplicate full specifications;
+- exact state identifies branch/PR/HEAD/version when applicable;
+- a newer checkpoint supersedes an older checkpoint only as a recovery summary;
+- checkpoint content must expose open items, next actor and next authorized action;
+- detailed evidence remains in referenced GitHub state.
+
+### 20.6 Continuity checkpoint cadence
+
+A continuity checkpoint is mandatory when a material continuity event occurs, including:
+
+- Human requirement/intent changes;
+- Supervisor issues `ACCEPT / REWORK / BLOCK / ESCALATE`;
+- current `ACTIVITY` or phase changes;
+- material authority, scope, baseline or active-profile state changes;
+- actor/session replacement is imminent or detected;
+- routing mismatch/stale handoff occurs;
+- a blocker/open decision changes the next authorized action.
+
+For a long-running activity with no material event trigger, use a configurable fallback of approximately five operational prompts from the same actor since the last checkpoint as a continuity review/checkpoint trigger.
+
+Prompt counting is never authority, never overrides an event trigger, and never substitutes for durable state verification. Tool calls, acknowledgements and non-operational chatter do not count as operational prompts. Projects/activities may tune the fallback threshold when justified without adding a runtime service or automation.
+
+---
+
+## 21. Optional enforcement mappings
+
+Repository/tool-side controls may reinforce the workflow, for example:
+
+- branch protection/rulesets;
+- required reviews/checks;
+- scoped tokens/tool permissions;
+- approval gates;
+- provider IAM restrictions.
+
+These controls are optional mappings/evidence.
+
+Rules:
+
+- documentation is not technical enforcement by itself;
+- technical enforcement does not create semantic authority;
+- do not claim a control is enforced unless its actual state was verified;
+- adding/changing repository-side enforcement requires separate explicit authorization;
+- Generic V2 does not require or modify branch protection/rulesets by itself.
+
+---
+
+## 22. Adversarial acceptance checks
+
+A Generic V2-compatible project should pass these conceptual tests.
+
+### A. Zero profiles
+
+Scenario: ordinary repository task needs no external/specialized capability.
+
+Expected: core + project specifications are sufficient.
+
+### B. Capability without authority
+
+Scenario: Implementer or subordinate actor has production/cloud/merge credentials.
+
+Expected: no extra operation is authorized by possession alone.
+
+### C. Path vs semantic scope
+
+Scenario: an authorized file can technically change unrelated behavior.
+
+Expected: unrelated behavior remains prohibited.
+
+### D. Resource scope
+
+Scenario: repository path is authorized but database/provider mutation was not.
+
+Expected: external mutation is STOP.
+
+### E. Stale evidence
+
+Scenario: tests passed for SHA A; HEAD is SHA B.
+
+Expected: SHA A evidence is not silently treated as current.
+
+### F. Profile availability
+
+Scenario: repository contains technology matching a known profile.
+
+Expected: profile remains inactive until explicit activation.
+
+### G. Multiple profiles
+
+Scenario: two profiles are individually applicable but their operations overlap.
+
+Expected: consistency/precedence review; no automatic composition; material conflict => STOP.
+
+### H. Technical PASS
+
+Scenario: CI/build/external activity passes.
+
+Expected: Supervisor still performs semantic review.
+
+### I. Accepted change
+
+Scenario: Supervisor issues `ACCEPT`.
+
+Expected: merge still requires separate authority/checks.
+
+### J. Publish capability
+
+Scenario: actor can deploy/publish.
+
+Expected: Human publication authority remains default unless explicit delegation exists.
+
+### K. New operation
+
+Scenario: subordinate actor completed one authorized diagnostic and can technically perform a fix.
+
+Expected: no automatic continuation; new operation requires explicit authorization.
+
+### L. Recovery
+
+Scenario: replacement session cannot verify baseline/resource/profile state.
+
+Expected: STOP rather than inventing state.
+
+### M. Wrong/stale routing
+
+Scenario: prompt targets the wrong role/repository/Work Item/activity or reuses a superseded handoff.
+
+Expected: `STOP / ROUTING_MISMATCH`; no task execution; request corrected routing.
+
+### N. Supervisor replacement
+
+Scenario: a fresh Supervisor session cannot establish its assignment from durable state.
+
+Expected: STOP and generic AI onboarding; `ACTIVE_PROFILES: 0` remains valid.
+
+### O. Continuity drift
+
+Scenario: a long activity crosses a material event or reaches its configured prompt-count fallback without a recovery checkpoint.
+
+Expected: persist/update `CONTINUITY_CHECKPOINT` in GitHub before further dependent work; prompt count itself grants no authority.
+
+### P. Resource parser compatibility
+
+Scenario: an external resource must be authorized while current GoFlow parses backticked `Authorized Scope` bullets as paths.
+
+Expected: path bullets remain Path Scope only; Resource Scope is non-path prose/governing decision/activity data and is reviewed independently.
+
+---
+
+## 23. Definition of reviewable V2 operation
+
+A Work Item is ready for Supervisor review when, as applicable:
+
+- current authority is known;
+- the Prompt Routing Envelope matches role/repository/Work Item/current activity;
+- any applicable Supervisor identity/onboarding gate passed;
+- current continuity state is recoverable from GitHub durable pointers/checkpoint;
+- Objective and Acceptance Criteria remain unchanged unless explicitly revised;
+- Semantic Scope passes;
+- Path Scope passes;
+- Resource Scope passes;
+- Base/baseline and delivered identity are explicit;
+- current project specifications were respected;
+- active profiles were explicitly activated;
+- profile operations remained bounded;
+- no automatic composition occurred;
+- required verification is current;
+- CI/status is reported truthfully;
+- complete relevant diff/state was inspected;
+- unexpected findings are reported;
+- no self-approval occurred;
+- no merge/publication was inferred;
+- handoff identifies exact state.
+
+The final decision remains with the Supervisor.
