@@ -146,6 +146,7 @@ test('portable launcher uses loopback dynamic port, health gate, guards and clea
 
     const firebase = await fetch(`${runtime.origin}/api/firebase-config`);
     assert.equal(firebase.status, 503);
+    await firebase.text();
 
     const temporaryKey = 'AIzaPortableTestKey012345678901234';
     const analyze = await rawRequest(`${runtime.origin}/api/guest/analyze`, {
