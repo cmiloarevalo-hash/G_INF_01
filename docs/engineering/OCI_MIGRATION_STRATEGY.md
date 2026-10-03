@@ -1,2235 +1,2271 @@
 # OCI Migration Strategy — G_INF_01
 
 **Work Item:** Issue #104 — STRATEGY_GATE: plan de traslado OCI antes de implementación
-**Repository:** `cmiloarevalo-hash/G_INF_01`
-**Base revisada:** `main@9f20b49e57aa065650fa3b0005b622b10dca33f8`
-**Fecha de revisión externa:** 2026-10-03
-**Estado del documento:** estrategia previa a implementación. No ejecuta migración ni concede autoridad para crear o modificar recursos externos.
+**Repository:** cmiloarevalo-hash/G_INF_01
+**Base revisada:** main@9f20b49e57aa065650fa3b0005b622b10dca33f8
+**PR de estrategia:** #105
+**Fecha de revisión:** 2026-10-03
+**Estado:** REWORK incorporado. Documento de planificación; no ejecuta migración.
 
-## 0. Autoridad, propósito y reglas de no ejecución
+# 0. Decisión humana vigente y regla de precedencia
 
-Este documento convierte la investigación aceptada de Issue #101 / PR #102 y el POC futuro de Issue #103 en un plan de ejecución verificable para el Supervisor/Humano.
+La decisión humana registrada en Issue #104 y PR #105 después de la primera revisión de estrategia reemplaza la secuencia anterior.
 
-Issue #103 está **pausado** mientras #104 no sea revisado y aceptado. La existencia de este documento no levanta ese HOLD y no aprueba implícitamente ninguna operación.
+La estrategia vigente se divide en dos fases independientes:
 
-Durante #104:
+## FASE 1 — ORACLE CORE / DOCUMENT ANALYZER
 
-- no crear VM, VCN, subnet, IP, volumen, presupuesto, cuota ni otro recurso OCI;
-- no hacer Upgrade / Pay As You Go;
-- no consumir créditos promocionales como justificación económica;
-- no crear hostname DuckDNS ni otro recurso DNS;
-- no comprar dominio;
-- no modificar `ingenierosasesores.cl` ni sus DNS;
-- no modificar Firebase Authorized Domains;
-- no modificar OAuth clients/origins/redirect URIs;
-- no modificar API keys o restricciones de Google Picker;
-- no introducir secrets;
-- no desplegar;
-- no modificar código, dependencias, workflows ni arquitectura canónica.
+Objetivo: llevar al menor tiempo posible a OCI una versión útil del flujo principal de análisis documental, conservando la interfaz actual y usando exclusivamente el modo invitado.
 
-La meta futura es **OCI mensual objetivo USD 0**, usando únicamente recursos que la cuenta real confirme como gratuitos/elegibles sin depender de créditos promocionales. Cualquier costo previsto o inferido distinto de cero es un **HARD STOP**.
+FASE 1 incluye:
 
-## 0.1 Evidencia previa incorporada
+- interfaz web actual;
+- selección local de documentos desde el navegador;
+- modo invitado;
+- clave temporal Gemini aportada por el usuario;
+- análisis;
+- validación TITLE_STUDY;
+- vista de resultado;
+- generación y descarga DOCX;
+- GET /api/health;
+- OCI Compute A1;
+- ARM64;
+- Node.js 24;
+- Express;
+- React/Vite;
+- systemd;
+- Caddy;
+- HTTPS;
+- hostname de costo cero independiente del dominio corporativo;
+- costo objetivo OCI mensual USD 0;
+- hosting Google actual operativo como rollback.
 
-### Issue #101 / PR #102
+FASE 1 no depende de:
 
-La investigación ya aceptada estableció que el runtime puede separarse del hosting Google sin migrar servicios funcionales:
-
-- Node.js + Express;
-- React/Vite servido por Express;
-- DOCX en Node;
+- Google Sign-In;
 - Firebase Authentication;
-- Firestore Web SDK con `databaseId` opcional;
-- Google Identity Services;
-- Google Drive / Picker;
-- Gemini por HTTPS.
-
-PR #102 fue merged como `9f20b49e57aa065650fa3b0005b622b10dca33f8`.
-
-### Issue #103
-
-El POC futuro contiene una secuencia técnica detallada, pero quedó pausado por `STRATEGY_GATE ACTIVE`.
-
-La última autorización humana relevante registrada antes de la pausa fijó:
-
-- una única `VM.Standard.A1.Flex`;
-- **inicio en 1 OCPU / 4 GB RAM**;
-- subir a 6 GB sólo si una medición demuestra necesidad y la consola sigue confirmando costo cero/elegibilidad;
-- boot volume objetivo ~50 GB;
-- no Load Balancer, NAT Gateway, Oracle DB, OKE, Object Storage, Vault, OCI DevOps ni backup pagado;
-- hosting Google activo como rollback;
-- Firebase Auth, Firestore, Drive/Picker/GIS y Gemini se mantienen;
-- no migrar datos funcionales.
-
-Esas restricciones se conservan aquí.
-
-## 0.2 Convenciones
-
-- **REPO FACT:** observado en `main@9f20b49...`.
-- **EXTERNAL FACT:** respaldado por fuente oficial o, para DuckDNS, por documentación del propio servicio.
-- **STRATEGY:** decisión propuesta por este documento.
-- **HUMAN GATE:** aprobación humana explícita, nunca inferida.
-- **PASS/FAIL:** resultado futuro demostrado con evidencia.
-- **HARD STOP:** no continuar automáticamente.
-- **ROLLBACK:** operación que devuelve al estado anterior sin pérdida de datos funcionales.
-
-# 1. Estado actual
-
-## 1.1 Arquitectura de ejecución actual
-
-La documentación canónica todavía describe Google AI Studio / Cloud Run como target de publicación. El código actual es portable:
-
-```text
-Internet
-→ hosting Google actual
-→ Node.js 24 / Express
-   ├── API /api/*
-   ├── /api/health
-   ├── Gemini HTTPS
-   ├── DOCX
-   └── dist/client (React/Vite)
-
-Navegador
-   ├── Firebase Authentication
-   ├── Firestore Web SDK
-   ├── Google Identity Services
-   ├── Google Picker
-   └── Drive REST API
-```
-
-**REPO FACT:**
-
-- `server.ts` lee `PORT`, escucha en `0.0.0.0` y sirve `dist/client` en producción.
-- `/api/health` mide sólo disponibilidad del proceso HTTP.
-- `signInWithPopup` implementa Google Sign-In de Firebase.
-- Firestore se usa desde Firebase Web SDK y admite una base nombrada.
-- GIS usa `initTokenClient`.
-- Drive solicita exactamente `https://www.googleapis.com/auth/drive.file`.
-- Picker carga desde navegador.
-- Gemini usa `https://generativelanguage.googleapis.com/v1beta/interactions`.
-- `package-lock.json` contiene artefactos de esbuild y Rollup para Linux ARM64; también contiene una dependencia opcional LZMA x64 sin equivalente ARM64 visible, por lo que ARM64 sigue requiriendo POC real.
-
-## 1.2 Qué se traslada a OCI
-
-Sólo el plano de hosting/runtime:
-
-- proceso Node/Express;
-- frontend compilado React/Vite servido por Express;
-- render DOCX;
-- llamada server-side a Gemini;
-- terminación TLS/reverse proxy;
-- process supervision;
-- logs de sistema;
-- release/deploy del proceso.
-
-## 1.3 Qué NO se migra
-
-- Firebase Authentication;
-- usuarios Firebase;
-- Firestore;
-- Firestore Security Rules;
-- metadata/proyectos/historial Firestore;
+- proyectos autenticados;
+- Firestore persistente;
 - Google Drive;
-- documentos/JSON/DOCX almacenados en Drive;
 - Google Picker;
-- Google Identity Services;
-- scope `drive.file`;
-- Gemini;
-- schemas;
-- prompts;
-- renderer;
-- lógica de negocio.
+- GIS/OAuth;
+- app.ingenierosasesores.cl;
+- acceso DNS corporativo;
+- production cutover.
 
-No existe migración de datos funcionales hacia Oracle.
+Las capacidades Google permanecen en el código; no se eliminan ni rediseñan.
 
-## 1.4 Persistencia actual
+## FASE 2 — INTEGRATIONS
 
-La estrategia depende de que OCI sea un runtime reemplazable:
+Empieza sólo después de que FASE 1 sea estable y aceptada.
 
-- GitHub = fuente versionada de código/configuración no secreta;
-- Firestore = metadata y estado lógico;
-- Drive = documentos y artefactos persistentes;
-- OCI VM = código desplegado, runtime, configuración operativa, logs y cachés reemplazables;
-- secrets = reinyectables desde un canal autorizado, nunca almacenados en Git.
+FASE 2 trata por Work Items separados:
 
-No se permite que la VM se convierta en fuente única de datos de negocio.
+- Firebase Authentication / Google Sign-In;
+- Firestore y proyectos/historial persistentes;
+- Drive;
+- Picker;
+- GIS/OAuth browser origins;
+- hostname corporativo estable;
+- app.ingenierosasesores.cl;
+- E2E autenticado;
+- cutover futuro;
+- o alternativas documentadas si alguna integración Google deja de ser conveniente o viable.
 
-## 1.5 Información conocida de cuenta/dominio
+**FASE 2 no puede bloquear FASE 1.**
 
-Registrada en #104:
+# 1. Restricciones de #104
 
-- home region observada: **Chile Central (Santiago)**;
-- cuenta: Free Tier / Free Trial;
-- no Upgrade PAYG;
-- créditos promocionales no justifican arquitectura;
-- `ingenierosasesores.cl` sigue en WordPress;
-- no existe actualmente acceso cPanel/DNS corporativo disponible para esta ejecución;
-- POC puede usar hostname gratuito independiente;
-- `app.ingenierosasesores.cl` queda para una transición posterior con acceso DNS y aprobación humana.
+Durante este Work Item no se autoriza:
 
-## 1.6 Información faltante antes de ejecutar
+- crear VM ni recursos OCI;
+- cambiar billing;
+- hacer Upgrade / Pay As You Go;
+- consumir recursos pagados;
+- usar créditos promocionales como fundamento de costo;
+- crear o modificar DNS;
+- crear hostname DuckDNS;
+- tocar ingenierosasesores.cl;
+- cambiar Firebase;
+- cambiar OAuth;
+- cambiar Picker;
+- cambiar Google Console;
+- desplegar;
+- modificar código;
+- modificar dependencias;
+- modificar workflows;
+- crear Issues de ejecución;
+- mergear PR #105.
 
-- que A1 aparezca disponible en la cuenta al momento del POC;
-- que la consola muestre `VM.Standard.A1.Flex` como elegible/gratuita;
-- costo recurrente efectivo de A1 + boot volume + public IPv4 en esa pantalla, **antes de considerar créditos**;
-- disponibilidad de 1 OCPU / 4 GB en home region;
-- disponibilidad real de Ubuntu LTS ARM64;
-- aceptación de un hostname POC gratuito en la configuración Google existente;
-- posibilidad de verificar ese hostname si Google lo exige;
-- acceso futuro a DNS de `ingenierosasesores.cl`;
-- comportamiento ARM64 real del lockfile;
-- consumo de memoria real del build y de un análisis representativo;
-- régimen real de reclamación/capacidad observado por la tenancy.
+El único cambio de repositorio autorizado es este archivo.
 
-# 2. Arquitectura objetivo
+# 2. Estado actual verificado en código
 
-## 2.1 Diagrama
+## 2.1 Runtime
 
-```text
+REPO FACT:
+
+- server.ts crea Express.
+- Producción sirve dist/client.
+- PORT es configurable con fallback 3000.
+- El listener usa 0.0.0.0.
+- GET /api/health devuelve estado del proceso, uptime y timestamp.
+- POST /api/guest/analyze implementa análisis invitado.
+- POST /api/guest/report-docx genera DOCX.
+- Gemini se consume por HTTPS.
+- No existe binding de runtime obligatorio a Cloud Run.
+
+## 2.2 Guest flow
+
+src/pages/GuestDocumentsPage.tsx implementa directamente:
+
+1. selección local mediante input type=file;
+2. almacenamiento temporal de File en memoria React;
+3. serialización Base64 para formatos soportados;
+4. clave temporal como opción por defecto;
+5. header x-gemini-api-key;
+6. POST /api/guest/analyze;
+7. validación local del resultado con titleStudySchema;
+8. render de TitleStudyResult;
+9. POST /api/guest/report-docx;
+10. descarga local del DOCX.
+
+GuestDocumentsPage no importa Firebase Auth, Firestore, Drive, Picker ni ProductRuntime.
+
+## 2.3 Comportamiento cuando Firebase no está configurado
+
+src/services/auth/session.ts convierte configuración Firebase ausente en:
+
+- available = false;
+- service = null;
+- session = unauthenticated.
+
+src/components/AuthSessionControl.tsx presenta explícitamente:
+
+- “Modo invitado”;
+- botón deshabilitado “Google no configurado”.
+
+tests/auth-session.test.ts ya comprueba una representación sin Firebase con:
+
+- “Modo invitado”;
+- “Google no configurado”;
+- “Disponible sin iniciar sesión”;
+- “Abrir documentos del invitado”.
+
+## 2.4 ProductRuntime / Firestore sin configuración
+
+src/services/firestore/runtime.tsx devuelve estado unavailable si falta Firebase y continúa renderizando children.
+
+src/services/application/product-runtime.tsx intenta cargar Firebase + Google Drive/Picker; si faltan, captura el error y establece ProductRuntime como unavailable. El provider continúa renderizando children.
+
+Por tanto, la aplicación completa puede renderizar el Home y GuestDocumentsPage aunque la capa autenticada no esté disponible.
+
+## 2.5 Server guest independiente
+
+server.ts:
+
+- /api/guest/analyze acepta clave temporal directamente;
+- la ruta de clave temporal no exige alias del propietario;
+- /api/guest/report-docx no exige autenticación;
+- /api/health no consulta Firebase, Firestore, Drive ni Gemini.
+
+tests/title-study-docx-route.test.ts verifica generación DOCX sin credenciales Gemini ni llamada al proveedor.
+
+tests/guest-documents.test.ts verifica el uso de /api/guest/report-docx.
+
+tests/gemini-alias-access.test.ts verifica que la clave temporal funciona independientemente de los aliases.
+
+## 2.6 Conclusión de cambio de código para FASE 1
+
+**FASE 1 CAN_RUN_WITHOUT_CODE_CHANGES = YES, sujeto a prueba real en OCI.**
+
+No se necesita:
+
+- ocultar componentes autenticados;
+- eliminar providers;
+- desactivar imports Google;
+- cambiar routing;
+- cambiar server.ts;
+- cambiar package.json;
+- cambiar lockfile;
+- crear feature flag.
+
+Configuración recomendada para FASE 1:
+
+- no suministrar variables Firebase/Drive/Picker si no son necesarias;
+- usar sólo clave temporal Gemini en el flujo invitado;
+- aceptar que las secciones autenticadas muestren su estado no disponible;
+- verificar que la ausencia de esas configuraciones no produce error fatal en el build/runtime.
+
+Si el POC real contradice esta evidencia y una integración ausente bloquea el guest flow:
+
+**STOP. No parchear dentro del Work Item operativo. Abrir un Work Item mínimo de código después de revisión del Supervisor.**
+
+El Work Item mínimo contingente tendría como único objetivo conservar el guest flow cuando las integraciones autenticadas no estén configuradas; no autorizaría eliminar Firebase/Drive ni rediseñar navegación.
+
+# 3. Arquitectura objetivo por fases
+
+## 3.1 FASE 1
+
+~~~text
 Internet
   ↓
-hostname HTTPS
+hostname POC de costo cero
+  ↓ HTTPS
+OCI public IPv4
   ↓
-public IPv4 OCI
+VCN / subnet pública / reglas mínimas
   ↓
-VCN + public subnet + Internet Gateway
-  ↓
-OCI Compute VM.Standard.A1.Flex
+OCI VM.Standard.A1.Flex
   ↓
 Caddy :80/:443
   ↓
-Node.js 24 / Express :3000
+Node.js 24 + Express :3000
   ├── React/Vite dist/client
-  ├── /api/health
-  ├── generación DOCX
-  └── Gemini HTTPS
+  ├── GET /api/health
+  ├── POST /api/guest/analyze
+  │     ↓
+  │   Gemini HTTPS con clave temporal del usuario
+  └── POST /api/guest/report-docx
         ↓
-      Google Gemini
+      DOCX descargado al navegador
 
 Navegador
-  ├── Firebase Authentication (Google)
-  ├── Firestore (Google)
-  ├── Google Identity Services
-  ├── Google Picker
-  └── Google Drive API
-```
+  └── archivos locales temporales
 
-## 2.2 Responsabilidades OCI
+Firebase/Auth/Firestore/Drive/Picker/OAuth:
+PRESENTES EN CÓDIGO, NO REQUERIDOS PARA FASE 1
+~~~
 
-OCI queda responsable únicamente de:
+## 3.2 FASE 2
 
-- VM Linux;
-- CPU/RAM;
-- boot volume;
-- VNIC;
-- public IPv4;
-- VCN/subnet/rutas/security rules;
-- conectividad inbound 80/443 y SSH restringido;
-- conectividad outbound HTTPS/DNS;
-- proceso Node;
-- Caddy/TLS;
-- systemd;
-- journald;
-- disponibilidad del runtime;
-- reconstrucción del host.
+~~~text
+Internet
+  ↓
+app.ingenierosasesores.cl
+  ↓ HTTPS
+OCI Compute + Caddy + Node/Express
+  ├── guest flow de FASE 1
+  ├── Firebase Authentication
+  ├── Firestore
+  ├── Google Drive / Picker / GIS
+  └── Gemini
+~~~
 
-## 2.3 Responsabilidades Google que permanecen
+FASE 2 extiende la versión útil; no reemplaza el núcleo validado en FASE 1.
 
-Google continúa responsable de:
+# 4. Persistencia y datos
 
-- identidad Firebase;
-- tokens/sesiones Firebase;
-- Firestore;
-- Security Rules;
-- Drive;
-- Picker/GIS;
-- OAuth;
-- archivos y artefactos persistentes;
-- Gemini API;
-- sus cuotas y condiciones de servicio.
+## 4.1 FASE 1
 
-## 2.4 Interfaz entre capas
+El modo invitado es temporal:
 
-No se introduce gateway multicloud ni base de datos OCI.
+- archivos seleccionados viven en el navegador;
+- la clave temporal Gemini vive en el input/request y no debe persistirse;
+- el resultado vive en estado de UI;
+- DOCX se descarga al navegador;
+- no se requiere Firestore;
+- no se requiere Drive;
+- no se debe guardar información de negocio como único ejemplar en disco OCI.
 
-El navegador sigue llamando directamente a Firebase/Firestore y Drive según el código actual. Node sólo necesita salida HTTPS para Gemini y sirve las APIs locales.
+## 4.2 FASE 2
 
-## 2.5 Proceso de despliegue
+Cuando se habilite:
 
-### POC
+- Firestore conserva metadata/proyectos/historial;
+- Drive conserva documentos y artefactos;
+- Auth conserva identidad;
+- OCI sigue siendo runtime reemplazable.
 
-Ruta deliberadamente simple:
+# 5. Estrategia costo objetivo USD 0
 
-```text
-SHA aprobado
-→ obtener repositorio/release en VM
-→ npm ci
-→ npm run build
-→ npm test
-→ npm start / systemd
-→ /api/health
-```
+## 5.1 Regla
 
-La compilación en A1 es parte de la prueba ARM64 y, por tanto, sí debe ejecutarse al menos una vez durante POC.
-
-### Uso estable futuro
-
-Después del POC, un Work Item separado puede pasar a:
-
-```text
-main / SHA aprobado
-→ CI existente
-→ build/test
-→ artefacto versionado
-→ SSH mínimo
-→ /opt/g-inf-01/releases/<sha>
-→ current symlink
-→ systemctl restart
-→ health
-→ rollback automático/manual al release previo
-```
-
-No se crea ese workflow en #104.
-
-## 2.6 Recuperación/reprovisión
-
-Una VM nueva debe poder reconstruirse con:
-
-1. Ubuntu ARM64 soportado;
-2. Node 24;
-3. Caddy;
-4. usuario de servicio;
-5. release exacto de GitHub;
-6. EnvironmentFile seguro;
-7. systemd unit;
-8. Caddyfile;
-9. reglas de red reproducibles;
-10. hostname/DNS;
-11. smoke tests.
-
-La recuperación no depende de restaurar un filesystem completo si GitHub, Firestore, Drive y el canal seguro de secrets están disponibles.
-
-# 3. Estrategia de costo objetivo USD 0
-
-## 3.1 Regla económica
-
-```text
+~~~text
 TARGET_OCI_MONTHLY_COST = USD 0
 PROMOTIONAL_CREDITS_AS_JUSTIFICATION = FORBIDDEN
 PAY_AS_YOU_GO_UPGRADE = FORBIDDEN
-NON_ZERO_ESTIMATE = HARD STOP
-```
+NON_ZERO_BASE_ESTIMATE = HARD STOP
+~~~
 
-La cuenta puede mostrar créditos de trial, pero esos créditos se ignoran para decidir viabilidad. Un recurso sólo se considera permitido si es elegible por sí mismo como Always Free / Free Tier y su costo recurrente observable, sin offset de créditos, es USD 0.
+La consola real de la tenancy prevalece sobre cualquier estimación documental.
 
-## 3.2 Recursos OCI estrictamente necesarios
+## 5.2 Recursos OCI mínimos para FASE 1
 
-| Recurso | Necesidad | Configuración objetivo POC | Regla de costo |
-|---|---|---|---|
-| Compute | Ejecutar app | 1 × VM.Standard.A1.Flex | Debe aparecer elegible/gratuita |
-| OCPU | Runtime/build | 1 OCPU inicial | No aumentar sin medición + costo cero |
-| RAM | Runtime/build | 4 GB inicial | 6 GB sólo si medición lo exige y sigue $0 |
-| Boot volume | SO/app | objetivo 50 GB | Debe estar dentro de free allocation |
-| VCN | Red | 1 | No añadir servicios extra |
-| Public subnet | Acceso web | 1 | Sólo app POC |
-| Internet Gateway | inbound/outbound Internet | 1 | Necesario para servidor público |
-| Route table | ruta IGW | mínima | Sin rutas complejas |
-| Security List o NSG | firewall cloud | mínima | 22 restringido, 80/443 público |
-| VNIC | NIC de VM | primaria | estándar |
-| Public IPv4 | hostname/TLS | **ephemeral** para POC | La consola debe mostrar $0 |
-| Caddy | TLS/proxy | instalado en VM | software, sin servicio OCI adicional |
+| Recurso | Configuración inicial | Necesidad |
+|---|---|---|
+| Compute | 1 × VM.Standard.A1.Flex | runtime |
+| OCPU | 1 | build/runtime POC |
+| RAM | 4 GB | punto de partida |
+| Boot volume | objetivo ~50 GB | SO + app |
+| VCN | 1 | red |
+| Public subnet | 1 | acceso |
+| Internet Gateway | 1 | Internet |
+| Route table | mínima | conectividad |
+| Security List o NSG | mínima | firewall OCI |
+| VNIC | primaria | NIC |
+| Public IPv4 | 1, preferentemente ephemeral | HTTPS |
+| Caddy | instalado en VM | TLS/proxy |
 
-No se requiere para POC:
+No usar:
 
 - Load Balancer;
-- Network Load Balancer;
 - NAT Gateway;
-- Bastion pagado;
 - Oracle Database;
 - Autonomous Database;
-- PostgreSQL gestionado;
 - Object Storage;
-- File Storage;
-- Block Volume adicional;
-- backup pagado;
+- extra block volumes;
+- backups pagados;
 - OKE/Kubernetes;
-- Container Registry como requisito;
 - OCI DevOps;
 - Vault;
 - WAF;
-- CDN;
-- Functions;
 - API Gateway;
-- Monitoring avanzado pagado;
-- logging externo pagado.
+- Functions;
+- recursos no exigidos por el guest flow.
 
-Si una función considerada “estándar” presenta una línea de costo en la cuenta real, deja de estar autorizada.
+## 5.3 A1 / ARM64
 
-## 3.3 Baseline Always Free oficial
+Configuración inicial:
 
-**EXTERNAL FACT — Oracle, consultado 2026-10-03.**
-
-La documentación Always Free vigente indica:
-
-- Compute Always Free debe crearse en home region;
-- A1: 1.500 OCPU-hours + 9.000 GB-hours/mes, equivalente para Always Free tenancy a 2 OCPU + 12 GB;
-- Block Volume: 200 GB combinados boot/block;
-- cinco volume backups dentro de la asignación documentada;
-- boot volume por defecto descrito: 50 GB;
-- instancias Always Free idle pueden ser reclamadas;
-- falta de capacidad puede producir `out of host capacity`.
-
-Fuentes:
-
-- https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm
-- https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier.htm
-- https://www.oracle.com/latam/cloud/free/faq/
-
-La estrategia conserva el límite conservador de la documentación OCI. Cualquier cifra distinta en pricing/console no amplía automáticamente el scope.
-
-## 3.4 Configuración inicial recomendada
-
-```text
+~~~text
 Shape: VM.Standard.A1.Flex
 OCPU: 1
 RAM: 4 GB
 Boot: ~50 GB
-Architecture: ARM64
 OS: Ubuntu LTS ARM64 soportado
-Public IPv4: ephemeral
 Instances: 1
-Extra volumes: 0
-Paid services: 0
-```
+~~~
 
-### Por qué 4 GB
+Subir a 6 GB sólo si:
 
-Issue #103 cambió la recomendación inicial de #101: comenzar en 4 GB y medir.
+1. una medición real demuestra necesidad;
+2. el problema no es incompatibilidad ARM64;
+3. la consola sigue mostrando costo base USD 0;
+4. el cambio permanece dentro de la cuota gratuita efectiva;
+5. el Supervisor/Humano autoriza la variación si el Work Item así lo requiere.
 
-4 GB:
+El lockfile incluye artefactos ARM64 para esbuild y Rollup, pero conserva una dependencia optional LZMA x64 sin sibling ARM64 visible. Por eso el POC debe ejecutar npm ci, build y tests en A1 real.
 
-- reduce consumo de cuota;
-- deja capacidad libre dentro del ceiling conservador;
-- debería ser suficiente para probar runtime y build en un stack Node moderado;
-- no presupone que 6 GB sean necesarios.
+Si ARM64 exige cambio de código/dependencia:
 
-### Cuándo subir a 6 GB
+**STOP → Supervisor → Work Item separado.**
 
-Sólo si:
+## 5.4 A1 sin capacidad
 
-1. A1 ya fue validada como costo cero;
-2. una medición muestra OOM, presión sostenida o margen insuficiente;
-3. el problema no es una incompatibilidad de arquitectura;
-4. la consola confirma que 1 OCPU/6 GB sigue dentro de la asignación gratuita real;
-5. el Supervisor acepta la evidencia.
+No usar fallback pagado.
 
-No subir por comodidad.
+Opciones permitidas:
 
-## 3.5 ARM64 como estrategia, no como supuesto
+- otro Availability Domain legítimo dentro de la home region si existe;
+- reintentar más tarde;
+- E2.1.Micro sólo si la cuenta lo muestra explícitamente gratuito y el Supervisor acepta su limitación de 1 GB.
 
-Node.js 24 publica binarios Linux ARM64 oficialmente.
+Si no hay capacidad free:
 
-Fuente:
-- https://nodejs.org/en/download/archive/v24.21.0
+**BLOCKED.**
 
-**REPO FACT:**
+## 5.5 Credits
 
-- `@esbuild/linux-arm64` existe en lockfile;
-- `@rollup/rollup-linux-arm64-gnu` existe;
-- `@rollup/rollup-linux-arm64-musl` existe;
-- `fsevents` es optional/Darwin;
-- existe una dependencia optional `@napi-rs/lzma-linux-x64-gnu` sin sibling ARM64 visible.
+Los créditos de Free Trial pueden aparecer en UI, pero no se consideran ahorro permanente.
 
-Por ello:
+Antes de CREATE debe poder demostrarse que:
 
-```text
-ARM64_DOCUMENTARY_COMPATIBILITY = PLAUSIBLE
-ARM64_EXECUTED_COMPATIBILITY = NOT_PROVEN
-```
+- shape;
+- boot volume;
+- public IPv4;
+- red requerida;
 
-No cambiar dependencias para “hacerlo funcionar” dentro del POC. Si `npm ci`, build o runtime falla por ARM64:
+no generan cargo base distinto de cero.
 
-**FAIL → HARD STOP → evidencia → Supervisor → Work Item separado.**
-
-## 3.6 Control de gasto antes de crear
-
-### Control primario
-
-Antes del botón Create:
-
-1. cuenta no actualizada a PAYG;
-2. home region confirmada;
-3. shape exacta A1;
-4. 1 OCPU / 4 GB;
-5. boot ~50 GB;
-6. una sola VM;
-7. public IPv4 requerida;
-8. sin add-ons;
-9. captura sin datos sensibles que muestre elegibilidad/free label;
-10. captura que muestre costo estimado recurrente;
-11. validar que el costo es USD 0 **sin aplicar créditos promocionales**.
-
-Si la interfaz sólo muestra “cubierto por créditos” o no permite distinguir costo base de crédito:
+Si la interfaz no permite separar “costo base” de “cubierto por créditos”:
 
 **HARD STOP.**
 
-### Control adicional
+# 6. Hostname y HTTPS
 
-Oracle documenta:
+## 6.1 FASE 1 no necesita OAuth
 
-- Budgets como **soft limits** con alertas; no bloquean gasto.
-- Compartment Quotas como controles de consumo más duros mediante `set`/`zero`.
+La decisión nueva elimina de FASE 1:
 
-Fuentes:
+- Google Sign-In;
+- OAuth origins;
+- Firebase Authorized Domains;
+- Picker referrers.
 
-- https://docs.oracle.com/en-us/iaas/Content/Billing/Concepts/budgetsoverview.htm
-- https://docs.oracle.com/en-us/iaas/Content/Quotas/home.htm
-- https://docs.oracle.com/en-us/iaas/Content/Quotas/Concepts/quota_policy_syntax.htm
+Por tanto, el hostname POC sólo necesita:
 
-**STRATEGY:** no depender de Budgets para garantizar USD 0. Opcionalmente, un futuro Work Item puede definir quota policies para bloquear familias no autorizadas, pero sólo después de verificar nombres de quota reales en la tenancy. No inventar quota identifiers en el runbook.
+- resolver públicamente;
+- apuntar a OCI;
+- permitir emisión TLS;
+- costo USD 0;
+- control suficiente para actualizar la IP durante el POC.
 
-## 3.7 Si A1 no tiene capacidad
+No necesita ser aceptado por Google OAuth en FASE 1.
 
-Oracle documenta `out of host capacity` como condición posible de capacidad.
+## 6.2 Hostname POC
 
-Ruta:
+DuckDNS permanece como candidato simple de costo cero.
 
-1. intentar sólo los AD/opciones legítimas que la home region exponga;
-2. esperar/reintentar posteriormente;
-3. no cambiar a una shape pagada;
-4. E2.1.Micro puede evaluarse sólo si aparece explícitamente Free Tier/Always Free y costo USD 0;
-5. E2 no se considera equivalente: 1 GB RAM es un riesgo para build/payloads;
-6. si A1 y E2 free no están disponibles: `A1_NO_CAPACITY` / `BLOCKED`.
+Ejemplo ilustrativo, no creado:
 
-No Upgrade PAYG.
-
-## 3.8 Idle/reclaim
-
-Oracle documenta reclamación de instancias Always Free consideradas idle durante un período de 7 días bajo umbrales de CPU, red y, para A1, memoria.
-
-No se diseñarán keep-alives artificiales ni carga falsa.
-
-Mitigación legítima:
-
-- runtime reproducible;
-- no datos únicos locales;
-- runbook de reprovision;
-- hostname POC actualizable;
-- hosting Google todavía disponible;
-- observación real.
-
-## 3.9 IP pública
-
-Para el POC se prefiere **ephemeral public IPv4**:
-
-- viene asociada al ciclo del private IP/VNIC;
-- es suficiente para DuckDNS;
-- no requiere administrar un objeto Reserved Public IP;
-- si la VM se reprovisiona y cambia IP, se actualiza el hostname POC.
-
-Oracle documenta los tipos ephemeral/reserved y que la public IP requiere public subnet + Internet Gateway + reglas de red.
-
-Fuentes:
-
-- https://docs.oracle.com/en-us/iaas/Content/Network/Tasks/managingpublicIPs.htm
-- https://docs.oracle.com/en-us/iaas/Content/Network/Tasks/assign-public-ip-instance-launch.htm
-
-No se asume costo de public IPv4: **la consola debe confirmar USD 0** para la configuración real.
-
-# 4. Estrategia hostname / dominio
-
-## 4.1 Requisito Google
-
-Google exige para OAuth web:
-
-- JavaScript origins HTTPS, excepto localhost;
-- host no puede ser raw IP;
-- TLD debe pertenecer a Public Suffix List;
-- sólo usar dominios propios, autorizados o licenciados;
-- producción puede exigir verificación de dominio.
-
-Fuentes:
-- https://developers.google.com/identity/protocols/oauth2/javascript-implicit-flow
-- https://developers.google.com/identity/protocols/oauth2/policies
-- https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance
-
-Por tanto:
-
-- `http://<PUBLIC_IP>` no valida OAuth;
-- `https://<PUBLIC_IP>` tampoco;
-- se necesita hostname DNS + certificado público.
-
-## 4.2 POC con hostname gratuito independiente
-
-### Candidato preferido: DuckDNS
-
-DuckDNS declara que ofrece gratuitamente subdominios `*.duckdns.org` apuntados a una IP elegida.
-
-Fuentes:
-- https://www.duckdns.org/about.jsp
-- https://www.duckdns.org/spec.jsp
-- https://www.duckdns.org/tac.jsp
-
-Además, `duckdns.org` está incorporado como private suffix en la Public Suffix List.
-
-Referencia:
-- https://bugzilla.mozilla.org/show_bug.cgi?id=1165730
-- https://publicsuffix.org/list/
-
-Hostname ilustrativo, **no reservado por este Work Item**:
-
-```text
+~~~text
 g-inf-01-poc.duckdns.org
-```
+~~~
 
-El nombre final lo aprueba el Humano en `HUMAN_GATE_DOMAIN`.
+HUMAN_GATE_DOMAIN se aplica antes de registrar/modificar ese hostname.
 
-### Limitación importante
+El token del proveedor DNS:
 
-DuckDNS es apropiado sólo como candidato de POC.
+- no se pide por chat;
+- no se versiona;
+- no se entrega a Caddy si no hace falta;
+- se usa sólo por el Humano o canal seguro si se requiere actualizar el registro.
 
-Google OAuth exige usar dominios que se posean o cuyo uso esté autorizado/licenciado y puede exigir verificación del dominio asociado a una app pública/producción. Por tanto, no se declara de antemano que el proyecto Google actual aceptará el hostname DuckDNS en todas sus pantallas/estados.
+## 6.3 Caddy
 
-Antes de cualquier mutación Google:
+Objetivo:
 
-1. verificar si el hostname es aceptado como Authorized JavaScript Origin;
-2. verificar si el proyecto exige Search Console/domain verification;
-3. verificar si el usuario puede demostrar el control requerido;
-4. si no: **STOP**.
+~~~text
+https://<hostname-poc>
+        ↓
+Caddy
+        ↓
+127.0.0.1:3000
+~~~
 
-No se compra dominio para superar el bloqueo.
+80 y 443 públicos.
+3000 no público.
 
-### Opciones rechazadas para POC autenticado
+Caddy Automatic HTTPS es el camino preferido porque reduce piezas frente a Nginx + Certbot.
 
-- raw public IP: bloqueado por reglas OAuth;
-- `sslip.io` / `nip.io` u hostname automático no controlado: evita gestionar DNS, pero no es preferido porque reduce control del nombre y puede entrar en conflicto con la política de dominio propio/autorizado;
-- hostname interno OCI: no es un dominio público estable para OAuth;
-- certificado self-signed: no satisface el objetivo HTTPS público.
+## 6.4 FASE 2 / hostname corporativo
 
-## 4.3 HTTPS/Caddy
+app.ingenierosasesores.cl pertenece a FASE 2.
 
-Caddy documenta Automatic HTTPS para hostname público cuando:
+No debe bloquear ni retrasar el POC útil.
 
-- A/AAAA resuelve al servidor;
-- 80/443 son accesibles;
-- Caddy puede bindearlos;
-- data directory es persistente;
-- hostname aparece en configuración.
+El apex/WordPress de ingenierosasesores.cl no se toca.
 
-Fuentes:
-- https://caddyserver.com/docs/quick-starts/https
-- https://caddyserver.com/docs/automatic-https
-
-POC:
-
-```text
-<hostname-poc> {
-  reverse_proxy 127.0.0.1:3000
-}
-```
-
-Este fragmento es conceptual; el ejemplo versionado futuro pertenece a #103 o Work Item posterior.
-
-No se necesita el plugin DNS de DuckDNS si el hostname A resuelve a la public IPv4 y 80/443 permiten ACME HTTP/TLS challenge. Evitar plugins reduce superficie y elimina la necesidad de entregar el token DuckDNS a Caddy.
-
-## 4.4 Firebase
-
-Antes de probar Auth:
-
-- agregar hostname POC a Firebase Authentication → Authorized Domains;
-- no cambiar `authDomain` por defecto salvo evidencia real de que el flujo actual lo requiera;
-- mantener `signInWithPopup`;
-- no introducir redirect URIs si el flujo GIS/Drive actual no los usa.
-
-Firebase documenta gestión de Authorized Domains en Authentication Settings.
-
-Fuente:
-- https://firebase.google.com/docs/auth/faq-and-troubleshooting
-- https://firebase.google.com/docs/auth/web/google-signin
-
-## 4.5 GIS/OAuth
-
-Para Drive/GIS:
-
-- agregar exactamente `https://<hostname-poc>` a Authorized JavaScript Origins;
-- scheme/domain/port deben coincidir;
-- no añadir redirect URI por especulación;
-- conservar el client ID existente si puede reutilizarse;
-- no crear client secret para web app; el flujo actual no lo usa;
-- no ampliar scope `drive.file`.
-
-## 4.6 Picker/API key
-
-Google Picker documenta:
-
-- website restriction con el dominio de la app;
-- `https://docs.google.com/*` debe estar permitido cuando se restringe por websites;
-- API key restringida a Picker API y Drive API cuando corresponda;
-- App ID y client ID deben pertenecer al mismo proyecto.
-
-Fuente:
-- https://developers.google.com/workspace/drive/picker/guides/web-picker
-
-Cambio POC mínimo:
-
-- añadir el referrer/origin POC;
-- conservar `https://docs.google.com/*`;
-- no ampliar APIs.
-
-## 4.7 Transición futura a app.ingenierosasesores.cl
-
-Cuando haya acceso DNS y aprobación:
-
-```text
-POC: g-inf-01-poc.duckdns.org
-              ↓ misma app / misma VM o VM reconstruida
-STABLE: app.ingenierosasesores.cl
-```
-
-No requiere migración de datos ni cambio funcional.
-
-Secuencia futura:
-
-1. `HUMAN_GATE_DOMAIN` confirma control DNS corporativo;
-2. crear `app.ingenierosasesores.cl` apuntando al candidato OCI;
-3. Caddy obtiene TLS para el hostname corporativo;
-4. mantener hostname POC en paralelo;
-5. `HUMAN_GATE_GOOGLE_CONFIG`;
-6. añadir hostname corporativo a Firebase Authorized Domains;
-7. añadir `https://app.ingenierosasesores.cl` a OAuth Authorized JavaScript Origins;
-8. añadir referrer corporativo a Picker API key restrictions;
-9. E2E completo por hostname corporativo;
-10. `HUMAN_GATE_CUTOVER`;
-11. dirigir tráfico/usuarios al hostname corporativo;
-12. mantener hosting Google y POC durante observación;
-13. retirar entradas temporales sólo con evidencia y autorización.
-
-El dominio raíz `ingenierosasesores.cl` y WordPress no se tocan.
-
-# 5. Fases de ejecución futuras
-
-Las fases siguientes describen ejecución futura. #104 no ejecuta ninguna.
-
-## Fase 1 — Revalidación local
-
-**Entrada**
-- #104 aceptado;
-- #103 reactivado explícitamente;
-- SHA de `main` seleccionado.
-
-**Acciones**
-- registrar SHA;
-- `npm ci`;
-- `npm run build`;
-- `npm test`;
-- `npm run test:firestore-rules`;
-- `npm start`;
-- GET `/api/health`;
-- DOCX local determinista;
-- revisar diff desde baseline.
-
-**Evidencia**
-- comandos/resultados;
-- SHA;
-- CI verde;
-- health JSON;
-- ausencia de cambio funcional.
-
-**PASS**
-- todo compila/testea y arranca sin dependencias externas de hosting.
-
-**FAIL**
-- baseline no es reproducible.
-
-**STOP**
-- cualquier fallo inexplicado o necesidad de cambio de código/dependencias.
-
-**Rollback**
-- ninguno: no hay cambio externo.
-
-## Fase 2 — Gate OCI cuenta/costo
-
-**Entrada**
-- Fase 1 PASS;
-- sesión OCI autorizada;
-- `HUMAN_GATE_CREATE_OCI` todavía no consumido.
-
-**Acciones**
-- inspección read-only de home region;
-- disponibilidad A1;
-- free eligibility;
-- 1 OCPU / 4 GB;
-- boot ~50 GB;
-- public IPv4;
-- costo base sin créditos.
-
-**Evidencia**
-- capturas sin OCIDs/secrets;
-- región;
-- shape;
-- costo;
-- etiqueta/elegibilidad.
-
-**PASS**
-- configuración exacta es elegible y USD 0 sin créditos.
-
-**FAIL**
-- costo > 0, ambigüedad de costo, PAYG requerido o A1 no elegible.
-
-**STOP**
-- cualquier línea pagada.
-
-**Rollback**
-- ninguno: inspección only.
-
-## Fase 3 — Creación VM
-
-**Entrada**
-- Fase 2 PASS;
-- **HUMAN_GATE_CREATE_OCI = APPROVED**.
-
-**Acciones**
-- una A1 1 OCPU/4 GB;
-- Ubuntu ARM64;
-- boot ~50 GB;
-- public subnet;
-- ephemeral IPv4;
-- llave SSH pública;
-- red mínima.
-
-**Evidencia**
-- shape/arquitectura;
-- costo post-create;
-- recursos creados sin IDs sensibles.
-
-**PASS**
-- única VM accesible y recursos siguen USD 0.
-
-**FAIL**
-- recurso incorrecto, costo inesperado, capacity error.
-
-**STOP**
-- no sustituir por recurso pagado.
-
-**Rollback**
-- terminar sólo los recursos creados en la fase; confirmar que no quedan recursos con costo.
-
-## Fase 4 — Prueba ARM64
-
-**Entrada**
-- VM creada;
-- SSH funcional.
-
-**Acciones**
-- `uname -m`;
-- instalar Node 24 ARM64;
-- obtener SHA exacto;
-- `npm ci`;
-- build/tests;
-- medir RAM/tiempo;
-- no corregir dependencias.
-
-**Evidencia**
-- `aarch64`/ARM64;
-- Node/npm;
-- resultados;
-- peak memory aproximado;
-- errores nativos si existen.
-
-**PASS**
-- install/build/tests funcionan sin cambio de dependencia.
-
-**FAIL**
-- incompatibilidad ARM64 o OOM reproducible.
-
-**STOP**
-- necesidad de cambiar package.json/lockfile/código.
-
-**Rollback**
-- destruir/reprovisionar VM si quedó inconsistente; Google intacto.
-
-## Fase 5 — Instalación/runtime
-
-**Entrada**
-- ARM64 PASS.
-
-**Acciones**
-- usuario `g-inf-01`;
-- release dir;
-- dependencias runtime;
-- configuración no secreta;
-- `NODE_ENV=production`;
-- ejecución manual inicial.
-
-**Evidencia**
-- process owner;
-- health local;
-- no secretos en command line/logs.
-
-**PASS**
-- app sirve frontend/API local.
-
-**FAIL**
-- runtime no arranca.
-
-**STOP**
-- requiere parche funcional.
-
-**Rollback**
-- eliminar release y volver al estado pre-runtime.
-
-## Fase 6 — systemd
-
-**Entrada**
-- runtime manual PASS.
-
-**Acciones**
-- unit mínima;
-- EnvironmentFile;
-- restart on failure;
-- enable on boot;
-- journald.
-
-**Evidencia**
-- `systemctl status`;
-- stop/start/restart;
-- health.
-
-**PASS**
-- proceso vuelve correctamente.
-
-**FAIL**
-- unidad no confiable.
-
-**STOP**
-- permisos/secrets inseguros.
-
-**Rollback**
-- disable unit; restaurar ejecución manual.
-
-## Fase 7 — Firewall/red
-
-**Entrada**
-- systemd PASS.
-
-**Acciones**
-- OCI security rules;
-- firewall host;
-- 80/443 público;
-- 22 restringido;
-- bloquear 3000 externo;
-- egress DNS/HTTPS.
-
-**Evidencia**
-- escaneo/connection checks;
-- 3000 no accesible externamente;
-- SSH sigue controlado.
-
-**PASS**
-- sólo superficie prevista.
-
-**FAIL**
-- 3000/SSH expuestos indebidamente o app sin egress.
-
-**STOP**
-- no continuar a Internet público con reglas abiertas.
-
-**Rollback**
-- restaurar reglas anteriores conocidas.
-
-## Fase 8 — Caddy
-
-**Entrada**
-- red PASS.
-
-**Acciones**
-- instalar Caddy compatible;
-- proxy a `127.0.0.1:3000`;
-- HTTP temporal por IP sólo para validar proxy si se necesita.
-
-**Evidencia**
-- proxy responde;
-- Node no está público.
-
-**PASS**
-- Caddy alcanza health/app.
-
-**FAIL**
-- proxy no estable.
-
-**STOP**
-- no confundir HTTP/IP con OAuth listo.
-
-**Rollback**
-- detener Caddy; Node local continúa.
-
-## Fase 9 — Hostname/HTTPS
-
-**Entrada**
-- Caddy PASS;
-- **HUMAN_GATE_DOMAIN = APPROVED**.
-
-**Acciones**
-- crear/usar hostname POC gratuito aprobado;
-- apuntar a public IPv4;
-- configurar Caddy;
-- obtener certificado;
-- verificar HTTP→HTTPS.
-
-**Evidencia**
-- DNS A;
-- certificado público válido;
-- HTTPS health;
-- renovación/configuración ACME.
-
-**PASS**
-- hostname público HTTPS estable.
-
-**FAIL**
-- DNS/cert no valida.
-
-**STOP**
-- no comprar dominio ni usar certificados inseguros.
-
-**Rollback**
-- retirar hostname/config POC; VM sigue disponible por canal admin.
-
-## Fase 10 — Prueba modo invitado
-
-**Entrada**
-- HTTPS PASS.
-
-**Acciones**
-- UI;
-- archivos no sensibles;
-- Gemini con clave temporal autorizada;
-- análisis;
-- JSON;
-- DOCX;
-- límites/errores;
-- medir memoria.
-
-**Evidencia**
-- screenshots/resultados sin datos sensibles;
-- health;
-- memoria;
-- DOCX generado.
-
-**PASS**
-- flujo invitado equivalente.
-
-**FAIL**
-- regresión de hosting/runtime.
-
-**STOP**
-- pérdida de datos, secreto en logs, OOM recurrente.
-
-**Rollback**
-- dejar de usar hostname OCI; hosting Google intacto.
-
-## Fase 11 — Gate Google configuration
-
-**Entrada**
-- guest PASS;
-- lista exacta de cambios preparada.
-
-**Acciones**
-- presentar cambios mínimos;
-- no ejecutarlos todavía.
-
-**Evidencia**
-- before-state;
-- hostname;
-- Firebase domain;
-- OAuth origin;
-- Picker referrer;
-- scope unchanged.
-
-**PASS**
-- **HUMAN_GATE_GOOGLE_CONFIG = APPROVED**.
-
-**FAIL**
-- aprobación denegada o hostname no verificable/aceptable.
-
-**STOP**
-- no mutar Google sin aprobación.
-
-**Rollback**
-- ninguno: gate previo.
-
-## Fase 12 — Firebase Auth
-
-**Entrada**
-- Google gate aprobado;
-- hostname aceptado.
-
-**Acciones**
-- añadir Authorized Domain aprobado;
-- probar `signInWithPopup`;
-- logout/session recovery.
-
-**Evidencia**
-- login real;
-- user identity;
-- errores negativos;
-- no client secret.
-
-**PASS**
-- Auth equivalente.
-
-**FAIL**
-- popup/origin/domain failure.
-
-**STOP**
-- requiere rediseñar authDomain/redirect sin issue.
-
-**Rollback**
-- retirar sólo la entrada POC si se abandona; conservar configuración previa.
-
-## Fase 13 — Firestore
-
-**Entrada**
-- Auth PASS.
-
-**Acciones**
-- usar mismo Firebase project;
-- confirmar `databaseId`;
-- crear/listar/abrir proyecto de prueba;
-- historial;
-- aislamiento por UID;
-- rules negativas.
-
-**Evidencia**
-- operaciones reales;
-- no migración de datos;
-- Security Rules continúan controlando acceso.
-
-**PASS**
-- persistencia existente accesible y aislada.
-
-**FAIL**
-- acceso indebido o pérdida/corrupción.
-
-**STOP**
-- cualquier problema de autorización.
-
-**Rollback**
-- eliminar sólo datos de prueba autorizados; usar hosting Google.
-
-## Fase 14 — Drive/Picker
-
-**Entrada**
-- Auth/Firestore PASS.
-
-**Acciones**
-- OAuth origin POC;
-- Picker referrer POC + docs.google.com;
-- scope exacto `drive.file`;
-- autorizar;
-- Picker;
-- upload/read;
-- folders;
-- stale/revoked behavior.
-
-**Evidencia**
-- scope observado;
-- operaciones reales;
-- error 401/reautorización;
-- no secrets persistidos.
-
-**PASS**
-- Drive/Picker equivalente.
-
-**FAIL**
-- origin/key/scope/permission failure.
-
-**STOP**
-- necesidad de ampliar scope o crear credenciales no aprobadas.
-
-**Rollback**
-- retirar entradas POC añadidas si se abandona; Drive data existente permanece.
-
-## Fase 15 — Gemini
-
-**Entrada**
-- runtime e HTTPS PASS.
-
-**Acciones**
-- clave temporal;
-- owner aliases sólo si su secret provisioning está autorizado;
-- error/quota;
-- timeout;
-- confirmar no persistencia.
-
-**Evidencia**
-- request exitoso;
-- 403 del alias sin capability cuando aplique;
-- logs sin clave.
-
-**PASS**
-- Gemini funciona desde OCI.
-
-**FAIL**
-- egress/auth/quota distinto no resuelto.
-
-**STOP**
-- requiere billing o key nueva no aprobada.
-
-**Rollback**
-- retirar secrets OCI; Google hosting sigue.
-
-## Fase 16 — DOCX
-
-**Entrada**
-- análisis válido.
-
-**Acciones**
-- generar DOCX invitado;
-- generar/persistir DOCX autenticado si flujo disponible;
-- descargar/reabrir.
-
-**Evidencia**
-- MIME/nombre;
-- archivo usable;
-- referencia/persistencia cuando corresponda.
-
-**PASS**
-- DOCX equivalente.
-
-**FAIL**
-- renderer/runtime diferente.
-
-**STOP**
-- necesidad de cambiar renderer.
-
-**Rollback**
-- usar hosting Google; no alterar documentos previos.
-
-## Fase 17 — E2E
-
-**Entrada**
-- fases 12–16 PASS.
-
-**Acciones**
-- login;
-- proyecto;
-- documentos;
-- Drive;
-- análisis;
-- JSON;
-- DOCX;
-- persistencia;
-- historial;
-- reapertura;
-- modo invitado.
-
-**Evidencia**
-- checklist E2E;
-- SHA;
-- hostname;
-- resultados;
-- casos negativos.
-
-**PASS**
-- flujo completo.
-
-**FAIL**
-- cualquier tramo esencial falla.
-
-**STOP**
-- no pasar a observación/cutover.
-
-**Rollback**
-- usuarios vuelven al hosting Google.
-
-## Fase 18 — Reboot/recovery
-
-**Entrada**
-- E2E PASS.
-
-**Acciones**
-- reboot;
-- validar systemd/Caddy/TLS;
-- health;
-- E2E smoke;
-- simular release rollback.
-
-**Evidencia**
-- servicio vuelve sin intervención manual indebida;
-- logs;
-- release anterior recuperable.
-
-**PASS**
-- reboot y rollback técnico funcionan.
-
-**FAIL**
-- estado oculto/no reproducible.
-
-**STOP**
-- VM contiene dependencia manual no documentada.
-
-**Rollback**
-- release anterior o Google hosting.
-
-## Fase 19 — Reconstrucción / disaster recovery
-
-**Entrada**
-- recovery PASS;
-- autorización explícita para la prueba destructiva si se decide ejecutarla.
-
-**Acciones**
-- documentar nueva VM desde cero;
-- preferentemente demostrar en entorno controlado si capacidad/costo permiten;
-- no perder datos funcionales.
-
-**Evidencia**
-- tiempos;
-- pasos;
-- SHA;
-- configuración restaurada;
-- secretos reinyectados sin exposición.
-
-**PASS**
-- runtime reemplazable.
-
-**FAIL**
-- existe estado único local.
-
-**STOP**
-- no cortar Google.
-
-**Rollback**
-- Google hosting; conservar VM original hasta aceptar evidencia.
-
-## Fase 20 — Observación
-
-**Entrada**
-- E2E/recovery PASS.
-
-**Acciones**
-- observar CPU/RAM/red/disco;
-- logs;
-- uptime;
-- reclaim/capacity signals;
-- no carga artificial.
-
-**Evidencia**
-- métricas por intervalo;
-- incidentes;
-- costo observado;
-- notificaciones Oracle.
-
-**PASS**
-- período definido por Humano/Supervisor sin riesgo no aceptado.
-
-**FAIL**
-- reclaim, costo, inestabilidad.
-
-**STOP**
-- no avanzar a cutover.
-
-**Rollback**
-- continuar en hosting Google.
-
-## Fase 21 — Cutover futuro
-
-**Entrada**
-- todas las fases anteriores PASS;
-- acceso DNS corporativo;
-- `app.ingenierosasesores.cl` listo;
-- E2E corporativo PASS;
-- observación aceptada.
-
-**Acciones**
-- ninguna hasta `HUMAN_GATE_CUTOVER`.
-
-Después del gate, en Work Item separado:
-
-- DNS corporativo;
-- Google origins corporativos;
-- tráfico a OCI;
-- monitoreo;
-- mantener Google rollback;
-- retiro futuro sólo con otra decisión explícita.
-
-**Evidencia**
-- aprobación humana;
-- TTL/DNS;
-- HTTPS;
-- E2E;
-- rollback practicable.
-
-**PASS**
-- cutover aceptado.
-
-**FAIL**
-- cualquier regresión.
-
-**STOP**
-- sin gate, no existe cutover.
-
-**Rollback**
-- revert DNS/origen de acceso al hosting Google.
-
-# 6. Gates humanos obligatorios
-
-Los cuatro gates son condiciones de workflow, no casillas informales.
+# 7. Gates humanos
 
 ## HUMAN_GATE_CREATE_OCI
 
-**Se activa antes de crear cualquier recurso OCI.**
+Se requiere antes de crear cualquier recurso OCI.
 
-Debe recibir:
+Debe presentar:
 
 - home region;
-- screenshot sin secretos;
-- A1 shape;
-- OCPU/RAM;
+- A1 availability;
+- 1 OCPU / 4 GB;
 - boot volume;
 - public IPv4;
-- lista exacta de recursos;
-- costo base USD 0, sin créditos;
-- ausencia de PAYG requirement.
+- recursos de red;
+- costo base USD 0;
+- créditos ignorados;
+- ausencia de PAYG.
 
-Aprobación válida:
-
-```text
-HUMAN_GATE_CREATE_OCI = APPROVED
-scope = single A1 POC + minimum network/boot resources
-cost = USD 0
-```
-
-Cualquier variación requiere nuevo gate.
+Aprobación para una configuración no autoriza otra.
 
 ## HUMAN_GATE_DOMAIN
 
-**Se activa antes de crear/modificar cualquier hostname/DNS externo.**
+FASE 1:
 
-Para POC debe especificar:
+- aprueba hostname POC gratuito;
+- aprueba creación/modificación de ese registro;
+- no aprueba DNS corporativo.
 
-- proveedor gratuito;
-- hostname propuesto;
-- que no hay compra;
-- destino IP;
-- reversión.
+FASE 2:
 
-Para corporativo debe especificar:
-
-- control DNS de `ingenierosasesores.cl`;
-- registro exacto `app`;
-- TTL;
-- no tocar WordPress/apex.
-
-Aprobar DuckDNS POC no aprueba DNS corporativo futuro.
+- se vuelve a usar para app.ingenierosasesores.cl;
+- requiere acceso DNS corporativo;
+- debe preservar WordPress/apex.
 
 ## HUMAN_GATE_GOOGLE_CONFIG
 
-**Se activa antes de Firebase/OAuth/Picker/Google Console.**
+**No se usa en FASE 1.**
 
-Debe presentar diff lógico exacto:
+Se activa exclusivamente en FASE 2 antes de:
 
-- Firebase Authorized Domain a añadir;
-- OAuth Authorized JavaScript Origin a añadir;
-- Picker website referrer a añadir;
-- mantener `https://docs.google.com/*`;
-- scopes sin cambio;
-- credentials sin reemplazo salvo evidencia;
-- billing sin cambio.
-
-Aprobación de hostname POC no aprueba hostname corporativo: el corporativo requiere un nuevo uso del gate.
+- Firebase Authorized Domains;
+- OAuth Authorized JavaScript Origins;
+- Picker/API key restrictions;
+- cambios equivalentes.
 
 ## HUMAN_GATE_CUTOVER
 
-**Se activa sólo después de E2E + recovery + observación.**
+**No se usa en FASE 1.**
 
-Debe incluir:
+FASE 1 mantiene Google hosting como rollback.
 
-- hostname final;
-- evidencia E2E;
-- costo observado;
-- riesgos abiertos;
-- rollback DNS;
-- hosting Google todavía operativo;
-- duración de observación posterior;
-- criterio de retorno.
+Se activa en FASE 2 después de:
 
-No puede asumirse por haber aprobado POC.
+- E2E autenticado;
+- recovery;
+- hostname corporativo;
+- observación;
+- evidencia de costo;
+- rollback probado.
 
-# 7. Información requerida al Humano
+# 8. Regla canónica para cada Work Item futuro
 
-## 7.1 Información que sí se puede pedir
+Cada Work Item propuesto debe seguir:
 
-- confirmación de cuenta OCI creada/login funcional;
-- home region mostrada;
-- screenshots de consola sin secretos/IDs sensibles;
-- disponibilidad A1;
-- etiqueta de Free Tier/Always Free;
-- costo estimado base;
-- CPU/RAM/boot volume;
-- dominio/hostname disponible;
-- capacidad de editar DNS;
-- preferencia de subdominio;
-- clave SSH **pública**;
-- aprobación textual de gates;
-- screenshots de configuración Google con valores sensibles ocultos.
+~~~text
+Issue
+→ branch dedicada
+→ implementación autorizada
+→ tests + self-review
+→ commit/push
+→ PR
+→ CI exact-head
+→ Supervisor review
+→ SEMANTIC_ACCEPTED / REWORK / HOLD / ESCALATE
+~~~
 
-## 7.2 Información que nunca se pide por chat/repo
+No se comparte una branch de implementación entre Work Items distintos.
 
-- contraseña Oracle;
-- clave SSH privada;
-- token DuckDNS;
-- Gemini API keys;
-- owner alias secrets;
-- OAuth client secrets;
-- access tokens;
-- refresh tokens;
-- cookies;
-- credenciales bancarias;
-- recovery codes;
-- secrets Firebase;
-- valores privados de service accounts;
-- OCIDs/tenancy IDs salvo necesidad técnica excepcional, y nunca versionados;
-- documentos personales no necesarios para la prueba.
+Los Work Items de este documento son propuestas. #104 no los crea.
 
-Si un paso requiere un secreto, el Humano lo introduce directamente en el sistema autorizado; el Implementador documenta el nombre/ubicación lógica, no el valor.
+# 9. Descomposición de FASE 1
 
-# 8. Cambios de repositorio previstos para ejecución posterior
+## Resumen
 
-## 8.1 Archivos que #103 podría crear
+| ID propuesto | Objetivo | HH |
+|---|---|---:|
+| F1-WI-01 | Revalidar baseline y demostrar guest isolation | 1.0–2.0 |
+| F1-WI-02 | Gate costo + crear OCI mínimo | 1.5–2.5 |
+| F1-WI-03 | Validar ARM64 + build/runtime | 1.5–2.5 |
+| F1-WI-04 | systemd + firewall + Caddy + hostname HTTPS | 2.5–4.0 |
+| F1-WI-05 | Guest E2E + Gemini temporal + DOCX | 1.5–2.5 |
+| F1-WI-06 | Reboot/rebuild/rollback/observación y aceptación FASE 1 | 2.0–3.5 |
+| Contingencia FASE 1 | incidencias menores sin ampliar scope | 1.0–2.0 |
 
-Ya contemplados por #103:
+**FASE 1 estimada: 11–19 HH de ingeniería activa.**
 
-- `docs/engineering/OCI_POC_RUNBOOK.md`;
-- `deploy/oci/Caddyfile.example`;
-- `deploy/oci/g-inf-01.service.example`;
-- scripts pequeños no secretos en `deploy/oci/` si reducen error manual y siguen dentro del scope.
+La estimación excluye esperas por:
 
-## 8.2 Cambios potenciales de uso estable, siempre en Work Item separado
+- capacidad A1;
+- aprobación humana;
+- propagación DNS;
+- observación calendario;
+- indisponibilidad externa Gemini.
 
-- workflow de deploy;
-- release packaging;
-- script de deploy/rollback;
-- runbook de recovery;
-- actualización posterior de arquitectura canónica;
-- checklist de cutover.
+## F1-WI-01 — Baseline + Guest Isolation Proof
 
-## 8.3 Archivos/comportamientos que NO se deben tocar sin issue separado
+### Objetivo
 
-- `src/report-types/title-study/schema.ts`;
-- prompts;
-- renderer DOCX;
-- lógica de negocio;
-- Firestore schema;
-- Firestore Rules;
-- auth flow;
-- Drive scope;
-- dependencias;
-- package-lock;
-- provider/model;
-- migración de datos;
-- persistencia de API keys;
-- límites funcionales;
-- arquitectura distribuida.
+Demostrar sobre SHA exacto que el flujo invitado puede operar sin configuración Firebase/Drive/Picker/OAuth y dejar el POC listo para aprovisionamiento.
 
-Si ARM64 exige un cambio de dependencia: STOP y issue separado.
+### Dependencia
 
-# 9. Estrategia de secretos y configuración
+- #104 accepted.
+- #103 reactivado o Work Item equivalente autorizado.
 
-## 9.1 Configuración pública
+### Scope
 
-Las variables Firebase web y Google browser son identificadores/configuración cliente, no secretos de servidor, aunque deben protegerse con restricciones adecuadas:
-
-- `VITE_FIREBASE_API_KEY`;
-- `VITE_FIREBASE_AUTH_DOMAIN`;
-- `VITE_FIREBASE_PROJECT_ID`;
-- `VITE_FIREBASE_APP_ID`;
-- `VITE_FIREBASE_DATABASE_ID` opcional;
-- `VITE_GOOGLE_OAUTH_CLIENT_ID`;
-- `VITE_GOOGLE_PICKER_DEVELOPER_KEY`;
-- `VITE_GOOGLE_PICKER_APP_ID`.
-
-El Picker developer key debe estar restringido por referrer/APIs.
-
-El Drive config actual es build-time; por eso el POC debe suministrar esas variables al build sin alterar código.
-
-Firebase dispone además de fallback `/api/firebase-config`.
-
-## 9.2 Secrets servidor
-
-Potenciales variables actuales:
-
-- `GEMINI_TEST_KEY_1`;
-- `GEMINI_TEST_KEY_2`;
-- `GEMINI_TEST_KEY_3`;
-- `GEMINI_ALIAS_ACCESS_TOKEN`;
-- `GEMINI_ALIAS_MODE`.
-
-Estrategia mínima:
-
-```text
-/etc/g-inf-01/g-inf-01.env
-owner: root
-group: service group only if required
-mode: 0600 preferred
-systemd EnvironmentFile=
-```
-
-No incluir keys en:
-
-- Caddyfile;
-- unit file;
-- shell history;
-- Git;
-- logs;
-- screenshots;
-- process args.
-
-## 9.3 Clave temporal del usuario
-
-El flujo actual recibe la clave temporal por request y no debe persistirla. La migración conserva esa invariantes.
-
-# 10. Seguridad operacional
-
-## 10.1 SSH
-
-- sólo key auth;
-- nunca password;
-- public key del Humano;
-- restringir TCP/22 a origen administrativo conocido cuando sea viable;
-- si no hay IP admin estable, usar ventana temporal de allowlist y cerrarla después;
-- root login deshabilitado o no usado;
-- usuario admin separado del usuario de servicio.
-
-## 10.2 Usuario de servicio
-
-- `g-inf-01` sin login interactivo si es viable;
-- no root;
-- write sólo en directorios requeridos;
-- release dirs root/admin-owned cuando corresponda;
-- secretos no legibles por usuarios innecesarios.
-
-## 10.3 Puertos
-
-Públicos:
-
-- TCP 80: ACME + redirect;
-- TCP 443: app;
-- TCP 22: restringido.
-
-No público:
-
-- TCP 3000.
-
-El código escucha hoy `0.0.0.0`; por tanto, OCI security rules + host firewall son obligatorios para impedir exposición del 3000 sin cambiar código.
-
-## 10.4 Caddy
-
-- reverse proxy;
-- Automatic HTTPS;
-- cert storage persistente;
-- logs con mínima información necesaria;
-- no tokens;
-- no request body documental.
-
-## 10.5 Sistema
-
-- Ubuntu LTS ARM64 soportado;
-- actualizaciones de seguridad;
-- reboot coordinado;
-- no instalar servicios no necesarios;
-- Node 24 con versión registrada;
-- no `npm update` en producción.
-
-## 10.6 Logs
-
-Permitido:
-
-- timestamps;
-- status;
-- path sin sensitive query;
-- request IDs;
-- systemd/Caddy errors;
-- métricas básicas.
-
-Prohibido:
-
-- Authorization;
-- x-goog-api-key;
-- x-gemini-api-key;
-- alias access token;
-- OAuth tokens;
-- contenido documental;
-- credenciales.
-
-# 11. Pruebas E2E y evidencia
-
-## 11.1 Baseline automatizada
-
-- CI del repo;
 - npm ci;
 - build;
-- unit/integration tests;
-- Firestore Rules tests;
-- diff check.
+- tests;
+- Firestore Rules tests como regresión;
+- npm start;
+- /api/health;
+- verificar UI guest sin Firebase vars;
+- verificar selección local;
+- verificar ruta DOCX con fixture válido;
+- verificar que Firebase/Drive unavailable no rompe render;
+- iniciar OCI_POC_RUNBOOK.
 
-## 11.2 Smoke OCI
+### No-scope
 
-- architecture ARM64;
-- Node version;
-- process health;
-- frontend load;
-- Caddy proxy;
-- HTTPS;
-- 3000 cerrado;
-- reboot recovery.
+- OCI;
+- DNS;
+- Gemini real;
+- código funcional;
+- dependencias;
+- Google config.
 
-## 11.3 Guest E2E
+### Authorized files/areas
 
-```text
-open app
-→ select supported files
+Preferidos:
+
+- docs/engineering/OCI_POC_RUNBOOK.md
+
+Sólo si el Issue futuro lo autoriza expresamente:
+
+- evidencia documental adicional bajo docs/engineering.
+
+No código.
+
+### External changes allowed
+
+NONE.
+
+### Human gates
+
+NONE.
+
+### Tests
+
+- npm ci;
+- npm run build;
+- npm test;
+- npm run test:firestore-rules;
+- npm start;
+- GET /api/health;
+- render sin Firebase;
+- guest local selection;
+- DOCX route test existente.
+
+### Acceptance criteria
+
+PASS si:
+
+- build/test green;
+- app carga en modo invitado sin config Google/Firebase;
+- guest page accesible;
+- health 200;
+- DOCX route funciona;
+- no cambio de código.
+
+### Evidence required
+
+- base/head SHA;
+- command results;
+- test counts;
+- screenshots sanitizadas de “Modo invitado” y guest page;
+- health response;
+- lista de env vars deliberadamente no configuradas, sin valores.
+
+### STOP
+
+- guest flow no renderiza sin Firebase/Drive;
+- requiere código;
+- requiere dependency change.
+
+### Rollback
+
+No hay cambio externo. Descartar branch si falla.
+
+### Expected HH
+
+1.0–2.0 HH.
+
+### Handoff format
+
+~~~text
+WORK ITEM: F1-WI-01
+BASE:
+BRANCH:
+PR:
+HEAD:
+BUILD: PASS|FAIL
+TESTS: PASS|FAIL
+GUEST_WITHOUT_FIREBASE: PASS|FAIL
+HEALTH: PASS|FAIL
+DOCX_ROUTE: PASS|FAIL
+CODE_CHANGES: NONE
+STATE: READY_FOR_REVIEW|BLOCKED
+STOP → SUPERVISOR
+~~~
+
+## F1-WI-02 — OCI Zero-Cost Gate + Minimal Provisioning
+
+### Objetivo
+
+Validar la cuenta real y crear una única VM A1 mínima sólo si la consola demuestra costo base USD 0.
+
+### Dependencia
+
+- F1-WI-01 accepted.
+- sesión OCI autorizada.
+
+### Scope
+
+- inspección account/home region;
+- A1 availability;
+- 1 OCPU / 4 GB;
+- ~50 GB boot;
+- red mínima;
+- ephemeral public IPv4;
+- una VM;
+- registrar configuración real.
+
+### No-scope
+
+- Node/app deploy;
+- Caddy;
+- DNS;
+- Google config;
+- PAYG;
+- servicios OCI adicionales.
+
+### Authorized files/areas
+
+- docs/engineering/OCI_POC_RUNBOOK.md
+
+No application code.
+
+### External changes allowed
+
+Después del gate:
+
+- una VM A1;
+- recursos mínimos de VCN/subnet/route/security;
+- boot volume incluido;
+- public IPv4 si costo USD 0.
+
+### Human gates
+
+**HUMAN_GATE_CREATE_OCI obligatorio antes de CREATE.**
+
+### Tests
+
+- revisar costo base;
+- revisar free eligibility;
+- SSH reachability sólo con public key;
+- verificar que no se creó recurso extra.
+
+### Acceptance criteria
+
+PASS si:
+
+- A1 elegible;
+- costo base USD 0 sin credits;
+- no PAYG;
+- VM única creada;
+- recursos mínimos.
+
+### Evidence required
+
+- captura previa sanitizada;
+- home region;
+- shape/OCPU/RAM;
+- boot;
+- cost estimate;
+- lista de recursos creados sin OCIDs sensibles.
+
+### STOP
+
+- costo > 0;
+- costo ambiguo por credits;
+- PAYG requerido;
+- A1 no elegible;
+- public IPv4 con cargo;
+- storage con cargo;
+- capacity sin alternativa free aprobada.
+
+### Rollback
+
+Terminar los recursos creados en el Work Item y comprobar que no quede recurso facturable.
+
+### Expected HH
+
+1.5–2.5 HH.
+
+### Handoff format
+
+~~~text
+WORK ITEM: F1-WI-02
+OCI_GATE: PASS|BLOCKED
+HOME_REGION:
+A1: AVAILABLE|NOT_AVAILABLE
+CONFIG: 1 OCPU / 4 GB / ~50 GB
+BASE_COST: USD 0|NON_ZERO|UNKNOWN
+HUMAN_GATE_CREATE_OCI: APPROVED|NOT_APPROVED
+RESOURCES_CREATED:
+ROLLBACK_STATUS:
+STATE:
+STOP → SUPERVISOR
+~~~
+
+## F1-WI-03 — ARM64 + Build/Runtime
+
+### Objetivo
+
+Resolver el riesgo ARM64 ejecutando el SHA real en A1 sin cambiar código ni dependencias.
+
+### Dependencia
+
+- F1-WI-02 accepted;
+- VM A1 activa.
+
+### Scope
+
+- uname -m;
+- Node 24 ARM64;
+- npm;
+- obtener SHA;
+- npm ci;
+- npm run build;
+- npm test;
+- test Firestore Rules sólo si Java/emulador no añade complejidad innecesaria; CI exact-head sigue siendo obligatorio;
+- npm start;
+- localhost /api/health;
+- medir RAM/tiempo.
+
+### No-scope
+
+- arreglar package-lock;
+- reemplazar paquetes;
+- Docker;
+- Google config;
+- DNS.
+
+### Authorized files/areas
+
+- docs/engineering/OCI_POC_RUNBOOK.md
+
+No package.json/package-lock ni código.
+
+### External changes allowed
+
+- paquetes OS necesarios;
+- Node 24;
+- checkout/release en la VM.
+
+### Human gates
+
+No gate nuevo si F1-WI-02 ya autorizó la VM.
+Si se pretende cambiar CPU/RAM o recurso: volver al gate aplicable.
+
+### Tests
+
+- architecture;
+- npm ci;
+- build;
+- tests;
+- start;
+- health;
+- memory snapshot.
+
+### Acceptance criteria
+
+PASS si el producto instala, compila, testea y arranca en ARM64 sin modificación de repo.
+
+### Evidence required
+
+- uname;
+- Node/npm;
+- SHA;
+- tiempos;
+- peak RAM aproximado;
+- command output resumido;
+- health.
+
+### STOP
+
+- native package failure;
+- OOM;
+- dependency workaround requerido;
+- cambio de código requerido.
+
+### Rollback
+
+Eliminar release fallido. Si la VM queda inconsistente, reprovisionar bajo el mismo costo/gate o terminarla.
+
+### Expected HH
+
+1.5–2.5 HH.
+
+### Handoff format
+
+~~~text
+WORK ITEM: F1-WI-03
+ARCH: ARM64
+NODE:
+SHA:
+NPM_CI: PASS|FAIL
+BUILD: PASS|FAIL
+TESTS: PASS|FAIL
+RUNTIME: PASS|FAIL
+PEAK_RAM:
+CODE_CHANGES_REQUIRED: YES|NO
+STATE:
+STOP → SUPERVISOR
+~~~
+
+## F1-WI-04 — Service + Network + Caddy + Free HTTPS Hostname
+
+### Objetivo
+
+Exponer el guest runtime por HTTPS usando systemd, Caddy y hostname gratuito, sin tocar Google ni DNS corporativo.
+
+### Dependencia
+
+- F1-WI-03 accepted.
+
+### Scope
+
+- usuario de servicio;
+- release directory;
+- EnvironmentFile si hace falta configuración server-side;
+- systemd;
+- journald;
+- firewall host;
+- OCI inbound rules;
+- 22 restringido;
+- 80/443 público;
+- 3000 no público;
+- Caddy;
+- hostname POC gratuito;
+- Automatic HTTPS;
+- HTTP→HTTPS.
+
+### No-scope
+
+- Firebase;
+- OAuth;
+- Picker;
+- Drive;
+- app.ingenierosasesores.cl;
+- corporate DNS;
+- Load Balancer.
+
+### Authorized files/areas
+
+Si el futuro Issue lo autoriza:
+
+- docs/engineering/OCI_POC_RUNBOOK.md;
+- deploy/oci/Caddyfile.example;
+- deploy/oci/g-inf-01.service.example.
+
+No application code.
+
+### External changes allowed
+
+- configuración VM;
+- network rules;
+- hostname POC gratuito;
+- DNS de ese hostname;
+- certificado ACME.
+
+### Human gates
+
+**HUMAN_GATE_DOMAIN obligatorio antes de crear/modificar hostname POC.**
+
+HUMAN_GATE_GOOGLE_CONFIG no aplica.
+
+### Tests
+
+- systemctl start/stop/restart;
+- restart on failure;
+- port 3000 no reachable externally;
+- 80 redirect;
+- 443 valid;
+- health por HTTPS;
+- Caddy logs sin secrets.
+
+### Acceptance criteria
+
+PASS si:
+
+- service supervisado;
+- 3000 privado;
+- HTTPS válido;
+- hostname costo cero;
+- app guest carga;
+- ninguna Google config mutada.
+
+### Evidence required
+
+- Caddy/systemd config sanitizada;
+- ports;
+- TLS issuer/expiry;
+- hostname;
+- health HTTPS;
+- screenshot app;
+- costo sigue USD 0.
+
+### STOP
+
+- dominio/hostname requiere pago;
+- Caddy requiere secret no previsto;
+- TLS no es válido;
+- 3000 público;
+- Google config parece necesaria para guest.
+
+### Rollback
+
+- retirar hostname POC;
+- detener Caddy;
+- revertir reglas a estado administrativo mínimo;
+- Google hosting sigue activo.
+
+### Expected HH
+
+2.5–4.0 HH.
+
+### Handoff format
+
+~~~text
+WORK ITEM: F1-WI-04
+SYSTEMD: PASS|FAIL
+PORT_3000_PUBLIC: NO|YES
+CADDY: PASS|FAIL
+HOSTNAME:
+HTTPS: PASS|FAIL
+HUMAN_GATE_DOMAIN: APPROVED|NOT_APPROVED
+GOOGLE_CONFIG_CHANGED: NO
+BASE_COST: USD 0|OTHER
+STATE:
+STOP → SUPERVISOR
+~~~
+
+## F1-WI-05 — Guest Analyzer E2E
+
+### Objetivo
+
+Demostrar el valor útil de FASE 1 en OCI: archivos locales → clave temporal → Gemini → resultado validado → DOCX.
+
+### Dependencia
+
+- F1-WI-04 accepted;
+- HTTPS POC activo;
+- usuario de prueba autorizado dispone de clave temporal Gemini.
+
+### Scope
+
+- UI actual;
+- archivos locales no sensibles;
+- formatos soportados;
+- selección límite;
+- temporary key;
+- POST /api/guest/analyze;
+- validación TITLE_STUDY;
+- resultado;
+- DOCX;
+- errores controlados;
+- memoria/latencia aproximada.
+
+### No-scope
+
+- alias propietario como requisito;
+- Firebase;
+- Firestore;
+- Drive;
+- Picker;
+- Google OAuth;
+- corporate domain.
+
+### Authorized files/areas
+
+- docs/engineering/OCI_POC_RUNBOOK.md
+
+No código salvo un Work Item nuevo si aparece blocker real.
+
+### External changes allowed
+
+- llamadas Gemini iniciadas por usuario con clave temporal.
+
+No Google Console mutation.
+
+### Human gates
+
+Ninguno adicional.
+La clave Gemini nunca se pide ni registra en handoff.
+
+### Tests
+
+Caso positivo:
+
+~~~text
+open
+→ local files
 → temporary Gemini key
 → analyze
-→ validated JSON
-→ enriched result
+→ valid TITLE_STUDY
+→ result
 → DOCX
-→ download
-```
+~~~
 
-También:
+Casos negativos mínimos:
 
-- ningún archivo legible;
-- invalid file;
-- selección sobre límite;
-- Gemini auth/quota error;
-- timeout;
-- DOCX invalid payload.
+- sin clave;
+- sin archivos;
+- archivo no legible;
+- límite excedido;
+- provider 401/403;
+- provider 429/error;
+- DOCX invalid payload;
+- refresh/navigation behavior documentado.
 
-## 11.4 Authenticated E2E
+### Acceptance criteria
 
-```text
-Google Sign-In
-→ project
-→ Firestore metadata
-→ Drive authorization
-→ Drive/Picker
-→ documents
-→ Gemini
-→ validated JSON
-→ DOCX
-→ Drive persistence
-→ Firestore history
-→ reopen
-```
+PASS si el flujo principal produce resultado validado y DOCX desde OCI sin Firebase/Drive/OAuth.
 
-Casos negativos:
-
-- logout;
-- revoked Drive token;
-- stale Drive reference;
-- otro UID no accede;
-- Picker cancel;
-- Firestore failure;
-- Gemini failure.
-
-## 11.5 Evidencia mínima por test
+### Evidence required
 
 - SHA;
 - hostname;
-- fecha/hora;
-- test name;
-- resultado PASS/FAIL;
-- HTTP/status si aplica;
-- screenshot sanitizada cuando ayude;
-- no datos personales;
-- no secrets.
+- test cases;
+- PASS/FAIL;
+- latencia aproximada;
+- RAM;
+- screenshot sanitizada;
+- DOCX sample no sensible;
+- logs sin API key.
 
-# 12. Rollback y continuidad
+### STOP
 
-## 12.1 Principio
+- clave aparece en log;
+- guest flow depende de Firebase/Drive;
+- cambio de código requerido;
+- OOM;
+- costo OCI deja de ser USD 0.
 
-```text
-OCI_RUNTIME = disposable
-GOOGLE_DATA_SERVICES = remain source of truth
-GOOGLE_HOSTING = rollback until cutover acceptance
-```
+### Rollback
 
-## 12.2 Rollback de release
+Dejar de usar hostname OCI y volver al hosting Google.
 
-Layout futuro:
+### Expected HH
 
-```text
-/opt/g-inf-01/releases/<sha-a>
-/opt/g-inf-01/releases/<sha-b>
-/opt/g-inf-01/current -> releases/<sha-b>
-```
+1.5–2.5 HH.
 
-Rollback:
+### Handoff format
 
-1. apuntar `current` a SHA anterior;
-2. restart;
-3. health;
-4. smoke.
+~~~text
+WORK ITEM: F1-WI-05
+GUEST_UI: PASS|FAIL
+LOCAL_FILES: PASS|FAIL
+TEMP_GEMINI_KEY: PASS|FAIL
+ANALYSIS: PASS|FAIL
+VALIDATED_RESULT: PASS|FAIL
+DOCX: PASS|FAIL
+FIREBASE_REQUIRED: NO|YES
+DRIVE_REQUIRED: NO|YES
+SECRET_LOGGED: NO|YES
+STATE:
+STOP → SUPERVISOR
+~~~
 
-## 12.3 Rollback POC hostname
+## F1-WI-06 — Recovery, Rollback, Observation, Phase-1 Acceptance
 
-Si DuckDNS falla:
+### Objetivo
 
-- no afecta dominio corporativo;
-- retirar Caddy site;
-- retirar Google entries POC si ya fueron añadidas y el POC se abandona;
-- seguir en Google hosting.
+Demostrar que el runtime OCI de FASE 1 es reemplazable y que el retorno al hosting Google es inmediato y seguro.
 
-## 12.4 Rollback corporativo
+### Dependencia
 
-Antes de cutover:
+- F1-WI-05 accepted.
 
-- registrar DNS anterior;
-- TTL razonablemente bajo cuando el control DNS exista;
-- no apagar Google;
-- mantener origins previos.
+### Scope
 
-Ante fallo:
+- reboot;
+- systemd/Caddy recovery;
+- health;
+- guest smoke;
+- release rollback;
+- reconstrucción documentada;
+- observar CPU/RAM/network/disk;
+- observar costo;
+- registrar capacity/reclaim signals;
+- validar Google hosting rollback;
+- cierre de FASE 1.
 
-1. revertir A/CNAME de `app.ingenierosasesores.cl` al destino anterior o retirar acceso OCI según diseño;
-2. verificar propagación;
-3. smoke Google;
-4. conservar OCI para diagnóstico sin tráfico;
-5. no borrar Firestore/Drive.
+### No-scope
 
-## 12.5 Pérdida/reclaim VM
+- Auth;
+- Firestore;
+- Drive;
+- OAuth;
+- corporate DNS;
+- production cutover.
 
-Respuesta:
+### Authorized files/areas
 
-1. declarar OCI endpoint unavailable;
-2. usuarios continúan/retornan al hosting Google;
-3. solicitar nuevamente `HUMAN_GATE_CREATE_OCI` si se debe crear reemplazo y las condiciones económicas cambiaron;
-4. crear A1 sólo si costo sigue USD 0;
-5. obtener nuevo public IPv4;
-6. actualizar hostname POC bajo `HUMAN_GATE_DOMAIN` si corresponde;
-7. reprovisionar desde runbook;
-8. reinyectar secrets;
-9. health + E2E;
-10. devolver tráfico sólo tras PASS.
+- docs/engineering/OCI_POC_RUNBOOK.md;
+- docs de operación autorizadas por el Issue futuro.
 
-## 12.6 Datos locales
+### External changes allowed
 
-No almacenar como único ejemplar:
+- reboot;
+- rollback de release;
+- eventual reprovision sólo si existe autorización vigente y costo sigue USD 0.
 
-- uploads;
-- reportes;
-- análisis;
-- historial;
-- API keys;
-- secretos.
+### Human gates
 
-Los logs pueden perderse con la VM; no son fuente funcional de verdad.
+No nuevo gate para pruebas no destructivas.
+Si se requiere crear una nueva VM para recovery real y la autorización previa no cubre la recreación: HUMAN_GATE_CREATE_OCI de nuevo.
 
-# 13. Estimación de esfuerzo
+### Tests
 
-Las HH son horas de ingeniería activa, no incluyen esperas de propagación DNS, disponibilidad A1, revisión humana, verificación Google ni ventanas de observación.
+- reboot;
+- service auto-start;
+- HTTPS;
+- guest smoke;
+- release rollback;
+- rebuild procedure walkthrough;
+- cost check;
+- Google host still available.
 
-| Bloque | POC HH | Estable incremental HH | Notas |
-|---|---:|---:|---|
-| Preparación/revalidación | 1.5–2.5 | 0.5–1 | SHA, tests, checklist |
-| Gate OCI/costo | 1–2 | 0.5–1 | lectura + evidencia; no provisioning en #104 |
-| VM/red mínima | 1–2 | 0.5–1 | si A1 disponible |
-| ARM64 real | 1.5–3 | 0.5–1 | build/test/medición |
-| Runtime/systemd | 2–3 | 1–2 | permisos/restart |
-| Caddy/TLS | 1.5–2.5 | 1–2 | hostname/cert |
-| Hostname POC | 0.5–1.5 | — | no incluye esperas |
-| Guest + DOCX | 1.5–2.5 | 0.5–1 | casos representativos |
-| Google config gate/aplicación | 1–2 | 1–2 | POC y luego corporativo |
-| Firebase/Firestore | 1.5–2.5 | 0.5–1 | E2E real |
-| Drive/Picker | 2–3.5 | 0.5–1.5 | OAuth/referrer/revocation |
-| Gemini/secrets | 1–2 | 0.5–1 | temporal/alias si autorizado |
-| E2E integral | 2–3 | 1–2 | guest + authenticated |
-| Reboot/rollback/recovery | 2–3.5 | 1–2 | incluye release rollback |
-| Documentación/runbook | 1.5–2.5 | 1–2 | evidencia reproducible |
-| Deploy reproducible automatizado | — | 3–5 | Work Item separado |
-| Dominio corporativo/cutover prep | — | 1.5–3 | app.ingenierosasesores.cl |
-| Observabilidad/hardening estable | — | 1.5–3 | sin paid services |
-| Contingencia técnica | 2–4 | 2–4 | no incluye rediseño mayor |
+### Acceptance criteria
 
-### Total POC
+PASS si:
 
-**18–28 HH** como rango de planificación realista si:
+- reboot recupera servicio;
+- rollback de release funciona;
+- procedimiento de rebuild es reproducible;
+- no hay datos únicos OCI;
+- costo observado USD 0;
+- Google hosting sigue operativo.
 
-- A1 está disponible;
-- no hay incompatibilidad ARM64;
-- DuckDNS/Google se acepta para prueba;
-- no aparecen defects funcionales.
+### Evidence required
 
-### Migración preparada para uso estable
+- timestamps;
+- service states;
+- health;
+- release SHAs;
+- cost screenshot;
+- observation summary;
+- rollback check.
 
-**28–44 HH totales incluyendo POC**, equivalente a **10–16 HH incrementales** después de un POC limpio para:
+### STOP
 
-- deploy reproducible;
-- configuración corporativa;
-- hardening;
-- E2E final;
-- cutover/rollback documentado;
-- actualización documental posterior.
+- paid line item;
+- reclaim/inestabilidad no aceptada;
+- rollback Google roto;
+- estado único local;
+- recovery depende de secreto no recuperable.
 
-No incluye migrar Firebase/Firestore/Drive/Gemini porque no forma parte de la estrategia.
+### Rollback
 
-## 13.1 Factores que amplían HH
+Volver completamente al hosting Google y terminar OCI si el Humano decide abandonar el POC.
 
-- A1 sin capacidad;
-- ARM64 falla y exige Work Item de dependencias;
-- Google exige verificación adicional del dominio;
-- acceso DNS corporativo incompleto;
-- defectos ya existentes descubiertos en E2E;
-- necesidad de reconstrucción completa demostrada dos veces;
-- OAuth consent/verification fuera del estado esperado;
-- problemas de quota Gemini/Drive;
-- observación de reclaim;
-- cambios de política OCI.
+### Expected HH
 
-# 14. Matriz de riesgos
+2.0–3.5 HH.
 
-| Riesgo | Probabilidad | Impacto | Mitigación | STOP |
-|---|---|---|---|---|
-| A1 sin capacidad | Media / externa | Alto | esperar, AD alternativo permitido, E2 sólo si free | no paid fallback |
-| A1 no elegible en cuenta | Desconocida hasta consola | Alto | gate costo real | cualquier costo/PAYG |
-| Incompatibilidad ARM64 | Baja-media | Alto | build/test real antes de config externa | cambio de dependency requerido |
-| RAM 4 GB insuficiente | Baja-media | Medio | medir; 6 GB sólo dentro $0 | OOM sin margen free |
-| E2 1 GB insuficiente | Alta para build | Medio-alto | no preferir E2 | build/runtime inestable |
-| Reclaim idle | Material | Alto | disposable VM + Google rollback | reclaim observado antes de stable |
-| Pérdida VM | Media vida útil | Alto | runbook/rebuild/no local state | estado único local |
-| Cambio política Free Tier | Media a largo plazo | Alto | revalidar antes de create/recreate | costo deja de ser $0 |
-| Crédito trial oculta gasto | Media | Alto | ignorar créditos; costo base $0 | UI no separa costo/crédito |
-| Public IPv4 cobrado | Desconocida hasta account | Alto | console gate | cualquier line item > $0 |
-| Hostname DuckDNS suspendido/cambia política | Baja-media | Medio | sólo POC; corporate later | servicio deja de cumplir |
-| DuckDNS rechazado por Google | Media/desconocida | Medio-alto | gate Google; esperar corporate DNS | origin/domain no verificable |
-| Certificado/ACME falla | Baja | Medio | DNS/80/443/Caddy checks | no HTTPS |
-| OAuth origin mismatch | Media | Alto | exact scheme/host/port | login/Drive falla |
-| Firebase Authorized Domain faltante | Media | Alto | checklist Google | Auth falla |
-| Picker key restrictions | Media | Medio | origin + docs.google.com + APIs | key invalid |
-| DNS corporativo sin acceso | Alta hoy | Alto para cutover | POC independiente | no cutover |
-| WordPress afectado por DNS | Baja si aislado | Alto | sólo subdominio app; no apex | cambio toca apex/WWW |
-| Secret leak | Baja si disciplina | Crítico | 0600/env/no logs | cualquier secret expuesto |
-| Puerto 3000 público | Evitable | Alto | NSG/firewall | 3000 reachable |
-| Dependencia Google externa | Existente | Medio | preserve error semantics | falla externa no recuperable |
-| Gemini quota/billing | Existente | Medio | user key/free tier/account check | paid requirement |
-| Firestore/Drive data corruption | Baja | Crítico | no migration; existing rules | write isolation falla |
-| Deploy mutable no reproducible | Media POC | Medio | release SHA/runbook | no se puede identificar SHA |
-| Cutover prematuro | Controlable | Crítico | HUMAN_GATE_CUTOVER | Google apagado antes de PASS |
-| Retiro temprano de Google config | Controlable | Alto | coexistencia origins | rollback deja de autenticar |
+### Handoff format
 
-# 15. Estrategia de observación para cero costo
+~~~text
+WORK ITEM: F1-WI-06
+REBOOT: PASS|FAIL
+RELEASE_ROLLBACK: PASS|FAIL
+REBUILD: PASS|FAIL|DOCUMENTED_ONLY
+GOOGLE_HOST_ROLLBACK: PASS|FAIL
+OBSERVED_OCI_COST: USD 0|OTHER|UNKNOWN
+PHASE_1_STATE: ACCEPTANCE_READY|BLOCKED
+OPEN_RISKS:
+STOP → SUPERVISOR
+~~~
 
-Durante POC/stable candidate se registra:
+# 10. FASE 1 — Definition of Done
 
-- Cost Analysis / Usage si está disponible;
-- balance de trial **sólo como dato**, nunca como criterio;
-- consumo A1 OCPU/RAM allocation;
-- block volume allocation;
-- IP;
-- CPU/RAM/network;
-- eventos/reclaim;
-- uptime.
+FASE 1 está lista para aceptación sólo si:
 
-Criterio económico:
+1. A1 real ejecuta el SHA aprobado;
+2. ARM64 está demostrado;
+3. app se inicia con systemd;
+4. Caddy sirve HTTPS;
+5. hostname POC cuesta USD 0;
+6. 3000 no está expuesto;
+7. /api/health pasa;
+8. la interfaz actual carga;
+9. selección local funciona;
+10. clave temporal funciona;
+11. análisis Gemini funciona;
+12. resultado TITLE_STUDY se valida;
+13. resultado se muestra;
+14. DOCX se genera/descarga;
+15. Firebase/Drive/OAuth no fueron necesarios;
+16. Google hosting continúa disponible;
+17. costo OCI observado sigue USD 0;
+18. no se cambió código para conseguirlo;
+19. rollback/recovery están documentados;
+20. Supervisor acepta evidencia.
 
-```text
-observed recurring OCI cost = USD 0
-AND all used resources = approved allowlist
-AND no trial credits required to offset charge
-```
+FASE 1 no necesita demostrar ningún flujo autenticado.
 
-Si se observa reducción de créditos atribuible al POC o una línea facturable:
+# 11. Descomposición de FASE 2
 
-**FAIL → STOP → no cutover.**
+FASE 2 sólo se propone; no se ejecuta ni crea desde #104.
 
-# 16. Propuesta de Work Items posteriores
+## Resumen
 
-No crear estos Issues desde #104.
+| ID propuesto | Objetivo | HH |
+|---|---|---:|
+| F2-WI-01 | Firebase Auth / Google Sign-In | 1.5–2.5 |
+| F2-WI-02 | Firestore proyectos/historial | 1.5–2.5 |
+| F2-WI-03 | Drive + GIS + Picker | 2.5–4.0 |
+| F2-WI-04 | app.ingenierosasesores.cl + Google origin config | 1.5–3.0 |
+| F2-WI-05 | E2E autenticado + recovery | 2.0–3.5 |
+| F2-WI-06 | Cutover estable | 2.0–4.0 |
+| Contingencia FASE 2 | integraciones externas | 1.0–2.0 |
 
-## WI-A — Ejecutar #103 POC bajo estrategia aprobada
+**FASE 2 estimada: 12–22 HH de ingeniería activa.**
 
-Reutilizar Issue #103, no crear duplicado.
+**Total FASE 1 + FASE 2: 23–41 HH**, sin contar esperas externas ni observación calendario.
 
-Scope:
+## F2-WI-01 — Firebase Authentication / Google Sign-In
 
-- Fases 1–20;
-- OCI/ARM64/hostname POC;
-- gates;
-- runbook;
-- cero costo;
-- no cutover.
+### Objetivo
 
-## WI-B — Release packaging + deploy reproducible OCI
+Habilitar Google Sign-In sobre el hostname OCI aprobado sin cambiar el guest flow.
 
-Crear sólo después del POC PASS.
+### Dependencia
 
-Scope potencial:
+- FASE 1 accepted.
 
-- artifact/release;
-- deploy script;
-- release directories;
-- rollback;
-- GitHub Actions Environment;
-- SSH least privilege;
-- sin secrets Google en CI salvo necesidad demostrada.
+### Scope
 
-## WI-C — Hardening OCI stable candidate
+- Firebase Authorized Domain;
+- OAuth authorized origin si aplica al flujo Firebase;
+- signInWithPopup;
+- logout;
+- session restoration;
+- errores.
 
-- systemd hardening;
-- firewall;
-- patch policy;
-- log rotation;
-- disaster recovery drill;
-- quota controls si se verifican nombres reales;
-- no paid services.
+### No-scope
 
-## WI-D — Preparar app.ingenierosasesores.cl
+- Firestore business flows;
+- Drive;
+- Picker;
+- corporate cutover.
 
-Sólo cuando exista control DNS.
+### Authorized files/areas
 
-- subdomain;
+Preferencia: documentación/runbook y configuración externa.
+Código sólo si evidencia demuestra incompatibilidad y el Issue autoriza paths exactos.
+
+### External changes allowed
+
+Sólo cambios Google/Firebase enumerados y aprobados.
+
+### Human gates
+
+**HUMAN_GATE_GOOGLE_CONFIG obligatorio.**
+
+### Tests
+
+- unauthenticated guest sigue funcionando;
+- login popup;
+- logout;
+- refresh/session;
+- failure/retry.
+
+### Acceptance criteria
+
+Auth funciona en OCI y guest no regresa.
+
+### Evidence required
+
+Before/after sanitizado de Authorized Domains/origins + E2E auth.
+
+### STOP
+
+- requiere nuevo scope;
+- requiere paid service;
+- requiere client secret en frontend;
+- cambio no incluido en gate.
+
+### Rollback
+
+Retirar entradas del hostname OCI añadidas en este WI; mantener config previa y guest.
+
+### Expected HH
+
+1.5–2.5 HH.
+
+### Handoff format
+
+~~~text
+WORK ITEM: F2-WI-01
+HUMAN_GATE_GOOGLE_CONFIG:
+FIREBASE_AUTH: PASS|FAIL
+GOOGLE_SIGN_IN: PASS|FAIL
+GUEST_REGRESSION: PASS|FAIL
+EXTERNAL_CHANGES:
+ROLLBACK:
+STATE:
+STOP → SUPERVISOR
+~~~
+
+## F2-WI-02 — Firestore Projects / History
+
+### Objetivo
+
+Restaurar proyectos persistentes e historial sobre el mismo backend Firestore.
+
+### Dependencia
+
+- F2-WI-01 accepted.
+
+### Scope
+
+- databaseId real;
+- create/list/open project;
+- UID isolation;
+- persisted analysis/report history;
+- rules behavior.
+
+### No-scope
+
+- Drive/Picker;
+- data migration;
+- schema change;
+- rules rewrite salvo issue separado.
+
+### Authorized files/areas
+
+- runbook/evidence;
+- no schema/rules unless defect separado y autorizado.
+
+### External changes allowed
+
+Ninguna mutación estructural; sólo uso del Firestore existente para pruebas autorizadas.
+
+### Human gates
+
+HUMAN_GATE_GOOGLE_CONFIG sólo si surge cambio de config no cubierto.
+
+### Tests
+
+- CRUD funcional previsto;
+- other-UID denial;
+- history;
+- reopen;
+- Firestore Rules tests.
+
+### Acceptance criteria
+
+Persistencia existente funciona desde OCI sin migración.
+
+### Evidence required
+
+test matrix, project IDs sanitizados, rules results.
+
+### STOP
+
+- data migration necesaria;
+- rules/schema change requerido;
+- acceso cross-user.
+
+### Rollback
+
+Eliminar datos de prueba si corresponde; guest y Google hosting siguen.
+
+### Expected HH
+
+1.5–2.5 HH.
+
+### Handoff format
+
+~~~text
+WORK ITEM: F2-WI-02
+FIRESTORE: PASS|FAIL
+DATABASE_ID: CONFIRMED|UNKNOWN
+PROJECTS: PASS|FAIL
+HISTORY: PASS|FAIL
+UID_ISOLATION: PASS|FAIL
+SCHEMA_CHANGE: NO|REQUIRED
+STATE:
+STOP → SUPERVISOR
+~~~
+
+## F2-WI-03 — Drive / GIS / Picker
+
+### Objetivo
+
+Habilitar almacenamiento/selección Drive y Picker sobre OCI con el scope actual.
+
+### Dependencia
+
+- F2-WI-02 accepted.
+
+### Scope
+
+- GIS token client;
+- drive.file;
+- authorized JS origin;
+- Picker API;
+- API key referrer restrictions;
+- docs.google.com restriction;
+- upload/read/select;
+- revoked token handling.
+
+### No-scope
+
+- ampliar OAuth scopes;
+- migrar a Object Storage;
+- crear file browser propio;
+- corporate cutover.
+
+### Authorized files/areas
+
+- runbook/evidence;
+- código sólo con issue separado si config externa no basta.
+
+### External changes allowed
+
+Cambios mínimos Google aprobados para hostname OCI.
+
+### Human gates
+
+**HUMAN_GATE_GOOGLE_CONFIG obligatorio para el diff exacto.**
+
+### Tests
+
+- authorize;
+- scope;
+- picker open/cancel;
+- upload;
+- read;
+- folder flow;
+- revoke/reauthorize.
+
+### Acceptance criteria
+
+Drive/Picker funcionan sin ampliar scope ni cambiar arquitectura.
+
+### Evidence required
+
+before/after config sanitizado, scope observado, E2E Drive.
+
+### STOP
+
+- scope adicional requerido;
+- credencial nueva no aprobada;
+- billing requerido;
+- arquitectura nueva.
+
+### Rollback
+
+Retirar origin/referrer agregado y volver a Google host/guest.
+
+### Expected HH
+
+2.5–4.0 HH.
+
+### Handoff format
+
+~~~text
+WORK ITEM: F2-WI-03
+HUMAN_GATE_GOOGLE_CONFIG:
+DRIVE_AUTH: PASS|FAIL
+SCOPE_DRIVE_FILE: PASS|FAIL
+PICKER: PASS|FAIL
+UPLOAD_READ: PASS|FAIL
+NEW_SCOPE_REQUIRED: NO|YES
+STATE:
+STOP → SUPERVISOR
+~~~
+
+## F2-WI-04 — Corporate Hostname app.ingenierosasesores.cl
+
+### Objetivo
+
+Añadir hostname corporativo estable sin afectar WordPress ni retirar el hostname POC.
+
+### Dependencia
+
+- F2-WI-03 accepted;
+- acceso DNS corporativo disponible.
+
+### Scope
+
+- app.ingenierosasesores.cl;
+- registro DNS;
 - Caddy/TLS;
 - Firebase Authorized Domain;
 - OAuth origin;
-- Picker restriction;
-- no cutover todavía.
+- Picker referrer;
+- E2E smoke;
+- coexistencia POC.
 
-## WI-E — E2E corporativo + cutover gate
+### No-scope
 
-- full E2E por `app.ingenierosasesores.cl`;
-- observation;
-- rollback rehearsal;
-- `HUMAN_GATE_CUTOVER`;
-- DNS cutover si aprobado;
-- Google hosting se mantiene durante ventana definida.
+- apex;
+- www;
+- WordPress;
+- cutover final;
+- desmantelar POC.
 
-## WI-F — Actualizar arquitectura canónica
+### Authorized files/areas
 
-Después de cutover aceptado:
+- runbook;
+- configs example si Issue los autoriza.
 
-- SOFTWARE_ARCHITECTURE;
-- TECHNICAL_SPECIFICATION deployment topology;
-- verification deployment wording;
-- current state;
-- no cambio funcional.
+### External changes allowed
 
-## WI-G — Retiro controlado de hosting Google
+DNS del subdominio app + Google config exacta aprobada.
 
-Sólo si el Humano decide retirar:
+### Human gates
 
-- verificar OCI estable;
-- backup/rollback alternativo;
-- costo USD 0 aún válido;
-- retirar hosting, no servicios Google funcionales;
-- documentación final.
+- **HUMAN_GATE_DOMAIN**
+- **HUMAN_GATE_GOOGLE_CONFIG**
 
-# 17. Decision tree
+Ambos explícitos.
 
-```text
-#104 accepted?
-  no → STOP
-  yes
-    ↓
-#103 explicitly reactivated?
-  no → STOP
-  yes
-    ↓
-P0 local PASS?
-  no → STOP
-  yes
-    ↓
-OCI account shows A1 1 OCPU/4 GB + ~50 GB + public IP at base USD 0?
-  no → STOP
-  yes
-    ↓
-HUMAN_GATE_CREATE_OCI approved?
-  no → STOP
-  yes
-    ↓
-Create single VM
-    ↓
-ARM64 PASS?
-  no → STOP / separate issue
-  yes
-    ↓
-runtime + systemd + network + Caddy PASS?
-  no → rollback / STOP
-  yes
-    ↓
-HUMAN_GATE_DOMAIN approved?
-  no → STOP before DNS
-  yes
-    ↓
-Free POC hostname + HTTPS PASS?
-  no → STOP; no domain purchase
-  yes
-    ↓
-Guest E2E PASS?
-  no → rollback / STOP
-  yes
-    ↓
-HUMAN_GATE_GOOGLE_CONFIG approved?
-  no → STOP before Google
-  yes
-    ↓
-Auth + Firestore + Drive/Picker + Gemini + DOCX + E2E PASS?
-  no → rollback / STOP
-  yes
-    ↓
-reboot + rebuild + observation PASS and cost = USD 0?
-  no → STOP
-  yes
-    ↓
-wait for corporate DNS access + separate WIs
-    ↓
-app.ingenierosasesores.cl E2E PASS?
-  no → no cutover
-  yes
-    ↓
-HUMAN_GATE_CUTOVER approved?
-  no → keep Google
-  yes → controlled cutover in separate WI
-```
+### Tests
 
-# 18. Open questions before POC
+- DNS;
+- TLS;
+- guest;
+- auth;
+- Firestore;
+- Drive/Picker.
 
-1. ¿La consola OCI actual muestra A1 1 OCPU/4 GB como Free/Always Free en Chile Central (Santiago)?
-2. ¿El costo base, ignorando trial credits, aparece como USD 0?
-3. ¿La public IPv4 se muestra sin cargo?
-4. ¿A1 tiene capacidad al momento de creación?
-5. ¿Ubuntu LTS ARM64 seleccionado aparece elegible?
-6. ¿4 GB bastan para build y payload representativo?
-7. ¿La dependencia optional LZMA x64 afecta efectivamente Rollup en ARM64?
-8. ¿El proyecto OAuth actual acepta un subdominio DuckDNS para POC?
-9. Si Google pide verificación, ¿el control del subdominio POC permite completarla?
-10. ¿El proyecto Firebase permite añadir ese Authorized Domain sin otro cambio?
-11. ¿El API key de Picker actual puede ampliar referrers sin reemplazo?
-12. ¿Se autorizarán aliases Gemini del propietario o sólo clave temporal para POC?
-13. ¿Cuándo se recuperará acceso DNS de `ingenierosasesores.cl`?
-14. ¿Quién ejecutará el cambio DNS corporativo?
-15. ¿Qué período de observación exige el Humano antes de considerar cutover?
-16. ¿Qué criterio exacto de disponibilidad/reclaim se aceptará para uso estable con Always Free?
+### Acceptance criteria
 
-# 19. Fuentes externas revalidadas
+Hostname corporativo sirve todo lo ya aceptado y WordPress sigue sin cambios.
 
-Fecha de consulta: **2026-10-03**.
+### Evidence required
 
-| Fuente | URL | Uso |
-|---|---|---|
-| Oracle Always Free Resources | https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm | A1/E2, home region, volume, idle reclaim, capacity |
-| Oracle Free Tier | https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier.htm | trial vs Always Free |
-| Oracle Free Tier FAQ | https://www.oracle.com/latam/cloud/free/faq/ | condiciones generales |
-| Oracle Public IP Addresses | https://docs.oracle.com/en-us/iaas/Content/Network/Tasks/managingpublicIPs.htm | ephemeral/reserved, red requerida |
-| Oracle Assign public IP at launch | https://docs.oracle.com/en-us/iaas/Content/Network/Tasks/assign-public-ip-instance-launch.htm | ephemeral IP |
-| Oracle Budgets | https://docs.oracle.com/en-us/iaas/Content/Billing/Concepts/budgetsoverview.htm | budget = soft limit |
-| Oracle Compartment Quotas | https://docs.oracle.com/en-us/iaas/Content/Quotas/home.htm | hard consumption controls |
-| Oracle Quota syntax | https://docs.oracle.com/en-us/iaas/Content/Quotas/Concepts/quota_policy_syntax.htm | set/zero quotas |
-| Google OAuth client-side | https://developers.google.com/identity/protocols/oauth2/javascript-implicit-flow | HTTPS/origin/IP rules |
-| Google OAuth policies | https://developers.google.com/identity/protocols/oauth2/policies | domain authorization/ownership |
-| Google OAuth production compliance | https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance | verification/production domains |
-| Firebase Google Sign-In | https://firebase.google.com/docs/auth/web/google-signin | popup flow/authDomain context |
-| Firebase Auth FAQ | https://firebase.google.com/docs/auth/faq-and-troubleshooting | Authorized Domains |
-| Google Picker web | https://developers.google.com/workspace/drive/picker/guides/web-picker | origins/key/docs.google.com |
-| Caddy HTTPS quick start | https://caddyserver.com/docs/quick-starts/https | public DNS + 80/443 |
-| Caddy Automatic HTTPS | https://caddyserver.com/docs/automatic-https | cert automation |
-| Node 24 archive | https://nodejs.org/en/download/archive/v24.21.0 | Linux ARM64 binary |
-| DuckDNS About | https://www.duckdns.org/about.jsp | free subdomain service |
-| DuckDNS API spec | https://www.duckdns.org/spec.jsp | DNS update mechanism |
-| DuckDNS terms | https://www.duckdns.org/tac.jsp | service/control risk |
-| Public Suffix List | https://publicsuffix.org/list/ | domain validation context |
-| DuckDNS PSL addition record | https://bugzilla.mozilla.org/show_bug.cgi?id=1165730 | duckdns.org added to PSL |
+DNS before/after, TLS, E2E, WordPress smoke.
 
-## 19.1 Inconsistencias y cautelas
+### STOP
 
-- Oracle mantiene documentación oficial con cifras A1 que pueden diferir de otras páginas de pricing; esta estrategia usa la cifra conservadora y exige la consola real.
-- Budget OCI es alerta/soft limit, no spending kill-switch.
-- La existencia de DuckDNS en PSL no garantiza por sí sola aceptación/verificación en el proyecto OAuth concreto.
-- Free Tier no equivale a SLA de producción.
-- “USD 0” es un objetivo condicionado a la cuenta y políticas vigentes, no una promesa permanente.
+- no acceso DNS;
+- cambio toca apex/WWW;
+- Google config inesperada;
+- costo no cero.
 
-# 20. Criterios para que el Supervisor autorice #103
+### Rollback
 
-Antes de levantar el HOLD de #103, este documento propone que el Supervisor confirme:
+Retirar/revertir sólo registro app y entradas Google nuevas; POC/Google host permanecen.
 
-- estrategia de arquitectura aceptada;
-- USD 0 como hard requirement;
-- A1 1 OCPU/4 GB inicial;
-- créditos ignorados;
-- DuckDNS sólo como POC condicional;
-- cuatro HUMAN_GATES;
-- no data migration;
-- Google hosting rollback;
-- no paid fallback;
-- ARM64 como gate;
-- archivo/env secret handling;
-- 21 fases y STOP conditions;
-- rango POC 18–28 HH;
-- rango estable 28–44 HH total;
-- Work Items posteriores no creados todavía.
+### Expected HH
 
-# 21. Resultado estratégico
+1.5–3.0 HH.
 
-## Arquitectura
+### Handoff format
 
-**DOCUMENTED.**
+~~~text
+WORK ITEM: F2-WI-04
+HUMAN_GATE_DOMAIN:
+HUMAN_GATE_GOOGLE_CONFIG:
+APP_HOSTNAME: PASS|FAIL
+TLS: PASS|FAIL
+WORDPRESS_UNCHANGED: PASS|FAIL
+E2E_SMOKE: PASS|FAIL
+STATE:
+STOP → SUPERVISOR
+~~~
 
-Se traslada sólo el runtime web/Node a una única VM A1 y se mantienen servicios Google.
+## F2-WI-05 — Authenticated E2E + Recovery
 
-## Costo
+### Objetivo
 
-**DOCUMENTED.**
+Probar el producto integrado completo sobre el hostname corporativo antes de cualquier cutover.
 
-Objetivo USD 0, sin PAYG ni créditos promocionales como fundamento. A1 1 OCPU/4 GB, ~50 GB boot, ephemeral IPv4, networking mínimo; todo validado en consola antes de creación.
+### Dependencia
 
-## ARM64
+- F2-WI-04 accepted.
 
-**DOCUMENTED / REQUIRES POC.**
+### Scope
 
-Node 24 y toolchain muestran compatibilidad plausible; la ejecución real sigue siendo gate.
+- login;
+- project;
+- documents;
+- Drive;
+- analysis;
+- JSON;
+- DOCX;
+- persistence;
+- history;
+- reopen;
+- reboot;
+- release rollback;
+- guest regression.
 
-## Dominio
+### No-scope
 
-**DOCUMENTED.**
+- cambiar DNS de tráfico final;
+- apagar Google hosting.
 
-DuckDNS como candidato POC gratuito y condicional; `app.ingenierosasesores.cl` como hostname estable futuro cuando exista acceso DNS. Ningún cambio se hizo.
+### Authorized files/areas
 
-## Google
+- runbook/evidence.
 
-**DOCUMENTED.**
+### External changes allowed
 
-Firebase Authorized Domains, OAuth Authorized JavaScript Origins y Picker restrictions cambian sólo después de gate y sólo para el hostname aprobado.
+Sólo datos de prueba autorizados.
 
-## Seguridad
+### Human gates
 
-**DOCUMENTED.**
+No nuevo gate si no hay mutaciones.
+Cualquier config adicional vuelve al gate correspondiente.
 
-SSH keys, servicio no root, 3000 cerrado, 80/443, secrets 0600, logs sanitizados y mínimo privilegio.
+### Tests
 
-## Rollback/rebuild
+E2E completo + casos negativos + recovery.
 
-**DOCUMENTED.**
+### Acceptance criteria
 
-Google hosting se mantiene; VM no guarda estado funcional único; release/DNS/Google config tienen reversión.
+Guest y authenticated flows pasan después de reboot y release rollback.
 
-## Gates
+### Evidence required
 
-**DOCUMENTED.**
+checklist exacto, SHA, hostname, timestamps, failures.
 
-- `HUMAN_GATE_CREATE_OCI`
-- `HUMAN_GATE_DOMAIN`
-- `HUMAN_GATE_GOOGLE_CONFIG`
-- `HUMAN_GATE_CUTOVER`
+### STOP
 
-Ninguno puede aprobarse implícitamente.
+- guest regression;
+- auth/data loss;
+- recovery falla;
+- costo cambia.
 
-## Scope final de #104
+### Rollback
 
-```text
-EXTERNAL CHANGES PERFORMED = NONE
-OCI RESOURCES CREATED = NONE
-DNS CHANGES = NONE
-GOOGLE CONFIG CHANGES = NONE
-CODE CHANGES = NONE
-DEPENDENCY CHANGES = NONE
-MIGRATION EXECUTED = NO
-```
+Volver a hostname/hosting ya aceptado; no cutover.
+
+### Expected HH
+
+2.0–3.5 HH.
+
+### Handoff format
+
+~~~text
+WORK ITEM: F2-WI-05
+GUEST_E2E: PASS|FAIL
+AUTH_E2E: PASS|FAIL
+FIRESTORE: PASS|FAIL
+DRIVE_PICKER: PASS|FAIL
+DOCX: PASS|FAIL
+REBOOT: PASS|FAIL
+ROLLBACK: PASS|FAIL
+CUTOVER_AUTHORIZED: NO
+STATE:
+STOP → SUPERVISOR
+~~~
+
+## F2-WI-06 — Stable Cutover
+
+### Objetivo
+
+Cambiar el acceso productivo a OCI sólo después de aceptación humana explícita, conservando rollback.
+
+### Dependencia
+
+- F2-WI-05 accepted;
+- período de observación cumplido;
+- costo USD 0 confirmado.
+
+### Scope
+
+- plan de cutover;
+- TTL;
+- traffic switch;
+- smoke;
+- monitoreo;
+- rollback window;
+- mantener Google hosting durante ventana acordada.
+
+### No-scope
+
+- retirar Google hosting en el mismo acto;
+- migrar servicios Google;
+- cambiar datos.
+
+### Authorized files/areas
+
+- runbook/cutover checklist;
+- arquitectura documental si se autoriza en Issue separado.
+
+### External changes allowed
+
+Sólo el cambio de tráfico/DNS exacto aprobado.
+
+### Human gates
+
+**HUMAN_GATE_CUTOVER obligatorio.**
+
+### Tests
+
+- pre-cutover E2E;
+- post-cutover guest/auth E2E;
+- health;
+- monitoring;
+- rollback drill/ability.
+
+### Acceptance criteria
+
+Tráfico principal usa OCI, sin regresión, y Google hosting sigue utilizable durante rollback window.
+
+### Evidence required
+
+approval, before/after DNS, timestamps, smoke/E2E, cost.
+
+### STOP
+
+- gate no aprobado;
+- costo no cero;
+- E2E falla;
+- rollback no disponible.
+
+### Rollback
+
+Revertir el acceso al hosting Google.
+
+### Expected HH
+
+2.0–4.0 HH.
+
+### Handoff format
+
+~~~text
+WORK ITEM: F2-WI-06
+HUMAN_GATE_CUTOVER:
+PRE_CUTOVER_E2E: PASS|FAIL
+CUTOVER: PASS|FAIL|NOT_EXECUTED
+POST_CUTOVER_E2E: PASS|FAIL|NOT_EXECUTED
+GOOGLE_ROLLBACK_AVAILABLE: YES|NO
+OBSERVED_COST:
+STATE:
+STOP → SUPERVISOR
+~~~
+
+# 12. Estrategia de secretos
+
+## FASE 1
+
+La única credencial necesaria para el caso principal es la clave Gemini temporal del usuario.
+
+No pedir ni registrar su valor.
+
+No requiere:
+
+- Firebase API config;
+- OAuth client;
+- Picker key;
+- Drive token;
+- owner aliases.
+
+Si se usan aliases opcionalmente, pasan a una prueba separada y no pueden convertirse en dependencia de aceptación FASE 1.
+
+## Servidor
+
+Secrets futuros de owner aliases, si se autorizan:
+
+- fuera de Git;
+- EnvironmentFile con permisos mínimos;
+- no command line;
+- no logs;
+- no screenshots.
+
+## Información que sí se puede pedir
+
+- home region;
+- screenshot de shape/costo sin secretos;
+- disponibilidad A1;
+- costo estimado;
+- hostname POC preferido;
+- capacidad de crear/modificar ese hostname;
+- SSH public key;
+- acceso futuro al DNS corporativo;
+- aprobación textual de gates.
+
+## Información que nunca se pide por chat/repo
+
+- Oracle password;
+- SSH private key;
+- Gemini key;
+- DuckDNS token;
+- OAuth client secret;
+- access/refresh token;
+- banking credentials;
+- Firebase secrets;
+- service-account private keys;
+- datos personales innecesarios.
+
+# 13. Seguridad
+
+- SSH key only;
+- 22 restringido;
+- 80/443 público;
+- 3000 no público;
+- Node no root;
+- service user;
+- Caddy reverse proxy;
+- firewall OCI + host;
+- secrets fuera de Git;
+- logs sin Authorization/API keys/request bodies documentales;
+- Ubuntu security updates;
+- Node version registrada;
+- no npm update manual;
+- mínimo privilegio.
+
+# 14. Rollback y reconstrucción
+
+## FASE 1
+
+Rollback principal:
+
+~~~text
+OCI guest endpoint falla
+→ dejar de usar hostname POC
+→ volver al hosting Google actual
+~~~
+
+No hay DNS corporativo que revertir.
+
+Rebuild:
+
+1. nueva VM A1 sólo con gate/costo válido;
+2. Node 24;
+3. Caddy;
+4. systemd;
+5. release SHA;
+6. configuración operativa;
+7. hostname POC actualizado;
+8. health;
+9. guest E2E.
+
+No datos de negocio únicos en OCI.
+
+## FASE 2
+
+Además:
+
+- revertir app.ingenierosasesores.cl;
+- retirar origins temporales sólo si se abandona;
+- conservar Firestore/Drive sin migración.
+
+# 15. Riesgos actualizados
+
+| Riesgo | Fase | Probabilidad | Impacto | Mitigación | STOP |
+|---|---|---|---|---|---|
+| A1 sin capacidad | 1 | media | alto | esperar/AD válido | no paid fallback |
+| A1 no free | 1 | desconocida | alto | console gate | cualquier costo |
+| public IPv4 cobrado | 1 | desconocida | alto | console gate | cargo |
+| ARM64 incompatibilidad | 1 | baja-media | alto | test real | code/dependency change |
+| 4 GB insuficiente | 1 | baja-media | medio | medir; 6 GB sólo free | OOM sin margen |
+| Free Tier reclaim | 1 | material | alto | rebuild + Google rollback | inestabilidad no aceptada |
+| hostname POC falla | 1 | baja-media | medio | proveedor gratuito alternativo aprobado | compra requerida |
+| TLS falla | 1 | baja | medio | Caddy/DNS checks | no HTTPS |
+| Gemini key expuesta | 1 | controlable | crítico | no logs/no persistence | leak |
+| Gemini quota/provider | 1 | externa | medio | error controlado | paid requirement |
+| Firebase/OAuth | 2 | media | alto | gate/config exacta | bloquea sólo F2 |
+| Drive/Picker | 2 | media | medio-alto | scope actual + tests | scope mayor |
+| DNS corporativo sin acceso | 2 | alta hoy | alto | no bloquear F1 | no cutover |
+| WordPress afectado | 2 | baja | crítico | sólo app subdomain | apex/www change |
+| cutover prematuro | 2 | controlable | crítico | HUMAN_GATE_CUTOVER | gate ausente |
+| cambio política Free Tier | 1/2 | media largo plazo | alto | revalidar costo | cost > 0 |
+
+# 16. HH consolidadas
+
+## FASE 1 — Oracle Core / Document Analyzer
+
+| Actividad | HH |
+|---|---:|
+| Baseline + guest isolation | 1.0–2.0 |
+| Account/cost + provisioning | 1.5–2.5 |
+| ARM64/build/runtime | 1.5–2.5 |
+| systemd/network/Caddy/HTTPS | 2.5–4.0 |
+| guest E2E/Gemini/DOCX | 1.5–2.5 |
+| recovery/rollback/observation | 2.0–3.5 |
+| contingencia | 1.0–2.0 |
+| **TOTAL FASE 1** | **11–19 HH** |
+
+## FASE 2 — Integrations
+
+| Actividad | HH |
+|---|---:|
+| Firebase Auth | 1.5–2.5 |
+| Firestore | 1.5–2.5 |
+| Drive/GIS/Picker | 2.5–4.0 |
+| corporate hostname + Google config | 1.5–3.0 |
+| authenticated E2E/recovery | 2.0–3.5 |
+| cutover | 2.0–4.0 |
+| contingencia | 1.0–2.0 |
+| **TOTAL FASE 2** | **12–22 HH** |
+
+## Total programa
+
+**23–41 HH de ingeniería activa** si no hay rediseño.
+
+Factores fuera de HH activa:
+
+- espera por A1;
+- propagación DNS;
+- revisión humana;
+- observación calendario;
+- verificación OAuth si fuera exigida en FASE 2;
+- outages externos.
+
+La nueva secuencia reduce el time-to-useful-Oracle porque FASE 1 ya no espera Auth, Firestore, Drive, Picker, OAuth ni DNS corporativo.
+
+# 17. Work Item contingente de código
+
+No se propone como trabajo normal porque el código actual permite FASE 1.
+
+Sólo si F1-WI-01 o F1-WI-05 demuestra un blocker real:
+
+## F1-CODE-BLOCKER — Guest Mode Isolation Fix
+
+### Objetivo
+
+Eliminar únicamente la dependencia accidental que impida ejecutar guest mode sin Google configuration.
+
+### Dependencia
+
+- evidencia reproducible de blocker;
+- Supervisor REWORK/authorization.
+
+### Scope
+
+El menor cambio posible en el punto exacto demostrado.
+
+### No-scope
+
+- rediseño UI;
+- eliminar Firebase/Drive;
+- cambiar business logic;
+- nuevas features;
+- dependencias salvo evidencia estricta y autorización explícita.
+
+### Authorized files/areas
+
+Se definen en el Issue según el stack trace/evidencia; no se preautoriza ningún path.
+
+### External changes allowed
+
+NONE.
+
+### Human gates
+
+Ningún gate cloud; el gate es workflow/Supervisor.
+
+### Tests
+
+- regresión específica;
+- full CI;
+- guest E2E sin Firebase/Drive config.
+
+### Acceptance criteria
+
+Guest mode funciona con integraciones autenticadas unavailable y no cambia su comportamiento con config presente.
+
+### Evidence required
+
+before failing test, after passing test, aggregate diff, exact-head CI.
+
+### STOP
+
+- fix requiere architecture change;
+- dependency migration;
+- scope expansion.
+
+### Rollback
+
+Revert PR; Google hosting intacto.
+
+### Expected HH
+
+1–3 HH si el blocker es local. Si excede, reestimar antes de implementar.
+
+### Handoff format
+
+~~~text
+WORK ITEM: F1-CODE-BLOCKER
+REPRODUCED_BLOCKER:
+FILES_CHANGED:
+TEST_ADDED:
+GUEST_WITHOUT_GOOGLE: PASS|FAIL
+FULL_CI: PASS|FAIL
+SCOPE_EXPANSION: NO|YES
+STATE:
+STOP → SUPERVISOR
+~~~
+
+# 18. Cambios de repositorio previstos por fase
+
+## FASE 1
+
+Posibles archivos en Work Items autorizados:
+
+- docs/engineering/OCI_POC_RUNBOOK.md;
+- deploy/oci/Caddyfile.example;
+- deploy/oci/g-inf-01.service.example;
+- scripts pequeños de operación bajo deploy/oci sólo si el Issue los autoriza.
+
+No se necesita cambio de aplicación para el plan actual.
+
+## FASE 2
+
+Posibles:
+
+- documentación de integración;
+- deployment/cutover checklist;
+- workflow de deploy sólo en Issue separado;
+- actualización de SOFTWARE_ARCHITECTURE después de decisión estable.
+
+## No tocar sin Issue separado
+
+- TITLE_STUDY schema;
+- prompts;
+- renderer;
+- business logic;
+- Firestore schema/rules;
+- provider/model;
+- package dependencies;
+- data migration.
+
+# 19. Revalidación de fuentes externas
+
+Este REWORK cambia secuenciación por decisión humana y por evidencia del repositorio; no introduce una nueva decisión de proveedor que requiera reemplazar la investigación #101.
+
+Fuentes conservadas, consultadas originalmente el 2026-10-03:
+
+- Oracle Always Free Resources:
+  https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm
+- Oracle Free Tier:
+  https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier.htm
+- Oracle Free FAQ:
+  https://www.oracle.com/latam/cloud/free/faq/
+- Oracle Public IP:
+  https://docs.oracle.com/en-us/iaas/Content/Network/Tasks/managingpublicIPs.htm
+- Caddy Automatic HTTPS:
+  https://caddyserver.com/docs/automatic-https
+- Node.js 24 archive:
+  https://nodejs.org/en/download/archive/v24.21.0
+- Firebase Google Sign-In:
+  https://firebase.google.com/docs/auth/web/google-signin
+- Google OAuth web:
+  https://developers.google.com/identity/protocols/oauth2/javascript-implicit-flow
+- Google Picker:
+  https://developers.google.com/workspace/drive/picker/guides/web-picker
+- DuckDNS:
+  https://www.duckdns.org/about.jsp
+
+FASE 1 sólo usa las fuentes OCI/Caddy/Node/hostname. Las fuentes Firebase/OAuth/Picker pasan a FASE 2.
+
+# 20. Open questions
+
+## FASE 1
+
+1. ¿La tenancy real muestra A1 1 OCPU/4 GB como free/elegible?
+2. ¿Public IPv4 aparece con costo base USD 0?
+3. ¿Hay capacidad A1 en Santiago?
+4. ¿4 GB bastan para build y análisis representativo?
+5. ¿ARM64 completa npm ci/build/test sin problema native?
+6. ¿Qué hostname POC gratuito aprueba el Humano?
+7. ¿Qué período de observación mínimo se exigirá?
+8. ¿La política idle/reclaim es aceptable para el uso esperado?
+
+## FASE 2
+
+1. ¿Cuándo habrá acceso DNS de ingenierosasesores.cl?
+2. ¿El mismo Firebase project seguirá siendo la opción elegida?
+3. ¿Se reutilizan OAuth/Picker credentials actuales?
+4. ¿El Humano quiere mantener Google integrations o evaluar reemplazos?
+5. ¿Qué ventana de rollback se exige antes de retirar hosting Google?
+
+# 21. Criterio de aceptación de la estrategia rework
+
+El Supervisor debe poder responder desde este documento:
+
+1. qué entrega FASE 1;
+2. por qué FASE 1 no necesita Firebase/Drive/OAuth;
+3. que el código actual falla de forma segura sin esas integraciones;
+4. qué Work Item se ejecuta primero;
+5. qué gate crea OCI;
+6. qué gate habilita hostname POC;
+7. por qué Google config se posterga;
+8. cuánto cuesta el objetivo;
+9. cuántas HH requiere FASE 1;
+10. cuántas HH agrega FASE 2;
+11. cómo se vuelve a Google;
+12. qué hacer si ARM64 o guest isolation requiere código.
+
+# 22. Resultado
+
+~~~text
+PHASE_1:
+Oracle Core / Document Analyzer
+guest-only
+local files
+temporary Gemini key
+analysis
+validated result
+DOCX
+A1 ARM64
+systemd
+Caddy
+HTTPS
+USD 0 target
+Google hosting rollback
+NO Firebase/Auth/Firestore/Drive/Picker/OAuth dependency
+
+PHASE_2:
+Firebase Auth
+Firestore
+Drive
+Picker
+OAuth
+corporate hostname
+authenticated E2E
+cutover
+
+PHASE_1_CODE_CHANGE_REQUIRED:
+NO, based on current repository evidence
+
+EXTERNAL CHANGES PERFORMED BY #104:
+NONE
+
+CODE CHANGES PERFORMED BY #104:
+NONE
+
+ISSUES CREATED BY #104:
+NONE
+
+MIGRATION EXECUTED:
+NO
+~~~
+
+# 23. Handoff esperado de #104
+
+~~~text
+WORK ITEM: #104
+
+BASE:
+9f20b49e57aa065650fa3b0005b622b10dca33f8
+
+BRANCH:
+strategy/issue-104-oci-migration
+
+PR:
+#105
+
+STRATEGY DOCUMENT:
+docs/engineering/OCI_MIGRATION_STRATEGY.md
+
+PHASE_1:
+DOCUMENTED
+
+PHASE_1_NO_CODE:
+VERIFIED_FROM_REPOSITORY
+
+PHASE_2:
+DOCUMENTED
+
+ZERO_COST_STRATEGY:
+DOCUMENTED
+
+WORK_ITEM_DECOMPOSITION:
+PROPOSED
+
+HUMAN_GATES:
+DOCUMENTED
+
+ROLLBACK:
+DOCUMENTED
+
+PHASE_1_HH:
+11–19
+
+PHASE_2_HH:
+12–22
+
+EXTERNAL_CHANGES_PERFORMED:
+NONE
+
+CODE_CHANGES:
+NONE
+
+STATE:
+READY_FOR_REVIEW
+
+STOP → SUPERVISOR
+~~~
