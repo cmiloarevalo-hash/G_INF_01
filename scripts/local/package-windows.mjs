@@ -113,8 +113,12 @@ async function assertPortableLayout(root) {
   }
 }
 
-function npmCommand() {
-  return process.platform === 'win32' ? 'npm.cmd' : 'npm';
+function runNpm(args, options = {}) {
+  const npmExecPath = process.env.npm_execpath;
+  if (!npmExecPath) {
+    throw new Error('No se encontró npm_execpath; ejecuta el empaquetado mediante npm run package:portable:win.');
+  }
+  return run(process.execPath, [npmExecPath, ...args], options);
 }
 
 async function gitHead() {
@@ -178,7 +182,7 @@ export async function packageWindowsPortable() {
   );
   const cleanEnv = sanitizePortableEnvironment(process.env);
 
-  run(npmCommand(), ['run', 'build'], {
+  runNpm(['run', 'build'], {
     env: {
       ...cleanEnv,
       NODE_ENV: 'production',
@@ -204,7 +208,7 @@ export async function packageWindowsPortable() {
     path.join(appRoot, 'package-lock.json'),
   );
 
-  run(npmCommand(), ['ci', '--omit=dev', '--no-audit', '--no-fund'], {
+  runNpm(['ci', '--omit=dev', '--no-audit', '--no-fund'], {
     cwd: appRoot,
     env: {
       ...cleanEnv,
