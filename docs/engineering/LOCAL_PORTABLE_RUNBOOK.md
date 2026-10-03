@@ -1,8 +1,8 @@
 # Windows Portable POC Runbook
 
-Work Item: #112  
-Accepted architecture: #111  
-Target: Windows x64 internal POC  
+Work Item: #112
+Accepted architecture: #111
+Target: Windows x64 internal POC
 Baseline for implementation: `1c220aa9851c36ae71375a58e3b00dd590c6c119`
 
 ## Purpose
