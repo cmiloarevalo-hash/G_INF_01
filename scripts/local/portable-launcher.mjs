@@ -69,7 +69,16 @@ export async function createPortableApplication() {
   const serverModuleUrl = await resolveServerModuleUrl();
   const { createServerApp, setupApp } = await import(serverModuleUrl.href);
   const application = createServerApp({ env: {} });
-  await setupApp(application);
+  const previousNodeEnv = process.env.NODE_ENV;
+
+  process.env.NODE_ENV = 'production';
+  try {
+    await setupApp(application);
+  } finally {
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+  }
+
   return application;
 }
 
