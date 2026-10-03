@@ -1,6 +1,10 @@
 # Workflow canónico — Supervisor + GitHub + Agente implementador + AI_STUDIO_OPERATOR
 
-> **Estado:** workflow canónico activo del proyecto desde la integración de Issue #47 mediante PR #49 en `main@866d7aaa793cb9d1a2675965f911c6ddb37275e9`.
+> **Estado:** **SUPERSEDED** desde 2026-10-03 por [Generic Workflow V2 — Operational Plan](WORKFLOW_PLAN.md), con [Workflow Foundations](WORKFLOW_FOUNDATIONS.md) y [Document Control Protocol](DOCUMENT_CONTROL_PROTOCOL.md).
+>
+> **Interpretación histórica:** toda referencia interna posterior a “activo”, “vigente” o “fuente canónica” describe el estado previo a Work Item #107 y no conserva autoridad operativa después de esta supersesión. El cuerpo se mantiene sin reescritura para preservar provenance.
+>
+> **Estado histórico previo:** workflow canónico activo del proyecto desde la integración de Issue #47 mediante PR #49 en `main@866d7aaa793cb9d1a2675965f911c6ddb37275e9`.
 >
 > **Baseline:** `WORKFLOW_SIMPLIFICADO_CHAT_WEB_GPT_GEMINI_3_8.md` en `main@ff1a7d46c3f9992adbcc41b933cc13c3501fc617` (blob `d6fd666d5be7659784f6f20021ba4a3515d45f14`).
 >
