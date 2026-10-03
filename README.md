@@ -64,4 +64,8 @@ Las pruebas locales usan Secrets simulados: no demuestran inyección efectiva de
 
 ## Proceso de trabajo
 
-- [Workflow canónico](WORKFLOW_CANONICO_SUPERVISOR_GITHUB_IMPLEMENTADOR_AI_STUDIO.md)
+Workflow vigente desde la integración de Work Item #107:
+
+- [Generic Workflow V2 — Operational Plan](WORKFLOW_PLAN.md)
+- [Workflow Foundations](WORKFLOW_FOUNDATIONS.md)
+- [Document Control Protocol](DOCUMENT_CONTROL_PROTOCOL.md)
