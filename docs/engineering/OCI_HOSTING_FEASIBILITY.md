@@ -1,9 +1,9 @@
 # OCI Hosting Feasibility — G_INF_01
 
-**Work Item:** Issue #101 — RESEARCH_GATE: viabilidad de hosting OCI con mínima migración desde Google  
-**Repository:** cmiloarevalo-hash/G_INF_01  
-**Baseline revisada:** main@3138299c54e590a38b1a3fd51263abcff32afe53  
-**Fecha de consulta de fuentes externas:** 2026-10-03  
+**Work Item:** Issue #101 — RESEARCH_GATE: viabilidad de hosting OCI con mínima migración desde Google
+**Repository:** cmiloarevalo-hash/G_INF_01
+**Baseline revisada:** main@3138299c54e590a38b1a3fd51263abcff32afe53
+**Fecha de consulta de fuentes externas:** 2026-10-03
 **Tipo de entrega:** investigación y documentación; no implementa ni autoriza migración, infraestructura, cambios de Google, DNS, secretos, billing ni workflows.
 
 ## Convenciones de evidencia
@@ -25,7 +25,7 @@ La documentación canónica existente aún describe Google AI Studio / Cloud Run
 
 **IMPLEMENTER ANALYSIS.** La arquitectura híbrida investigada es técnicamente viable:
 
-Internet → dominio público HTTPS → OCI Compute → Caddy → Node.js/Express → frontend React/Vite  
+Internet → dominio público HTTPS → OCI Compute → Caddy → Node.js/Express → frontend React/Vite
 y, desde aplicación/navegador según corresponda → Firebase Authentication + Firestore + Google Drive/Picker + Gemini.
 
 La migración mínima es por tanto una sustitución del hosting/runtime público, no una eliminación de Google. No existe evidencia técnica que justifique reemplazar en la primera etapa Firebase Auth, Firestore, Drive, Picker o Gemini.
@@ -291,7 +291,7 @@ La FAQ oficial consultada indica que cuentas inactivas durante 30 días o más p
 
 ### Recomendación diferenciada
 
-**RECOMMENDED_FOR_POC:** A1.Flex 1 OCPU / 6 GB RAM.  
+**RECOMMENDED_FOR_POC:** A1.Flex 1 OCPU / 6 GB RAM.
 **RECOMMENDED_FOR_PRODUCTION:** x86 VM pagada pequeña después del POC; considerar A1 sólo después de build/runtime ARM64 real y aceptación explícita del riesgo de capacidad/reclamación si se pretende Always Free.
 
 # 7. Google Services from OCI
@@ -401,13 +401,13 @@ Se requiere un dominio o subdominio público controlado, por ejemplo app.ejemplo
 
 Candidato:
 
-Internet  
-→ DNS de dominio/subdominio existente o adquirido  
-→ IP pública OCI  
-→ Caddy en 80/443  
-→ reverse proxy a Node/Express en puerto interno 3000  
-→ Express sirve API + dist/client  
-→ navegador conserva Firebase Auth + Firestore + GIS/Drive/Picker  
+Internet
+→ DNS de dominio/subdominio existente o adquirido
+→ IP pública OCI
+→ Caddy en 80/443
+→ reverse proxy a Node/Express en puerto interno 3000
+→ Express sirve API + dist/client
+→ navegador conserva Firebase Auth + Firestore + GIS/Drive/Picker
 → Node conserva Gemini API y DOCX.
 
 ## CAMBIA
@@ -467,14 +467,14 @@ No se recomiendan Kubernetes, OKE, microservicios ni service mesh.
 
 ## A. Manual: git pull / npm ci / build / restart
 
-Ventaja: mínimo setup.  
+Ventaja: mínimo setup.
 Desventajas: build en servidor, working tree mutable, rollback menos limpio, exige acceso Git desde producción y consume RAM/CPU de la VM.
 
 **Uso:** POC inicial únicamente, desde SHA exacto, para demostrar ARM64 cuando se use A1.
 
 ## B. GitHub Actions → SSH
 
-Ventaja: tests/build antes del deploy; pocos componentes.  
+Ventaja: tests/build antes del deploy; pocos componentes.
 Riesgo: si se hace git pull remoto sigue existiendo estado mutable y acceso del servidor a GitHub.
 
 ## C. GitHub Actions → artefacto → OCI por SSH
@@ -672,20 +672,20 @@ Recordar: /api/health no prueba Firebase, Drive ni Gemini. Las integraciones req
 
 ## CURRENT
 
-AI Studio / Cloud Run  
-+ Firebase Authentication  
-+ Firestore  
-+ Google Drive / Picker / GIS  
-+ Gemini API  
+AI Studio / Cloud Run
++ Firebase Authentication
++ Firestore
++ Google Drive / Picker / GIS
++ Gemini API
 + React/Vite + Express + DOCX.
 
 ## MINIMAL OCI CANDIDATE
 
-OCI Compute + Caddy + systemd  
-+ Firebase Authentication  
-+ Firestore  
-+ Google Drive / Picker / GIS  
-+ Gemini API  
+OCI Compute + Caddy + systemd
++ Firebase Authentication
++ Firestore
++ Google Drive / Picker / GIS
++ Gemini API
 + React/Vite + Express + DOCX.
 
 ## COMPONENTES QUE CAMBIAN
