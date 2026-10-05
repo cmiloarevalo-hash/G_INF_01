@@ -27,6 +27,7 @@ export const TITLE_STUDY_DOCX_FILENAME = 'estudio-de-titulos.docx';
 const COLORS = {
   primary: '17365D',
   secondary: '2F75B5',
+  alert: '9C2F2F',
   headerFill: 'D9EAF7',
   alternateFill: 'F3F8FC',
   text: '1F2937',
@@ -37,15 +38,48 @@ const COLORS = {
 const A4 = { width: 11906, height: 16838 };
 const MARGINS = { top: 1304, right: 1417, bottom: 1304, left: 1417, header: 709, footer: 709 };
 
-const comparisonLabels = {
-  CONSISTENT: 'Consistente',
-  NORMALIZED_EQUIVALENT: 'Equivalente tras normalización',
-  DIFFERENT: 'Diferente',
-  POSSIBLE_CONTRADICTION: 'Posible contradicción',
-  INSUFFICIENT_INFORMATION: 'Información insuficiente',
-} as const;
+type Fact = NonNullable<TitleStudy['facts']>[number];
+type Comparison = NonNullable<TitleStudy['comparisons']>[number];
+type Entity = NonNullable<TitleStudy['entities']>[number];
 
-type DocumentValue = NonNullable<NonNullable<TitleStudy['findings']>[number]['values']>[number];
+const factCategoryLabels: Record<Fact['category'], string> = {
+  DOCUMENT_IDENTITY: 'Identidad documental',
+  PROPERTY_IDENTITY: 'Identificación del inmueble',
+  REGISTRY_TITLE: 'Dominio e inscripciones',
+  PARTY_RIGHT: 'Partes, titulares y derechos',
+  PHYSICAL_PROPERTY: 'Descripción física y superficies',
+  FISCAL_CADASTRAL: 'Antecedentes fiscales y catastrales',
+  PLANNING_URBANISM: 'Planificación y condiciones urbanísticas',
+  PERMIT_RECEPTION: 'Permisos, recepciones y regularizaciones',
+  SUBDIVISION_PLAN: 'Subdivisión, loteo y planos',
+  ENCUMBRANCE_RESTRICTION: 'Gravámenes, prohibiciones y restricciones',
+  SUCCESSION: 'Sucesión y herencia',
+  FINANCING_TRANSACTION: 'Financiamiento e hipotecas',
+  REPRESENTATION_AUTHORITY: 'Personerías y poderes',
+  TRANSACTION_PAYMENT: 'Actos, montos y pagos',
+  OTHER: 'Otros antecedentes',
+};
+
+const comparisonLabels: Record<Comparison['result'], string> = {
+  EXACT_MATCH: 'Coincidencia exacta',
+  NORMALIZED_EQUIVALENT: 'Equivalente tras normalización',
+  TEMPORAL_CHANGE: 'Cambio temporal',
+  DIFFERENT_VALUE: 'Valor diferente',
+  POSSIBLE_CONTRADICTION: 'Posible contradicción',
+  AUTHORITY_SCOPE_DIFFERENCE: 'Diferencia de autoridad o alcance',
+  PARTIAL_OVERLAP: 'Coincidencia parcial',
+  STATUS_TRANSITION: 'Cambio de estado documentado',
+};
+
+const entityTypeLabels: Record<Entity['type'], string> = {
+  PERSON: 'Persona',
+  LEGAL_ENTITY: 'Persona jurídica',
+  PROPERTY: 'Inmueble',
+  RIGHT: 'Derecho',
+  REGISTRATION: 'Inscripción',
+  AUTHORITY: 'Autoridad',
+  OTHER: 'Otra entidad',
+};
 
 export class InvalidTitleStudyReportError extends Error {
   constructor() {
@@ -58,6 +92,14 @@ function documentName(report: TitleStudy, documentId: string): string {
   return report.sourceDocuments.find((document) => document.id === documentId)?.name ?? documentId;
 }
 
+function factById(report: TitleStudy, factId: string): Fact | undefined {
+  return report.facts?.find((fact) => fact.id === factId);
+}
+
+function entityLabel(report: TitleStudy, entityId: string): string {
+  return report.entities?.find((entity) => entity.id === entityId)?.label ?? entityId;
+}
+
 type HeadingLevelValue = (typeof HeadingLevel)[keyof typeof HeadingLevel];
 
 function heading(text: string, level: HeadingLevelValue): Paragraph {
@@ -68,11 +110,11 @@ function heading(text: string, level: HeadingLevelValue): Paragraph {
   });
 }
 
-function body(text: string): Paragraph {
+function body(text: string, options: { alert?: boolean } = {}): Paragraph {
   return new Paragraph({
     spacing: { after: 120, line: 276 },
     widowControl: true,
-    children: [new TextRun(text)],
+    children: [new TextRun({ text, color: options.alert ? COLORS.alert : COLORS.text })],
   });
 }
 
@@ -133,28 +175,55 @@ function table(headers: string[], rows: string[][]): Table {
   });
 }
 
-function valueRows(report: TitleStudy, values: DocumentValue[]): string[][] {
-  const showNormalized = values.some((value) => value.normalized !== undefined);
-  return values.map((value) => [
-    documentName(report, value.documentId),
-    value.field,
-    value.original,
-    ...(showNormalized ? [value.normalized ?? ''] : []),
-  ]);
+function sourceNames(report: TitleStudy, documentIds: string[]): string {
+  return documentIds.map((id) => documentName(report, id)).join(' · ');
 }
 
-function valueTable(report: TitleStudy, values: DocumentValue[]): Table {
-  const showNormalized = values.some((value) => value.normalized !== undefined);
-  return table(
-    ['Documento', 'Campo', 'Valor original', ...(showNormalized ? ['Valor normalizado'] : [])],
-    valueRows(report, values),
-  );
+function locatorText(report: TitleStudy, fact: Fact): string {
+  if (!fact.evidenceLocators?.length) return '';
+  return fact.evidenceLocators
+    .map((locator) => {
+      const parts = [documentName(report, locator.documentId)];
+      if (locator.page !== undefined) parts.push(`pág. ${locator.page}`);
+      if (locator.section !== undefined) parts.push(locator.section);
+      return parts.join(' · ');
+    })
+    .join(' | ');
+}
+
+function factTable(report: TitleStudy, facts: Fact[]): Table {
+  const showNormalized = facts.some((fact) => fact.normalized !== undefined);
+  const showLocator = facts.some((fact) => fact.evidenceLocators?.length);
+  const headers = [
+    'Hecho',
+    'Valor original',
+    ...(showNormalized ? ['Valor normalizado'] : []),
+    'Fuente',
+    ...(showLocator ? ['Referencia'] : []),
+  ];
+
+  const rows = facts.map((fact) => [
+    fact.label,
+    fact.original,
+    ...(showNormalized ? [fact.normalized ?? ''] : []),
+    sourceNames(report, fact.sourceDocumentIds),
+    ...(showLocator ? [locatorText(report, fact)] : []),
+  ]);
+
+  return table(headers, rows);
 }
 
 function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfContents> {
-  const findings = report.findings ?? [];
+  const facts = report.facts ?? [];
+  const entities = report.entities ?? [];
+  const relationships = report.relationships ?? [];
   const comparisons = report.comparisons ?? [];
+  const findings = report.findings ?? [];
+  const risks = report.risksOrAlerts ?? [];
   const conclusions = report.conclusions ?? [];
+  const timeline = report.timeline ?? [];
+
+  const factLabels = new Map(facts.map((fact) => [fact.id, fact.label]));
   const findingLabels = new Map(findings.map((finding, index) => [finding.id, `Hallazgo ${index + 1}`]));
   const cachedEntries: Array<{ title: string; level: 1 | 2 }> = [];
 
@@ -165,20 +234,77 @@ function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfCon
 
   const reportChildren: Array<Paragraph | Table> = [
     reportHeading('Objetivo del informe', 1),
-    new Paragraph({
-      spacing: { after: 120, line: 276 },
-      children: [
-        new TextRun(
-          'Presentar de forma estructurada y legible el resultado TITLE_STUDY validado y conservar su trazabilidad con los documentos fuente.',
-        ),
-      ],
-    }),
-    reportHeading('Documentos fuente', 1),
-    table(
-      ['Documento', 'Tipo documental'],
-      report.sourceDocuments.map((document) => [document.name, document.documentType]),
+    body(
+      'Organizar los hechos contenidos en los documentos suministrados, conservar su trazabilidad y presentar comparaciones, hallazgos, riesgos y conclusiones preliminares para revisión humana.',
     ),
+    reportHeading('Documentos fuente', 1),
   ];
+
+  const showIssuer = report.sourceDocuments.some((document) => document.issuer !== undefined);
+  const showIssueDate = report.sourceDocuments.some((document) => document.issueDate !== undefined);
+  reportChildren.push(
+    table(
+      ['Documento', 'Tipo documental', ...(showIssuer ? ['Emisor'] : []), ...(showIssueDate ? ['Fecha'] : [])],
+      report.sourceDocuments.map((document) => [
+        document.name,
+        document.documentType,
+        ...(showIssuer ? [document.issuer ?? ''] : []),
+        ...(showIssueDate ? [document.issueDate ?? ''] : []),
+      ]),
+    ),
+  );
+
+  if (facts.length > 0) {
+    reportChildren.push(reportHeading('Antecedentes y hechos extraídos', 1));
+    const grouped = new Map<Fact['category'], Fact[]>();
+    facts.forEach((fact) => {
+      const current = grouped.get(fact.category) ?? [];
+      current.push(fact);
+      grouped.set(fact.category, current);
+    });
+    grouped.forEach((categoryFacts, category) => {
+      reportChildren.push(reportHeading(factCategoryLabels[category], 2));
+      reportChildren.push(factTable(report, categoryFacts));
+    });
+  }
+
+  if (entities.length > 0 || relationships.length > 0) {
+    reportChildren.push(reportHeading('Entidades y relaciones documentadas', 1));
+    if (entities.length > 0) {
+      reportChildren.push(
+        table(
+          ['Entidad', 'Tipo', 'Fuentes'],
+          entities.map((entity) => [
+            entity.label,
+            entityTypeLabels[entity.type],
+            sourceNames(report, entity.sourceDocumentIds),
+          ]),
+        ),
+      );
+    }
+    relationships.forEach((relationship) => {
+      reportChildren.push(
+        body(
+          `${entityLabel(report, relationship.fromEntityId)} — ${relationship.statement} — ${entityLabel(report, relationship.toEntityId)}`,
+        ),
+      );
+      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, relationship.sourceDocumentIds)));
+    });
+  }
+
+  if (comparisons.length > 0) {
+    reportChildren.push(reportHeading('Comparaciones y discrepancias', 1));
+    comparisons.forEach((comparison, index) => {
+      reportChildren.push(reportHeading(`Comparación ${index + 1}: ${comparison.topic}`, 2));
+      reportChildren.push(mutedParagraph('Estado: ', comparisonLabels[comparison.result]));
+      const comparisonFacts = comparison.factIds
+        .map((id) => factById(report, id))
+        .filter((fact): fact is Fact => fact !== undefined);
+      if (comparisonFacts.length > 0) reportChildren.push(factTable(report, comparisonFacts));
+      reportChildren.push(body(comparison.explanation));
+      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, comparison.sourceDocumentIds)));
+    });
+  }
 
   if (findings.length > 0) {
     reportChildren.push(reportHeading('Hallazgos', 1));
@@ -186,34 +312,43 @@ function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfCon
       reportChildren.push(reportHeading(`Hallazgo ${index + 1}: ${finding.statement}`, 2));
       reportChildren.push(
         mutedParagraph(
-          'Fuentes: ',
-          finding.sourceDocumentIds.map((id) => documentName(report, id)).join(' · '),
+          'Hechos de respaldo: ',
+          finding.supportingFactIds.map((id) => factLabels.get(id) ?? id).join(' · '),
         ),
       );
-      if (finding.values?.length === 1) {
-        const value = finding.values[0];
-        reportChildren.push(
-          body(`${documentName(report, value.documentId)} — ${value.field}: ${value.original}`),
-        );
-        if (value.normalized !== undefined) {
-          reportChildren.push(mutedParagraph('Valor normalizado: ', value.normalized));
-        }
-      } else if (finding.values && finding.values.length > 1) {
-        reportChildren.push(valueTable(report, finding.values));
-      }
+      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, finding.sourceDocumentIds)));
     });
   }
 
-  if (comparisons.length > 0) {
-    reportChildren.push(reportHeading('Diferencias y comparaciones', 1));
-    comparisons.forEach((comparison, index) => {
-      reportChildren.push(reportHeading(`Comparación ${index + 1}: ${comparison.field}`, 2));
-      reportChildren.push(mutedParagraph('Estado: ', comparisonLabels[comparison.result]));
-      reportChildren.push(valueTable(report, comparison.values));
-      if (comparison.explanation !== undefined) {
-        reportChildren.push(body(comparison.explanation));
-      }
+  if (risks.length > 0) {
+    reportChildren.push(reportHeading('Riesgos y alertas', 1));
+    risks.forEach((risk, index) => {
+      reportChildren.push(reportHeading(`Alerta ${index + 1}`, 2));
+      reportChildren.push(body(risk.statement, { alert: true }));
+      reportChildren.push(
+        mutedParagraph(
+          'Hechos de respaldo: ',
+          risk.supportingFactIds.map((id) => factLabels.get(id) ?? id).join(' · '),
+        ),
+      );
+      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, risk.sourceDocumentIds)));
     });
+  }
+
+  if (timeline.length > 0) {
+    reportChildren.push(reportHeading('Cronología documental', 1));
+    reportChildren.push(
+      table(
+        ['Fecha', 'Evento', 'Fuentes'],
+        timeline.map((event) => [
+          event.dateNormalized
+            ? `${event.dateOriginal} (${event.dateNormalized})`
+            : event.dateOriginal,
+          event.event,
+          sourceNames(report, event.sourceDocumentIds),
+        ]),
+      ),
+    );
   }
 
   if (conclusions.length > 0) {
@@ -232,6 +367,7 @@ function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfCon
           conclusion.supportingFindingIds.map((id) => findingLabels.get(id) ?? id).join(' · '),
         ),
       );
+      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, conclusion.sourceDocumentIds)));
     });
   }
 
@@ -241,9 +377,10 @@ function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfCon
       children: [new TextRun({ text: 'Estudio de Títulos', bold: true, size: 48, color: COLORS.primary })],
     }),
     new Paragraph({
-      spacing: { after: 360 },
-      children: [new TextRun({ text: 'Informe estructurado', size: 26, color: COLORS.secondary })],
+      spacing: { after: 200 },
+      children: [new TextRun({ text: 'Análisis documental preliminar', size: 26, color: COLORS.secondary })],
     }),
+    body('Documento generado para revisión humana. La salida estructurada no constituye validación jurídica.'),
     new Paragraph({
       border: { bottom: { style: BorderStyle.SINGLE, size: 16, color: COLORS.secondary } },
       spacing: { after: 240 },
@@ -293,15 +430,6 @@ function buildDocument(report: TitleStudy): Document {
           quickFormat: true,
           run: { font: 'Aptos', size: 26, bold: true, color: COLORS.secondary },
           paragraph: { spacing: { before: 280, after: 120 }, keepNext: true, outlineLevel: 1 },
-        },
-        {
-          id: 'Heading3',
-          name: 'Heading 3',
-          basedOn: 'Normal',
-          next: 'Normal',
-          quickFormat: true,
-          run: { font: 'Aptos', size: 23, bold: true, color: COLORS.primary },
-          paragraph: { spacing: { before: 200, after: 80 }, keepNext: true, outlineLevel: 2 },
         },
       ],
     },
