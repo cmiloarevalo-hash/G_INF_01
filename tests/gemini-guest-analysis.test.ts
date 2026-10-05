@@ -10,13 +10,22 @@ const report = {
     { id: 'doc-a', documentType: 'escritura', name: 'a.txt' },
     { id: 'doc-b', documentType: 'certificado', name: 'b.md' },
   ],
-  findings: [
-    { id: 'f-a', statement: 'Precio 100', sourceDocumentIds: ['doc-a'], values: [{ documentId: 'doc-a', field: 'precio', original: '100' }] },
-    { id: 'f-b', statement: 'Precio 120', sourceDocumentIds: ['doc-b'], values: [{ documentId: 'doc-b', field: 'precio', original: '120' }] },
+  facts: [
+    { id: 'fact-a', category: 'TRANSACTION_PAYMENT', label: 'Precio', original: '100', sourceDocumentIds: ['doc-a'] },
+    { id: 'fact-b', category: 'TRANSACTION_PAYMENT', label: 'Precio', original: '120', sourceDocumentIds: ['doc-b'] },
   ],
-  comparisons: [{ id: 'c-1', field: 'precio', result: 'DIFFERENT', values: [
-    { documentId: 'doc-a', field: 'precio', original: '100' }, { documentId: 'doc-b', field: 'precio', original: '120' },
-  ], explanation: 'Valores distintos' }],
+  findings: [
+    { id: 'f-a', statement: 'El primer documento indica precio 100.', supportingFactIds: ['fact-a'], sourceDocumentIds: ['doc-a'] },
+    { id: 'f-b', statement: 'El segundo documento indica precio 120.', supportingFactIds: ['fact-b'], sourceDocumentIds: ['doc-b'] },
+  ],
+  comparisons: [{
+    id: 'c-1',
+    topic: 'precio',
+    factIds: ['fact-a', 'fact-b'],
+    result: 'DIFFERENT_VALUE',
+    explanation: 'Valores distintos',
+    sourceDocumentIds: ['doc-a', 'doc-b'],
+  }],
 };
 const completed = (value: unknown) => Response.json({ status: 'completed', steps: [{ type: 'thought', signature: 'ignore' }, { type: 'model_output', content: [{ type: 'text', text: JSON.stringify(value) }] }] });
 
@@ -40,7 +49,7 @@ test('two compatible files use exactly one provider request and retain a validat
   const result = await analyzeGuestDocuments('mock-session-key', two, fetchImpl);
   assert.equal(calls, 1);
   assert.equal(result.error, undefined);
-  assert.equal(result.report?.comparisons?.[0]?.result, 'DIFFERENT');
+  assert.equal(result.report?.comparisons?.[0]?.result, 'DIFFERENT_VALUE');
   assert.deepEqual(result.statuses.map((s) => s.status), ['Fuente identificada', 'Fuente identificada']);
   assert.ok(result.statuses.every((s) => s.submissionAttempted && s.sourceIdentified && !s.contentVerified));
   assert.equal(result.partial, false);
@@ -48,7 +57,7 @@ test('two compatible files use exactly one provider request and retain a validat
 
 test('only unsupported files cause zero provider requests; a mixed selection causes exactly one', async () => {
   let calls = 0;
-  const fetchImpl: typeof fetch = async () => { calls++; return completed({ ...report, sourceDocuments: report.sourceDocuments.slice(0, 1), findings: [], comparisons: [] }); };
+  const fetchImpl: typeof fetch = async () => { calls++; return completed({ reportType: 'TITLE_STUDY', sourceDocuments: report.sourceDocuments.slice(0, 1) }); };
   const unsupported = file('doc-x', 'book.xlsx', 'sheet');
   const none = await analyzeGuestDocuments('mock', [unsupported], fetchImpl);
   assert.equal(calls, 0);
@@ -82,7 +91,7 @@ test('empty file, renamed PDF, images and Markdown retain MIME and honest causes
   const inputs: unknown[] = [];
   const result = await analyzeGuestDocuments('mock', [image, file('doc-md', 'notas.markdown', 'Texto'), file('empty', 'zero.pdf', ''), file('fake', 'fake.pdf', 'no PDF')], async (_url, init) => {
     inputs.push((JSON.parse(String(init?.body)) as { input: unknown }).input);
-    return completed({ ...report, sourceDocuments: [{ id: 'doc-png', name: 'plano.png', documentType: 'plano' }, { id: 'doc-md', name: 'notas.markdown', documentType: 'texto' }], findings: [], comparisons: [] });
+    return completed({ reportType: 'TITLE_STUDY', sourceDocuments: [{ id: 'doc-png', name: 'plano.png', documentType: 'plano' }, { id: 'doc-md', name: 'notas.markdown', documentType: 'texto' }] });
   });
   assert.equal(inputs.length, 1);
   assert.match(JSON.stringify(inputs[0]), /image\/png/);
@@ -96,7 +105,7 @@ test('provider error, invalid JSON and missing source never mark a sent file ana
   for (const fetchImpl of [
     async () => Response.json({ error: { message: 'quota mock-key' } }, { status: 429 }),
     async () => Response.json({ status: 'completed', output_text: '{' }),
-    async () => completed({ ...report, sourceDocuments: report.sourceDocuments.slice(0, 1), findings: [], comparisons: [] }),
+    async () => completed({ reportType: 'TITLE_STUDY', sourceDocuments: report.sourceDocuments.slice(0, 1) }),
   ] as Array<typeof fetch>) {
     const result = await analyzeGuestDocuments('mock-key', two, fetchImpl);
     assert.equal(result.report, undefined);
