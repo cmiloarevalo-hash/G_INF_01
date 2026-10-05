@@ -44,6 +44,8 @@ test('omits all analytical sections when collections are absent', () => {
 
   assert.match(html, /Documentos fuente/);
   assert.match(html, /titulo\.pdf/);
+  assert.equal(html.includes('>Emisor<'), false);
+  assert.equal(html.includes('>Fecha<'), false);
   for (const absent of [
     'Antecedentes y hechos extraídos',
     'Entidades y relaciones documentadas',
