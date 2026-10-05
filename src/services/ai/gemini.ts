@@ -269,11 +269,13 @@ export async function analyzeGuestDocuments(
     }
     return { report: parsed, statuses: statuses.map((item): DocumentStatus => {
       if (!expectedDocuments.has(item.id)) return item;
+      const hasFact = parsed.facts?.some((fact) => fact.sourceDocumentIds.includes(item.id)) ?? false;
       const hasFinding = parsed.findings?.some((finding) => finding.sourceDocumentIds.includes(item.id)) ?? false;
+      const hasAttributedEvidence = hasFact || hasFinding;
       return { id: item.id, name: item.name, status: 'Fuente identificada', submissionAttempted: true, sourceIdentified: true, contentVerified: false,
-        reason: hasFinding
-          ? 'El JSON válido identifica esta fuente y le atribuye hallazgos; su contenido no se ha cotejado con el original.'
-          : 'El JSON válido identifica esta fuente, pero no le atribuye hallazgos; esto no demuestra lectura ni verificación de su contenido.' };
+        reason: hasAttributedEvidence
+          ? 'El JSON válido identifica esta fuente y le atribuye hechos o hallazgos; su contenido no se ha cotejado con el original.'
+          : 'El JSON válido identifica esta fuente, pero no le atribuye hechos ni hallazgos; esto no demuestra lectura ni verificación de su contenido.' };
     }), partial: sent.length !== files.length };
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'No se obtuvo un resultado verificable de Gemini.';
