@@ -12,15 +12,24 @@ import type { TitleStudy } from '../src/report-types/title-study/schema.js';
 const report: TitleStudy = {
   reportType: 'TITLE_STUDY',
   sourceDocuments: [{ id: 'doc-1', name: 'titulo.pdf', documentType: 'Documento' }],
+  facts: [{
+    id: 'fact-1',
+    category: 'REGISTRY_TITLE',
+    label: 'Inscripción',
+    original: 'Fojas 1, número 2, año 2025',
+    sourceDocumentIds: ['doc-1'],
+  }],
   findings: [{
     id: 'finding-1',
     statement: 'Hallazgo validado.',
+    supportingFactIds: ['fact-1'],
     sourceDocumentIds: ['doc-1'],
   }],
   conclusions: [{
     id: 'conclusion-1',
     statement: 'Conclusión validada.',
     supportingFindingIds: ['finding-1'],
+    sourceDocumentIds: ['doc-1'],
   }],
 };
 
