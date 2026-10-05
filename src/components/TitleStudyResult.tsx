@@ -126,10 +126,15 @@ export const TitleStudyResult: FC<{ report: TitleStudy; partial: boolean }> = ({
 
       <ResultSection id="title-study-sources" title="Documentos fuente">
         <div className="title-study-table-scroll"><table className="title-study-table">
-          <thead><tr><th>Documento</th><th>Tipo documental</th><th>Emisor</th><th>Fecha</th></tr></thead>
+          <thead><tr>
+            <th>Documento</th><th>Tipo documental</th>
+            {report.sourceDocuments.some((document) => document.issuer !== undefined) && <th>Emisor</th>}
+            {report.sourceDocuments.some((document) => document.issueDate !== undefined) && <th>Fecha</th>}
+          </tr></thead>
           <tbody>{report.sourceDocuments.map((document) => <tr key={document.id}>
             <td>{document.name}</td><td>{document.documentType}</td>
-            <td>{document.issuer ?? ''}</td><td>{document.issueDate ?? ''}</td>
+            {report.sourceDocuments.some((item) => item.issuer !== undefined) && <td>{document.issuer ?? ''}</td>}
+            {report.sourceDocuments.some((item) => item.issueDate !== undefined) && <td>{document.issueDate ?? ''}</td>}
           </tr>)}</tbody>
         </table></div>
       </ResultSection>
