@@ -64,11 +64,16 @@ export async function requestTitleStudyDocx(
   report: TitleStudy,
   fetchImpl: typeof fetch = fetch,
 ): Promise<Blob> {
-  const response = await fetchImpl('/api/guest/report-docx', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ report }),
-  });
+  let response: Response;
+  try {
+    response = await fetchImpl('/api/guest/report-docx', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ report }),
+    });
+  } catch {
+    throw new Error('No se pudo conectar con el generador DOCX local. Verifica que la aplicación siga abierta e intenta de nuevo.');
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => ({})) as { error?: string };
     throw new Error(body.error || `Error HTTP ${response.status}`);
@@ -78,6 +83,46 @@ export async function requestTitleStudyDocx(
     throw new Error('La respuesta no contiene un informe DOCX válido.');
   }
   return response.blob();
+}
+
+export interface TitleStudyDownloadAdapter {
+  createObjectUrl(blob: Blob): string;
+  revokeObjectUrl(url: string): void;
+  createLink(): {
+    href: string;
+    download: string;
+    click(): void;
+    remove(): void;
+  };
+  appendLink(link: { href: string; download: string; click(): void; remove(): void }): void;
+}
+
+function browserDownloadAdapter(): TitleStudyDownloadAdapter {
+  return {
+    createObjectUrl: (blob) => URL.createObjectURL(blob),
+    revokeObjectUrl: (url) => URL.revokeObjectURL(url),
+    createLink: () => document.createElement('a'),
+    appendLink: (link) => document.body.appendChild(link as HTMLAnchorElement),
+  };
+}
+
+export async function downloadTitleStudyDocx(
+  report: TitleStudy,
+  fetchImpl: typeof fetch = fetch,
+  adapter: TitleStudyDownloadAdapter = browserDownloadAdapter(),
+): Promise<void> {
+  const blob = await requestTitleStudyDocx(report, fetchImpl);
+  const url = adapter.createObjectUrl(blob);
+  try {
+    const link = adapter.createLink();
+    link.href = url;
+    link.download = 'estudio-de-titulos.docx';
+    adapter.appendLink(link);
+    link.click();
+    link.remove();
+  } finally {
+    adapter.revokeObjectUrl(url);
+  }
 }
 
 export const GuestDocumentsPage: FC = () => {
@@ -193,15 +238,7 @@ export const GuestDocumentsPage: FC = () => {
     setIsGeneratingDocx(true);
     setMessage('Generando informe DOCX…');
     try {
-      const blob = await requestTitleStudyDocx(report);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'estudio-de-titulos.docx';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      await downloadTitleStudyDocx(report);
       setMessage('Informe DOCX generado. Revisa el archivo descargado antes de utilizarlo.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No fue posible generar el informe DOCX.');
