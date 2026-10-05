@@ -82,7 +82,25 @@ test('source identity without findings is not evidence of content analysis', asy
   assert.equal(result.report?.findings.length, 0);
   assert.equal(result.statuses[0]?.status, 'Fuente identificada');
   assert.deepEqual([result.statuses[0]?.submissionAttempted, result.statuses[0]?.sourceIdentified, result.statuses[0]?.contentVerified], [true, true, false]);
-  assert.match(result.statuses[0]?.reason ?? '', /no demuestra lectura ni verificación/);
+  assert.match(result.statuses[0]?.reason ?? '', /no le atribuye hechos ni hallazgos/);
+});
+
+test('a sourced fact counts as attributed evidence without claiming content verification', async () => {
+  const result = await analyzeGuestDocuments('mock', [two[0]!], async () => completed({
+    reportType: 'TITLE_STUDY',
+    sourceDocuments: [{ id: 'doc-a', name: 'a.txt', documentType: 'texto' }],
+    facts: [{
+      id: 'fact-a',
+      category: 'TRANSACTION_PAYMENT',
+      label: 'Precio',
+      original: '100',
+      sourceDocumentIds: ['doc-a'],
+    }],
+  }));
+  assert.equal(result.report?.facts?.length, 1);
+  assert.equal(result.statuses[0]?.status, 'Fuente identificada');
+  assert.equal(result.statuses[0]?.contentVerified, false);
+  assert.match(result.statuses[0]?.reason ?? '', /le atribuye hechos o hallazgos/);
 });
 
 test('empty file, renamed PDF, images and Markdown retain MIME and honest causes', async () => {
