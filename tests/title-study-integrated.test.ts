@@ -86,7 +86,7 @@ test('review generator creates ignored DOCX review file with ZIP signature', asy
   );
 
   assert.equal(stderr, '');
-  assert.match(stdout.trim(), /^dist\/review\/title-study-review\.docx — \d+ bytes$/);
+  assert.match(stdout.trim(), /^dist[\\\\/]review[\\\\/]title-study-review\.docx — \d+ bytes$/);
 
   const bytes = await readFile(reviewPath);
   assert.ok(bytes.length > 1000);
