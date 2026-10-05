@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { fileIdentity, mergeSelectedFiles, removeSelectedFile, requestTitleStudyDocx, serializeSelectionUpdate } from '../src/pages/GuestDocumentsPage.js';
+import { downloadTitleStudyDocx, fileIdentity, mergeSelectedFiles, removeSelectedFile, requestTitleStudyDocx, serializeSelectionUpdate } from '../src/pages/GuestDocumentsPage.js';
 
 function makeFile(name: string, contents: string, type = 'application/octet-stream', lastModified = 1): File {
   return new File([contents], name, { type, lastModified });
@@ -80,4 +80,58 @@ test('DOCX download helper reports server failure instead of simulating a file',
   };
   const fetchImpl: typeof fetch = async () => Response.json({ error: 'No fue posible generar el informe DOCX.' }, { status: 500 });
   await assert.rejects(() => requestTitleStudyDocx(report, fetchImpl), /No fue posible generar el informe DOCX/);
+});
+
+
+test('DOCX click flow reaches the route and triggers a browser-style download', async () => {
+  const report = {
+    reportType: 'TITLE_STUDY' as const,
+    sourceDocuments: [{ id: 'doc-1', name: 'titulo.pdf', documentType: 'Documento' }],
+  };
+  let requestUrl = '';
+  let clicked = 0;
+  let appended = 0;
+  let revoked = '';
+  const link = {
+    href: '',
+    download: '',
+    click() { clicked += 1; },
+    remove() {},
+  };
+  const fetchImpl: typeof fetch = async (input) => {
+    requestUrl = String(input);
+    return new Response(new Uint8Array([0x50, 0x4b, 0x03, 0x04]), {
+      status: 200,
+      headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+    });
+  };
+
+  await downloadTitleStudyDocx(report, fetchImpl, {
+    createObjectUrl() { return 'blob:synthetic-docx'; },
+    revokeObjectUrl(url) { revoked = url; },
+    createLink() { return link; },
+    appendLink() { appended += 1; },
+  });
+
+  assert.equal(requestUrl, '/api/guest/report-docx');
+  assert.equal(appended, 1);
+  assert.equal(clicked, 1);
+  assert.equal(link.download, 'estudio-de-titulos.docx');
+  assert.equal(link.href, 'blob:synthetic-docx');
+  assert.equal(revoked, 'blob:synthetic-docx');
+});
+
+test('DOCX network failure surfaces a clear local-generator error', async () => {
+  const report = {
+    reportType: 'TITLE_STUDY' as const,
+    sourceDocuments: [{ id: 'doc-1', name: 'titulo.pdf', documentType: 'Documento' }],
+  };
+  const fetchImpl: typeof fetch = async () => {
+    throw new TypeError('Failed to fetch');
+  };
+
+  await assert.rejects(
+    () => requestTitleStudyDocx(report, fetchImpl),
+    /No se pudo conectar con el generador DOCX local/,
+  );
 });
