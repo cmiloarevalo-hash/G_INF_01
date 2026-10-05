@@ -29,7 +29,7 @@ test('single route sends supported source once and returns validated report with
     assert.equal(body.report.reportType, 'TITLE_STUDY');
     assert.equal(body.statuses[0]?.status, 'Fuente identificada');
     assert.deepEqual([body.statuses[0]?.submissionAttempted, body.statuses[0]?.sourceIdentified, body.statuses[0]?.contentVerified], [true, true, false]);
-    assert.match(body.statuses[0]?.reason ?? '', /no le atribuye hallazgos/);
+    assert.match(body.statuses[0]?.reason ?? '', /no le atribuye hechos ni hallazgos/);
     assert.equal(JSON.stringify(body).includes('mock-key'), false);
     assert.equal((await fetch(root + '/api/guest/extract', { method: 'POST' })).status, 404);
     assert.equal((await fetch(root + '/api/guest/synthesize', { method: 'POST' })).status, 404);
@@ -64,7 +64,7 @@ test('the allowed boundary of 20 selected compatible files reaches one provider 
     assert.equal(response.status, 200);
     const body = await response.json() as { statuses: Array<{ status: string; contentVerified: boolean; reason: string }> };
     assert.equal(body.statuses.length, 20);
-    assert.ok(body.statuses.every(({ status, contentVerified, reason }) => status === 'Fuente identificada' && !contentVerified && /no le atribuye hallazgos/.test(reason)));
+    assert.ok(body.statuses.every(({ status, contentVerified, reason }) => status === 'Fuente identificada' && !contentVerified && /no le atribuye hechos ni hallazgos/.test(reason)));
   });
   assert.equal(calls, 1);
 });
