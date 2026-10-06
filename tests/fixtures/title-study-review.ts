@@ -129,7 +129,6 @@ export const titleStudyReviewFixture: TitleStudy = {
       factIds: ['internal-fact-role-sii', 'internal-fact-role-cip'],
       result: 'NORMALIZED_EQUIVALENT',
       explanation: 'Los dos documentos expresan el mismo ROL después de normalización segura.',
-      sourceDocumentIds: ['internal-doc-sii', 'internal-doc-cip'],
     },
     {
       id: 'internal-comparison-area',
@@ -137,7 +136,6 @@ export const titleStudyReviewFixture: TitleStudy = {
       factIds: ['internal-fact-area-title', 'internal-fact-area-cip'],
       result: 'NORMALIZED_EQUIVALENT',
       explanation: 'Las superficies son equivalentes después de convertir hectáreas a metros cuadrados.',
-      sourceDocumentIds: ['internal-doc-title', 'internal-doc-cip'],
     },
   ],
   findings: [
@@ -149,13 +147,11 @@ export const titleStudyReviewFixture: TitleStudy = {
         'internal-fact-role-sii',
         'internal-fact-role-cip',
       ],
-      sourceDocumentIds: ['internal-doc-title', 'internal-doc-sii', 'internal-doc-cip'],
     },
     {
       id: 'internal-finding-area',
       statement: 'La superficie expresada en distintas unidades resulta equivalente tras normalización.',
       supportingFactIds: ['internal-fact-area-title', 'internal-fact-area-cip'],
-      sourceDocumentIds: ['internal-doc-title', 'internal-doc-cip'],
     },
   ],
   risksOrAlerts: [
@@ -163,7 +159,6 @@ export const titleStudyReviewFixture: TitleStudy = {
       id: 'internal-risk-review',
       statement: 'La equivalencia normalizada debe conservar los valores originales para revisión humana.',
       supportingFactIds: ['internal-fact-area-title', 'internal-fact-area-cip'],
-      sourceDocumentIds: ['internal-doc-title', 'internal-doc-cip'],
     },
   ],
   conclusions: [
@@ -171,7 +166,6 @@ export const titleStudyReviewFixture: TitleStudy = {
       id: 'internal-conclusion',
       statement: 'El fixture sintético conserva trazabilidad entre fuentes, hechos, comparaciones y síntesis.',
       supportingFindingIds: ['internal-finding-identity', 'internal-finding-area'],
-      sourceDocumentIds: ['internal-doc-title', 'internal-doc-sii', 'internal-doc-cip'],
     },
   ],
   timeline: [
@@ -181,7 +175,6 @@ export const titleStudyReviewFixture: TitleStudy = {
       dateNormalized: '2025-01-10',
       event: 'Emisión del antecedente registral sintético.',
       supportingFactIds: ['internal-fact-domain'],
-      sourceDocumentIds: ['internal-doc-title'],
     },
   ],
 };
