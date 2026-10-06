@@ -23,6 +23,7 @@ Cada archivo recibido incluye un `id` y `name` proporcionados por la aplicación
 
 - Conserva exactamente esos identificadores en `sourceDocuments`.
 - Clasifica `documentType` sólo cuando el propio documento permita reconocerlo.
+- Si no puedes reconocer el tipo documental con respaldo suficiente, omite `documentType`; no inventes una clasificación.
 - Agrega `issuer` y `issueDate` sólo cuando estén expresamente respaldados.
 - No afirmes que una fuente fue comprendida correctamente sólo porque fue recibida.
 
@@ -86,7 +87,7 @@ Toda entidad/relación debe conservar trazabilidad a `sourceDocumentIds`.
 
 Compara únicamente hechos realmente presentes.
 
-Usa `comparisons` con `factIds` y `sourceDocumentIds`.
+Usa `comparisons` con `factIds`. Las fuentes se derivan de esos hechos; no repitas `sourceDocumentIds` en la comparación.
 
 Resultados:
 - `EXACT_MATCH`: mismo valor relevante.
@@ -159,13 +160,13 @@ Promesas, recibos, comprobantes, tasaciones, planos, certificados administrativo
 
 Cada hallazgo:
 - debe tener `supportingFactIds`;
-- debe repetir `sourceDocumentIds`;
+- sus fuentes se derivan de los hechos referenciados; no repitas `sourceDocumentIds`;
 - debe separar hecho observado de interpretación;
 - no debe introducir hechos nuevos.
 
 ## Riesgos o alertas
 
-Usa `risksOrAlerts` sólo cuando la evidencia presente respalde una alerta real, por ejemplo:
+Usa `risksOrAlerts` sólo cuando la evidencia presente respalde una alerta real. Cada alerta debe usar `supportingFactIds`; sus fuentes se derivan de esos hechos y no debe repetir `sourceDocumentIds`. Por ejemplo:
 - incongruencia material;
 - contradicción;
 - secuencia cronológica problemática;
@@ -178,7 +179,7 @@ No generes alertas por documentos/campos que simplemente no fueron suministrados
 
 Cada conclusión:
 - debe estar sustentada por `supportingFindingIds`;
-- debe incluir `sourceDocumentIds`;
+- sus fuentes se derivan de los hallazgos y hechos alcanzables; no repitas `sourceDocumentIds`;
 - debe conservar incertidumbre cuando la evidencia presente no permita afirmar más;
 - no debe presentar la validación del schema como validación jurídica.
 
@@ -189,7 +190,7 @@ Usa `timeline` sólo si existen actos/fechas materiales suficientes.
 Cada evento debe:
 - usar la fecha tal como consta en `dateOriginal`;
 - agregar `dateNormalized` sólo si es inequívoca;
-- enlazar `supportingFactIds` y `sourceDocumentIds`;
+- enlazar `supportingFactIds`; las fuentes se derivan de esos hechos y no se repiten en el evento;
 - no inventar eventos intermedios.
 
 ## Contrato final
