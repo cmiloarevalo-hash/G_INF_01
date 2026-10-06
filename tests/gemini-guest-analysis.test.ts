@@ -15,8 +15,8 @@ const report = {
     { id: 'fact-b', category: 'TRANSACTION_PAYMENT', label: 'Precio', original: '120', sourceDocumentIds: ['doc-b'] },
   ],
   findings: [
-    { id: 'f-a', statement: 'El primer documento indica precio 100.', supportingFactIds: ['fact-a'], sourceDocumentIds: ['doc-a'] },
-    { id: 'f-b', statement: 'El segundo documento indica precio 120.', supportingFactIds: ['fact-b'], sourceDocumentIds: ['doc-b'] },
+    { id: 'f-a', statement: 'El primer documento indica precio 100.', supportingFactIds: ['fact-a'] },
+    { id: 'f-b', statement: 'El segundo documento indica precio 120.', supportingFactIds: ['fact-b'] },
   ],
   comparisons: [{
     id: 'c-1',
@@ -24,7 +24,6 @@ const report = {
     factIds: ['fact-a', 'fact-b'],
     result: 'DIFFERENT_VALUE',
     explanation: 'Valores distintos',
-    sourceDocumentIds: ['doc-a', 'doc-b'],
   }],
 };
 const completed = (value: unknown) => Response.json({ status: 'completed', steps: [{ type: 'thought', signature: 'ignore' }, { type: 'model_output', content: [{ type: 'text', text: JSON.stringify(value) }] }] });
