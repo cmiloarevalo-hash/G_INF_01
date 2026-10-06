@@ -270,7 +270,11 @@ export async function analyzeGuestDocuments(
     return { report: parsed, statuses: statuses.map((item): DocumentStatus => {
       if (!expectedDocuments.has(item.id)) return item;
       const hasFact = parsed.facts?.some((fact) => fact.sourceDocumentIds.includes(item.id)) ?? false;
-      const hasFinding = parsed.findings?.some((finding) => finding.sourceDocumentIds.includes(item.id)) ?? false;
+      const hasFinding = parsed.findings?.some((finding) =>
+        finding.supportingFactIds.some((factId) =>
+          parsed.facts?.find((fact) => fact.id === factId)?.sourceDocumentIds.includes(item.id) ?? false,
+        ),
+      ) ?? false;
       const hasAttributedEvidence = hasFact || hasFinding;
       return { id: item.id, name: item.name, status: 'Fuente identificada', submissionAttempted: true, sourceIdentified: true, contentVerified: false,
         reason: hasAttributedEvidence
