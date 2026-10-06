@@ -10,7 +10,7 @@ import { titleStudyReviewFixture } from './fixtures/title-study-review.js';
 const minimalReport = {
   reportType: 'TITLE_STUDY',
   sourceDocuments: [
-    { id: 'doc-1', documentType: 'Documento', name: 'documento.pdf' },
+    { id: 'doc-1', name: 'documento.pdf' },
   ],
 } satisfies TitleStudy;
 
@@ -29,6 +29,16 @@ test('accepts a minimal report and omits every absent analytical category', () =
   ]) {
     assert.equal(key in result, false, `${key} should stay absent`);
   }
+});
+
+test('accepts a source document with id and name without inventing documentType', () => {
+  const result = titleStudySchema.parse({
+    reportType: 'TITLE_STUDY',
+    sourceDocuments: [{ id: 'doc-ambiguous', name: 'antecedente.pdf' }],
+  });
+
+  assert.deepEqual(result.sourceDocuments, [{ id: 'doc-ambiguous', name: 'antecedente.pdf' }]);
+  assert.equal(result.sourceDocuments[0]?.documentType, undefined);
 });
 
 test('validates the generalized synthetic dossier shape with sourced facts and optional entities/timeline', () => {
@@ -90,7 +100,6 @@ test('rejects broken document, fact, entity and finding references fail-closed',
         factIds: ['fact-1', 'missing-fact'],
         result: 'DIFFERENT_VALUE',
         explanation: 'Difieren.',
-        sourceDocumentIds: ['doc-1'],
       }],
     },
     {
@@ -106,7 +115,6 @@ test('rejects broken document, fact, entity and finding references fail-closed',
         id: 'finding-1',
         statement: 'Hallazgo.',
         supportingFactIds: ['missing-fact'],
-        sourceDocumentIds: ['doc-1'],
       }],
     },
     {
@@ -115,7 +123,95 @@ test('rejects broken document, fact, entity and finding references fail-closed',
         id: 'conclusion-1',
         statement: 'Conclusión.',
         supportingFindingIds: ['missing-finding'],
-        sourceDocumentIds: ['doc-1'],
+      }],
+    },
+  ];
+
+  for (const value of cases) {
+    assert.equal(titleStudySchema.safeParse(value).success, false);
+  }
+});
+
+test('rejects redundant downstream sourceDocumentIds even when they name an existing but wrong document', () => {
+  const sourceDocuments = [
+    { id: 'doc-1', name: 'a.pdf' },
+    { id: 'doc-2', name: 'b.pdf' },
+  ];
+  const facts = [
+    {
+      id: 'fact-1',
+      category: 'PROPERTY_IDENTITY',
+      label: 'ROL principal',
+      original: '1-2',
+      sourceDocumentIds: ['doc-1'],
+    },
+    {
+      id: 'fact-2',
+      category: 'PROPERTY_IDENTITY',
+      label: 'ROL secundario',
+      original: '1-2',
+      sourceDocumentIds: ['doc-1'],
+    },
+  ];
+  const finding = {
+    id: 'finding-1',
+    statement: 'Los hechos corresponden al documento uno.',
+    supportingFactIds: ['fact-1'],
+  };
+
+  const cases: unknown[] = [
+    {
+      reportType: 'TITLE_STUDY',
+      sourceDocuments,
+      facts,
+      comparisons: [{
+        id: 'comparison-1',
+        topic: 'ROL',
+        factIds: ['fact-1', 'fact-2'],
+        result: 'EXACT_MATCH',
+        explanation: 'Coinciden.',
+        sourceDocumentIds: ['doc-2'],
+      }],
+    },
+    {
+      reportType: 'TITLE_STUDY',
+      sourceDocuments,
+      facts,
+      findings: [{ ...finding, sourceDocumentIds: ['doc-2'] }],
+    },
+    {
+      reportType: 'TITLE_STUDY',
+      sourceDocuments,
+      facts,
+      risksOrAlerts: [{
+        id: 'risk-1',
+        statement: 'Alerta.',
+        supportingFactIds: ['fact-1'],
+        sourceDocumentIds: ['doc-2'],
+      }],
+    },
+    {
+      reportType: 'TITLE_STUDY',
+      sourceDocuments,
+      facts,
+      timeline: [{
+        id: 'timeline-1',
+        dateOriginal: '1 de enero de 2025',
+        event: 'Evento.',
+        supportingFactIds: ['fact-1'],
+        sourceDocumentIds: ['doc-2'],
+      }],
+    },
+    {
+      reportType: 'TITLE_STUDY',
+      sourceDocuments,
+      facts,
+      findings: [finding],
+      conclusions: [{
+        id: 'conclusion-1',
+        statement: 'Conclusión.',
+        supportingFindingIds: ['finding-1'],
+        sourceDocumentIds: ['doc-2'],
       }],
     },
   ];
@@ -182,7 +278,6 @@ test('rejects duplicate IDs and duplicate fact references inside a comparison', 
       factIds: ['fact-1', 'fact-1'],
       result: 'EXACT_MATCH',
       explanation: 'Mismo hecho repetido.',
-      sourceDocumentIds: ['doc-1'],
     }],
   };
   assert.equal(titleStudySchema.safeParse(duplicateComparisonFacts).success, false);
@@ -217,7 +312,6 @@ test('supports the complete comparison vocabulary including temporal and authori
         factIds: ['fact-a', 'fact-b'],
         result,
         explanation: 'Comparación sintética.',
-        sourceDocumentIds: ['doc-1', 'doc-2'],
       }],
     });
 
@@ -233,6 +327,10 @@ test('derived JSON Schema exposes the generic evidence contract and no absence o
   assert.deepEqual(jsonSchema.required, ['reportType', 'sourceDocuments']);
   assert.equal(properties.reportType.const, 'TITLE_STUDY');
   assert.equal(properties.sourceDocuments.minItems, 1);
+  const sourceDocumentItem = properties.sourceDocuments.items as Record<string, unknown>;
+  const sourceDocumentProperties = sourceDocumentItem.properties as Record<string, Record<string, unknown>>;
+  assert.ok('documentType' in sourceDocumentProperties);
+  assert.ok(!(sourceDocumentItem.required as string[]).includes('documentType'));
   assert.ok('facts' in properties);
   assert.ok('entities' in properties);
   assert.ok('relationships' in properties);
@@ -276,5 +374,13 @@ test('derived JSON Schema exposes the generic evidence contract and no absence o
     'STATUS_TRANSITION',
   ]);
   assert.equal(comparisonProperties.factIds.minItems, 2);
+  assert.equal('sourceDocumentIds' in comparisonProperties, false);
+
+  for (const key of ['findings', 'risksOrAlerts', 'conclusions', 'timeline'] as const) {
+    const item = properties[key].items as Record<string, unknown>;
+    const itemProperties = item.properties as Record<string, unknown>;
+    assert.equal('sourceDocumentIds' in itemProperties, false, `${key} must derive provenance`);
+  }
+
   assert.equal(jsonSchema.additionalProperties, false);
 });
