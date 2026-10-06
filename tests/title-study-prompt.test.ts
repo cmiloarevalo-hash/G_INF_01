@@ -14,6 +14,15 @@ test('prompt is generalized, evidence-driven and rejects absence boilerplate', a
   assert.doesNotMatch(prompt, /missingInformation/);
 });
 
+test('prompt permits unclassified sources and derives downstream provenance', async () => {
+  const prompt = await readFile(promptPath, 'utf8');
+
+  assert.ok(prompt.includes('omite `documentType`'));
+  assert.ok(prompt.includes('no inventes una clasificación'));
+  assert.ok(prompt.includes('no repitas `sourceDocumentIds`'));
+  assert.ok(prompt.includes('Las fuentes se derivan de esos hechos'));
+});
+
 test('prompt includes recognition cues for the accepted Chilean document families', async () => {
   const prompt = await readFile(promptPath, 'utf8');
 
