@@ -56,6 +56,28 @@ function sourceNames(report: TitleStudy, ids: string[]) {
   return ids.map((id) => resolveDocumentName(report, id)).join(' · ');
 }
 
+function sourceDocumentIdsFromFacts(report: TitleStudy, factIds: string[]): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const factId of factIds) {
+    const fact = report.facts?.find((candidate) => candidate.id === factId);
+    for (const documentId of fact?.sourceDocumentIds ?? []) {
+      if (!seen.has(documentId)) {
+        seen.add(documentId);
+        ids.push(documentId);
+      }
+    }
+  }
+  return ids;
+}
+
+function sourceDocumentIdsFromFindings(report: TitleStudy, findingIds: string[]): string[] {
+  const factIds = findingIds.flatMap(
+    (findingId) => report.findings?.find((finding) => finding.id === findingId)?.supportingFactIds ?? [],
+  );
+  return sourceDocumentIdsFromFacts(report, factIds);
+}
+
 function FactTable({ report, facts }: { report: TitleStudy; facts: Fact[] }) {
   const showNormalized = facts.some((fact) => fact.normalized !== undefined);
   const showLocator = facts.some((fact) => fact.evidenceLocators?.length);
@@ -99,6 +121,10 @@ export const TitleStudyResult: FC<{ report: TitleStudy; partial: boolean }> = ({
   const groupedFacts = new Map<Fact['category'], Fact[]>();
   facts.forEach((fact) => groupedFacts.set(fact.category, [...(groupedFacts.get(fact.category) ?? []), fact]));
 
+  const showDocumentType = report.sourceDocuments.some((document) => document.documentType !== undefined);
+  const showIssuer = report.sourceDocuments.some((document) => document.issuer !== undefined);
+  const showIssueDate = report.sourceDocuments.some((document) => document.issueDate !== undefined);
+
   const sections = [
     { id: 'title-study-sources', label: 'Documentos fuente', visible: true },
     { id: 'title-study-facts', label: 'Hechos', visible: facts.length > 0 },
@@ -127,14 +153,16 @@ export const TitleStudyResult: FC<{ report: TitleStudy; partial: boolean }> = ({
       <ResultSection id="title-study-sources" title="Documentos fuente">
         <div className="title-study-table-scroll"><table className="title-study-table">
           <thead><tr>
-            <th>Documento</th><th>Tipo documental</th>
-            {report.sourceDocuments.some((document) => document.issuer !== undefined) && <th>Emisor</th>}
-            {report.sourceDocuments.some((document) => document.issueDate !== undefined) && <th>Fecha</th>}
+            <th>Documento</th>
+            {showDocumentType && <th>Tipo documental</th>}
+            {showIssuer && <th>Emisor</th>}
+            {showIssueDate && <th>Fecha</th>}
           </tr></thead>
           <tbody>{report.sourceDocuments.map((document) => <tr key={document.id}>
-            <td>{document.name}</td><td>{document.documentType}</td>
-            {report.sourceDocuments.some((item) => item.issuer !== undefined) && <td>{document.issuer ?? ''}</td>}
-            {report.sourceDocuments.some((item) => item.issueDate !== undefined) && <td>{document.issueDate ?? ''}</td>}
+            <td>{document.name}</td>
+            {showDocumentType && <td>{document.documentType ?? 'Sin clasificar'}</td>}
+            {showIssuer && <td>{document.issuer ?? ''}</td>}
+            {showIssueDate && <td>{document.issueDate ?? ''}</td>}
           </tr>)}</tbody>
         </table></div>
       </ResultSection>
@@ -164,7 +192,7 @@ export const TitleStudyResult: FC<{ report: TitleStudy; partial: boolean }> = ({
               <span className="title-study-comparison-status">{comparisonLabel(comparison.result)}</span></div>
             <FactTable report={report} facts={comparisonFacts} />
             <p className="title-study-explanation">{comparison.explanation}</p>
-            <p className="title-study-trace"><strong>Fuentes:</strong> {sourceNames(report, comparison.sourceDocumentIds)}</p>
+            <p className="title-study-trace"><strong>Fuentes:</strong> {sourceNames(report, sourceDocumentIdsFromFacts(report, comparison.factIds))}</p>
           </article>;
         })}</div>
       </ResultSection>}
@@ -173,7 +201,7 @@ export const TitleStudyResult: FC<{ report: TitleStudy; partial: boolean }> = ({
         <div className="title-study-card-list">{findings.map((finding, index) => <article className="title-study-card" key={finding.id}>
           <span className="title-study-index">Hallazgo {index + 1}</span><h5>{finding.statement}</h5>
           <p className="title-study-trace"><strong>Hechos de respaldo:</strong> {finding.supportingFactIds.map((id) => factLabels.get(id) ?? id).join(' · ')}</p>
-          <p className="title-study-trace"><strong>Fuentes:</strong> {sourceNames(report, finding.sourceDocumentIds)}</p>
+          <p className="title-study-trace"><strong>Fuentes:</strong> {sourceNames(report, sourceDocumentIdsFromFacts(report, finding.supportingFactIds))}</p>
         </article>)}</div>
       </ResultSection>}
 
@@ -181,13 +209,13 @@ export const TitleStudyResult: FC<{ report: TitleStudy; partial: boolean }> = ({
         <div className="title-study-card-list">{risks.map((risk, index) => <article className="title-study-card" key={risk.id}>
           <span className="title-study-index">Alerta {index + 1}</span><h5>{risk.statement}</h5>
           <p className="title-study-trace"><strong>Hechos de respaldo:</strong> {risk.supportingFactIds.map((id) => factLabels.get(id) ?? id).join(' · ')}</p>
-          <p className="title-study-trace"><strong>Fuentes:</strong> {sourceNames(report, risk.sourceDocumentIds)}</p>
+          <p className="title-study-trace"><strong>Fuentes:</strong> {sourceNames(report, sourceDocumentIdsFromFacts(report, risk.supportingFactIds))}</p>
         </article>)}</div>
       </ResultSection>}
 
       {timeline.length > 0 && <ResultSection id="title-study-timeline" title="Cronología documental">
         <div className="title-study-table-scroll"><table className="title-study-table"><thead><tr><th>Fecha</th><th>Evento</th><th>Fuentes</th></tr></thead>
-          <tbody>{timeline.map((event) => <tr key={event.id}><td>{event.dateOriginal}{event.dateNormalized ? ` (${event.dateNormalized})` : ''}</td><td>{event.event}</td><td>{sourceNames(report, event.sourceDocumentIds)}</td></tr>)}</tbody>
+          <tbody>{timeline.map((event) => <tr key={event.id}><td>{event.dateOriginal}{event.dateNormalized ? ` (${event.dateNormalized})` : ''}</td><td>{event.event}</td><td>{sourceNames(report, sourceDocumentIdsFromFacts(report, event.supportingFactIds))}</td></tr>)}</tbody>
         </table></div>
       </ResultSection>}
 
@@ -195,7 +223,7 @@ export const TitleStudyResult: FC<{ report: TitleStudy; partial: boolean }> = ({
         <ol className="title-study-conclusion-list">{conclusions.map((conclusion) => <li key={conclusion.id}>
           <p>{conclusion.statement}</p>
           <p className="title-study-trace"><strong>Hallazgos de respaldo:</strong> {conclusion.supportingFindingIds.map((id) => findingLabels.get(id) ?? id).join(' · ')}</p>
-          <p className="title-study-trace"><strong>Fuentes:</strong> {sourceNames(report, conclusion.sourceDocumentIds)}</p>
+          <p className="title-study-trace"><strong>Fuentes:</strong> {sourceNames(report, sourceDocumentIdsFromFindings(report, conclusion.supportingFindingIds))}</p>
         </li>)}</ol>
       </ResultSection>}
     </section>
