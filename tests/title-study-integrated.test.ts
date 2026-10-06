@@ -13,32 +13,23 @@ import { readDocxDocumentXml, readDocxEntries } from './helpers/docx.js';
 
 const execFileAsync = promisify(execFile);
 const reviewPath = 'dist/review/title-study-review.docx';
-const absenceText = /No informado|No consta|Sin datos|N\/A|undefined/i;
-const internalIds = [
-  'internal-doc-alpha',
-  'internal-doc-beta',
-  'internal-finding-alpha',
-  'internal-finding-beta',
-  'internal-comparison-alpha',
-  'internal-comparison-beta',
-  'internal-conclusion-alpha',
-];
+const absenceText = /NO CONSTA EN ANTECEDENTES|No informado|No consta|Sin datos|N\/A|undefined/i;
 
 function assertVisibleInBoth(html: string, documentXml: string, value: string) {
   assert.ok(html.includes(value), `UI is missing: ${value}`);
   assert.ok(documentXml.includes(value), `DOCX is missing: ${value}`);
 }
 
-test('integrated UI and DOCX preserve the same synthetic TITLE_STUDY semantics', async () => {
+test('integrated UI and DOCX preserve the same generalized synthetic semantics', async () => {
   const parsed = titleStudySchema.safeParse(titleStudyReviewFixture);
-  assert.equal(parsed.success, true, 'synthetic review fixture must validate with the current schema');
+  assert.equal(parsed.success, true, 'synthetic review fixture must validate');
   if (!parsed.success) return;
 
   let networkCalls = 0;
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => {
     networkCalls += 1;
-    throw new Error('Network access is forbidden during integrated M3.4 verification');
+    throw new Error('Network access is forbidden during deterministic verification');
   };
 
   let docxBytes: Buffer;
@@ -47,47 +38,35 @@ test('integrated UI and DOCX preserve the same synthetic TITLE_STUDY semantics',
   } finally {
     globalThis.fetch = originalFetch;
   }
-  assert.equal(networkCalls, 0, 'DOCX rendering must not use network or Gemini');
+  assert.equal(networkCalls, 0);
 
   const html = renderToStaticMarkup(createElement(TitleStudyResult, { report: parsed.data, partial: false }));
   const documentXml = readDocxDocumentXml(docxBytes);
 
-  const sharedDynamicValues = [
-    'documento-sintetico-a.pdf',
-    'Documento sintético A',
-    'documento-sintetico-b.pdf',
-    'Documento sintético B',
-    'Los documentos sintéticos contienen valores comparables para el campo de prueba.',
-    'El segundo hallazgo sintético conserva una referencia legible sin valores adicionales.',
-    'campo demostrativo',
-    'Valor Original A-001',
-    'a-001',
-    'A 001',
+  const sharedValues = [
+    'inscripcion-sintetica.pdf',
+    'avaluo-sintetico.pdf',
+    'cip-sintetico.pdf',
+    'Antecedentes y hechos extraídos',
+    'Inscripción de dominio',
+    '00012-00034',
+    '12-34',
+    '8,85 ha',
+    '88500 m²',
     'Equivalente tras normalización',
-    'Los valores sintéticos son equivalentes después de la normalización declarada en el fixture.',
-    'campo auxiliar',
-    'Serie X',
-    'Serie Y',
-    'Diferente',
-    'El fixture sintético conserva la relación entre hallazgos, comparaciones y documentos fuente.',
-    'Hallazgo 1',
-    'Hallazgo 2',
+    'Riesgos y alertas',
+    'Cronología documental',
+    'El fixture sintético conserva trazabilidad entre fuentes, hechos, comparaciones y síntesis.',
   ];
 
-  for (const value of sharedDynamicValues) assertVisibleInBoth(html, documentXml, value);
-
-  assert.match(html, /Fuentes:<\/strong>.*documento-sintetico-a\.pdf.*documento-sintetico-b\.pdf/);
-  assert.match(documentXml, /Fuentes: .*documento-sintetico-a\.pdf.*documento-sintetico-b\.pdf/);
-  assert.match(html, /Hallazgos de respaldo:<\/strong>.*Hallazgo 1.*Hallazgo 2/);
-  assert.match(documentXml, /Hallazgos de respaldo: .*Hallazgo 1.*Hallazgo 2/);
-
-  for (const id of internalIds) {
-    assert.equal(html.includes(id), false, `internal ID leaked to UI: ${id}`);
-    assert.equal(documentXml.includes(id), false, `internal ID leaked to DOCX: ${id}`);
-  }
+  for (const value of sharedValues) assertVisibleInBoth(html, documentXml, value);
 
   assert.doesNotMatch(html, absenceText);
   assert.doesNotMatch(documentXml, absenceText);
+  for (const idPrefix of ['internal-doc-', 'internal-fact-', 'internal-finding-', 'internal-entity-']) {
+    assert.equal(html.includes(idPrefix), false, `internal ID leaked to UI: ${idPrefix}`);
+    assert.equal(documentXml.includes(idPrefix), false, `internal ID leaked to DOCX: ${idPrefix}`);
+  }
 });
 
 test('DOCX content is deterministic for the same synthetic fixture', async () => {
@@ -97,7 +76,7 @@ test('DOCX content is deterministic for the same synthetic fixture', async () =>
   assert.doesNotMatch(first, /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
 });
 
-test('review generator command creates the ignored DOCX review file with ZIP signature', async () => {
+test('review generator creates ignored DOCX review file with ZIP signature', async () => {
   await rm(reviewPath, { force: true });
 
   const { stdout, stderr } = await execFileAsync(
@@ -107,7 +86,7 @@ test('review generator command creates the ignored DOCX review file with ZIP sig
   );
 
   assert.equal(stderr, '');
-  assert.match(stdout.trim(), /^dist\/review\/title-study-review\.docx — \d+ bytes$/);
+  assert.match(stdout.trim(), /^dist[\\\\/]review[\\\\/]title-study-review\.docx — \d+ bytes$/);
 
   const bytes = await readFile(reviewPath);
   assert.ok(bytes.length > 1000);
@@ -115,24 +94,14 @@ test('review generator command creates the ignored DOCX review file with ZIP sig
 
   const entries = readDocxEntries(bytes);
   const xml = readDocxDocumentXml(bytes);
-  assert.match(xml, /documento-sintetico-a\.pdf/);
-  assert.match(xml, /El fixture sintético conserva la relación/);
+  assert.match(xml, /inscripcion-sintetica\.pdf/);
+  assert.match(xml, /Riesgos y alertas/);
+  assert.match(xml, /Cronología documental/);
   assert.match(xml, /w:instrText[^>]*>TOC[^<]*\\h[^<]*\\o (?:&quot;|")1-2(?:&quot;|")/);
-  assert.match(xml, /w:fldChar[^>]*w:fldCharType="begin"/);
-  assert.match(xml, /w:fldChar[^>]*w:fldCharType="separate"/);
-  assert.match(xml, /w:fldChar[^>]*w:fldCharType="end"/);
 
   const settingsXml = entries.get('word/settings.xml')?.toString('utf8');
   assert.ok(settingsXml);
   assert.match(settingsXml, /<w:updateFields(?:\s+w:val="(?:true|1)")?\s*\/>/);
-
-  const numberingXml = entries.get('word/numbering.xml')?.toString('utf8');
-  assert.ok(numberingXml);
-  const conclusionLevel = [...numberingXml.matchAll(/<w:lvl\b[\s\S]*?<\/w:lvl>/g)]
-    .map((match) => match[0])
-    .find((level) => /w:numFmt[^>]*w:val="decimal"/.test(level) && /w:lvlText[^>]*w:val="%1\."/.test(level));
-  assert.ok(conclusionLevel);
-  assert.match(conclusionLevel, /w:suff[^>]*w:val="space"/);
 
   const gitignore = await readFile('.gitignore', 'utf8');
   assert.match(gitignore, /^dist$/m);

@@ -4,94 +4,74 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { TitleStudy } from '../src/report-types/title-study/schema.js';
 import { TitleStudyResult, comparisonLabel, resolveDocumentName } from '../src/components/TitleStudyResult.js';
+import { titleStudyReviewFixture } from './fixtures/title-study-review.js';
 
-const fullReport: TitleStudy = {
-  reportType: 'TITLE_STUDY',
-  sourceDocuments: [
-    { id: 'doc-a', name: 'escritura.pdf', documentType: 'Escritura pública' },
-    { id: 'doc-b', name: 'certificado.pdf', documentType: 'Certificado' },
-  ],
-  findings: [
-    {
-      id: 'raw-finding-id',
-      statement: 'Los documentos identifican valores que deben cotejarse.',
-      sourceDocumentIds: ['doc-a', 'doc-b'],
-      values: [
-        { documentId: 'doc-a', field: 'fojas', original: 'Fojas 123', normalized: '123' },
-        { documentId: 'doc-b', field: 'fojas', original: '123' },
-      ],
-    },
-  ],
-  comparisons: [
-    {
-      id: 'comparison-1',
-      field: 'fojas',
-      values: [
-        { documentId: 'doc-a', field: 'fojas', original: 'Fojas 123', normalized: '123' },
-        { documentId: 'doc-b', field: 'fojas', original: '125' },
-      ],
-      result: 'DIFFERENT',
-      explanation: 'Los valores documentales no coinciden.',
-    },
-  ],
-  conclusions: [
-    {
-      id: 'conclusion-1',
-      statement: 'La diferencia queda registrada en el resultado validado.',
-      supportingFindingIds: ['raw-finding-id'],
-    },
-  ],
-};
+test('renders present evidence categories, traceability, risks and timeline without absence boilerplate', () => {
+  const html = renderToStaticMarkup(createElement(TitleStudyResult, { report: titleStudyReviewFixture, partial: true }));
 
-test('renders the validated result with readable references, original and normalized values', () => {
-  const html = renderToStaticMarkup(createElement(TitleStudyResult, { report: fullReport, partial: true }));
+  for (const value of [
+    'Resultado preliminar (parcial)',
+    'Documentos fuente',
+    'Antecedentes y hechos extraídos',
+    'Dominio e inscripciones',
+    'Identificación del inmueble',
+    'Comparaciones y discrepancias',
+    'Riesgos y alertas',
+    'Cronología documental',
+    'Conclusiones',
+    '00012-00034',
+    '12-34',
+    '8,85 ha',
+    '88500 m²',
+    'Persona Sintética Uno',
+  ]) {
+    assert.ok(html.includes(value), `UI is missing: ${value}`);
+  }
 
-  assert.match(html, /Resultado preliminar \(parcial\)/);
   assert.match(html, /requiere revisión humana/i);
-  assert.match(html, /Documentos fuente/);
-  assert.match(html, /escritura\.pdf/);
-  assert.match(html, /Escritura pública/);
-  assert.match(html, /Hallazgos/);
-  assert.match(html, /Fuentes:<\/strong>.*escritura\.pdf.*certificado\.pdf/);
-  assert.match(html, /Valor original/);
-  assert.match(html, /Fojas 123/);
-  assert.match(html, /Valor normalizado/);
-  assert.match(html, />123</);
-  assert.match(html, /Comparaciones y diferencias/);
-  assert.match(html, /Diferente/);
-  assert.match(html, /Los valores documentales no coinciden/);
-  assert.match(html, /Conclusiones/);
-  assert.match(html, /La diferencia queda registrada/);
-  assert.match(html, /Hallazgos de respaldo:<\/strong>.*Hallazgo 1/);
-  assert.equal(html.includes('doc-a'), false);
-  assert.equal(html.includes('raw-finding-id'), false);
+  assert.doesNotMatch(html, /NO CONSTA EN ANTECEDENTES|No informado|Sin datos|N\/A/i);
+  assert.equal(html.includes('internal-fact-'), false);
+  assert.equal(html.includes('internal-doc-'), false);
+  assert.equal(html.includes('internal-finding-'), false);
 });
 
-test('omits optional sections and normalized column when the validated collections are absent', () => {
+test('omits all analytical sections when collections are absent', () => {
   const minimal: TitleStudy = {
     reportType: 'TITLE_STUDY',
-    sourceDocuments: [{ id: 'doc-only', name: 'titulo.pdf', documentType: 'Documento' }],
+    sourceDocuments: [{ id: 'doc-only', name: 'titulo.pdf' }],
   };
   const html = renderToStaticMarkup(createElement(TitleStudyResult, { report: minimal, partial: false }));
 
   assert.match(html, /Documentos fuente/);
   assert.match(html, /titulo\.pdf/);
-  assert.doesNotMatch(html, />Hallazgos</);
-  assert.doesNotMatch(html, /Comparaciones y diferencias/);
-  assert.doesNotMatch(html, />Conclusiones</);
-  assert.doesNotMatch(html, /Valor normalizado/);
-  assert.doesNotMatch(html, /No informado|No consta|Sin datos|N\/A/);
+  assert.equal(html.includes('>Tipo documental<'), false);
+  assert.equal(html.includes('>Emisor<'), false);
+  assert.equal(html.includes('>Fecha<'), false);
+  for (const absent of [
+    'Antecedentes y hechos extraídos',
+    'Entidades y relaciones documentadas',
+    'Comparaciones y discrepancias',
+    '>Hallazgos<',
+    'Riesgos y alertas',
+    'Cronología documental',
+    '>Conclusiones<',
+  ]) {
+    assert.equal(html.includes(absent), false, `empty section rendered: ${absent}`);
+  }
 });
 
-test('uses the exact readable labels for every structured comparison result', () => {
-  assert.equal(comparisonLabel('CONSISTENT'), 'Consistente');
+test('uses readable labels for all generalized comparison results', () => {
+  assert.equal(comparisonLabel('EXACT_MATCH'), 'Coincidencia exacta');
   assert.equal(comparisonLabel('NORMALIZED_EQUIVALENT'), 'Equivalente tras normalización');
-  assert.equal(comparisonLabel('DIFFERENT'), 'Diferente');
+  assert.equal(comparisonLabel('TEMPORAL_CHANGE'), 'Cambio temporal');
+  assert.equal(comparisonLabel('DIFFERENT_VALUE'), 'Valor diferente');
   assert.equal(comparisonLabel('POSSIBLE_CONTRADICTION'), 'Posible contradicción');
-  assert.equal(comparisonLabel('INSUFFICIENT_INFORMATION'), 'Información insuficiente');
+  assert.equal(comparisonLabel('AUTHORITY_SCOPE_DIFFERENCE'), 'Diferencia de autoridad o alcance');
+  assert.equal(comparisonLabel('PARTIAL_OVERLAP'), 'Coincidencia parcial');
+  assert.equal(comparisonLabel('STATUS_TRANSITION'), 'Cambio de estado documentado');
 });
 
-test('resolves document references to readable names and only falls back when no label exists', () => {
-  assert.equal(resolveDocumentName(fullReport, 'doc-a'), 'escritura.pdf');
-  assert.equal(resolveDocumentName(fullReport, 'unknown-id'), 'unknown-id');
+test('resolves document references to readable names', () => {
+  assert.equal(resolveDocumentName(titleStudyReviewFixture, 'internal-doc-title'), 'inscripcion-sintetica.pdf');
+  assert.equal(resolveDocumentName(titleStudyReviewFixture, 'unknown-id'), 'unknown-id');
 });
