@@ -179,6 +179,28 @@ function sourceNames(report: TitleStudy, documentIds: string[]): string {
   return documentIds.map((id) => documentName(report, id)).join(' · ');
 }
 
+function sourceDocumentIdsFromFacts(report: TitleStudy, factIds: string[]): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const factId of factIds) {
+    const fact = factById(report, factId);
+    for (const documentId of fact?.sourceDocumentIds ?? []) {
+      if (!seen.has(documentId)) {
+        seen.add(documentId);
+        ids.push(documentId);
+      }
+    }
+  }
+  return ids;
+}
+
+function sourceDocumentIdsFromFindings(report: TitleStudy, findingIds: string[]): string[] {
+  const factIds = findingIds.flatMap(
+    (findingId) => report.findings?.find((finding) => finding.id === findingId)?.supportingFactIds ?? [],
+  );
+  return sourceDocumentIdsFromFacts(report, factIds);
+}
+
 function locatorText(report: TitleStudy, fact: Fact): string {
   if (!fact.evidenceLocators?.length) return '';
   return fact.evidenceLocators
@@ -240,14 +262,20 @@ function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfCon
     reportHeading('Documentos fuente', 1),
   ];
 
+  const showDocumentType = report.sourceDocuments.some((document) => document.documentType !== undefined);
   const showIssuer = report.sourceDocuments.some((document) => document.issuer !== undefined);
   const showIssueDate = report.sourceDocuments.some((document) => document.issueDate !== undefined);
   reportChildren.push(
     table(
-      ['Documento', 'Tipo documental', ...(showIssuer ? ['Emisor'] : []), ...(showIssueDate ? ['Fecha'] : [])],
+      [
+        'Documento',
+        ...(showDocumentType ? ['Tipo documental'] : []),
+        ...(showIssuer ? ['Emisor'] : []),
+        ...(showIssueDate ? ['Fecha'] : []),
+      ],
       report.sourceDocuments.map((document) => [
         document.name,
-        document.documentType,
+        ...(showDocumentType ? [document.documentType ?? 'Sin clasificar'] : []),
         ...(showIssuer ? [document.issuer ?? ''] : []),
         ...(showIssueDate ? [document.issueDate ?? ''] : []),
       ]),
@@ -302,7 +330,7 @@ function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfCon
         .filter((fact): fact is Fact => fact !== undefined);
       if (comparisonFacts.length > 0) reportChildren.push(factTable(report, comparisonFacts));
       reportChildren.push(body(comparison.explanation));
-      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, comparison.sourceDocumentIds)));
+      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, sourceDocumentIdsFromFacts(report, comparison.factIds))));
     });
   }
 
@@ -316,7 +344,7 @@ function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfCon
           finding.supportingFactIds.map((id) => factLabels.get(id) ?? id).join(' · '),
         ),
       );
-      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, finding.sourceDocumentIds)));
+      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, sourceDocumentIdsFromFacts(report, finding.supportingFactIds))));
     });
   }
 
@@ -331,7 +359,7 @@ function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfCon
           risk.supportingFactIds.map((id) => factLabels.get(id) ?? id).join(' · '),
         ),
       );
-      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, risk.sourceDocumentIds)));
+      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, sourceDocumentIdsFromFacts(report, risk.supportingFactIds))));
     });
   }
 
@@ -345,7 +373,7 @@ function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfCon
             ? `${event.dateOriginal} (${event.dateNormalized})`
             : event.dateOriginal,
           event.event,
-          sourceNames(report, event.sourceDocumentIds),
+          sourceNames(report, sourceDocumentIdsFromFacts(report, event.supportingFactIds)),
         ]),
       ),
     );
@@ -367,7 +395,7 @@ function buildChildren(report: TitleStudy): Array<Paragraph | Table | TableOfCon
           conclusion.supportingFindingIds.map((id) => findingLabels.get(id) ?? id).join(' · '),
         ),
       );
-      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, conclusion.sourceDocumentIds)));
+      reportChildren.push(mutedParagraph('Fuentes: ', sourceNames(report, sourceDocumentIdsFromFindings(report, conclusion.supportingFindingIds))));
     });
   }
 
