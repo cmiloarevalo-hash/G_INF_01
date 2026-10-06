@@ -23,7 +23,7 @@ export const titleStudyFactCategorySchema = z.enum([
 
 export const titleStudySourceDocumentSchema = z.strictObject({
   id: identifierSchema,
-  documentType: identifierSchema,
+  documentType: identifierSchema.optional(),
   name: identifierSchema,
   issuer: nonEmptyString.optional(),
   issueDate: nonEmptyString.optional(),
@@ -88,28 +88,24 @@ export const titleStudyComparisonSchema = z.strictObject({
     'STATUS_TRANSITION',
   ]),
   explanation: nonEmptyString,
-  sourceDocumentIds: z.array(identifierSchema).min(1),
 });
 
 export const titleStudyFindingSchema = z.strictObject({
   id: identifierSchema,
   statement: nonEmptyString,
   supportingFactIds: z.array(identifierSchema).min(1),
-  sourceDocumentIds: z.array(identifierSchema).min(1),
 });
 
 export const titleStudyRiskOrAlertSchema = z.strictObject({
   id: identifierSchema,
   statement: nonEmptyString,
   supportingFactIds: z.array(identifierSchema).min(1),
-  sourceDocumentIds: z.array(identifierSchema).min(1),
 });
 
 export const titleStudyConclusionSchema = z.strictObject({
   id: identifierSchema,
   statement: nonEmptyString,
   supportingFindingIds: z.array(identifierSchema).min(1),
-  sourceDocumentIds: z.array(identifierSchema).min(1),
 });
 
 export const titleStudyTimelineEventSchema = z.strictObject({
@@ -118,7 +114,6 @@ export const titleStudyTimelineEventSchema = z.strictObject({
   dateNormalized: nonEmptyString.optional(),
   event: nonEmptyString,
   supportingFactIds: z.array(identifierSchema).min(1),
-  sourceDocumentIds: z.array(identifierSchema).min(1),
 });
 
 const titleStudyStructureSchema = z.strictObject({
@@ -247,13 +242,6 @@ export const titleStudySchema = titleStudyStructureSchema.superRefine((report, c
 
   report.comparisons?.forEach((comparison, index) => {
     requireReferences(comparison.factIds, factIds, ['comparisons', index, 'factIds'], context, 'fact');
-    requireReferences(
-      comparison.sourceDocumentIds,
-      sourceDocumentIds,
-      ['comparisons', index, 'sourceDocumentIds'],
-      context,
-      'source document',
-    );
     if (new Set(comparison.factIds).size !== comparison.factIds.length) {
       context.addIssue({
         code: 'custom',
@@ -271,13 +259,6 @@ export const titleStudySchema = titleStudyStructureSchema.superRefine((report, c
       context,
       'fact',
     );
-    requireReferences(
-      finding.sourceDocumentIds,
-      sourceDocumentIds,
-      ['findings', index, 'sourceDocumentIds'],
-      context,
-      'source document',
-    );
   });
 
   report.risksOrAlerts?.forEach((risk, index) => {
@@ -287,13 +268,6 @@ export const titleStudySchema = titleStudyStructureSchema.superRefine((report, c
       ['risksOrAlerts', index, 'supportingFactIds'],
       context,
       'fact',
-    );
-    requireReferences(
-      risk.sourceDocumentIds,
-      sourceDocumentIds,
-      ['risksOrAlerts', index, 'sourceDocumentIds'],
-      context,
-      'source document',
     );
   });
 
@@ -305,13 +279,6 @@ export const titleStudySchema = titleStudyStructureSchema.superRefine((report, c
       context,
       'finding',
     );
-    requireReferences(
-      conclusion.sourceDocumentIds,
-      sourceDocumentIds,
-      ['conclusions', index, 'sourceDocumentIds'],
-      context,
-      'source document',
-    );
   });
 
   report.timeline?.forEach((event, index) => {
@@ -321,13 +288,6 @@ export const titleStudySchema = titleStudyStructureSchema.superRefine((report, c
       ['timeline', index, 'supportingFactIds'],
       context,
       'fact',
-    );
-    requireReferences(
-      event.sourceDocumentIds,
-      sourceDocumentIds,
-      ['timeline', index, 'sourceDocumentIds'],
-      context,
-      'source document',
     );
   });
 });
