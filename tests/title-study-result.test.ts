@@ -38,12 +38,13 @@ test('renders present evidence categories, traceability, risks and timeline with
 test('omits all analytical sections when collections are absent', () => {
   const minimal: TitleStudy = {
     reportType: 'TITLE_STUDY',
-    sourceDocuments: [{ id: 'doc-only', name: 'titulo.pdf', documentType: 'Documento' }],
+    sourceDocuments: [{ id: 'doc-only', name: 'titulo.pdf' }],
   };
   const html = renderToStaticMarkup(createElement(TitleStudyResult, { report: minimal, partial: false }));
 
   assert.match(html, /Documentos fuente/);
   assert.match(html, /titulo\.pdf/);
+  assert.equal(html.includes('>Tipo documental<'), false);
   assert.equal(html.includes('>Emisor<'), false);
   assert.equal(html.includes('>Fecha<'), false);
   for (const absent of [
