@@ -55,11 +55,12 @@ test('generalized TITLE_STUDY produces structured DOCX sections from present evi
 test('minimal valid report omits every empty analytical section', async () => {
   const minimal: TitleStudy = {
     reportType: 'TITLE_STUDY',
-    sourceDocuments: [{ id: 'doc-only', name: 'titulo.pdf', documentType: 'Documento' }],
+    sourceDocuments: [{ id: 'doc-only', name: 'titulo.pdf' }],
   };
   const xml = readDocxDocumentXml(await renderTitleStudyDocx(minimal));
 
   assert.match(xml, /titulo\.pdf/);
+  assert.equal(xml.includes('Tipo documental'), false);
   for (const absent of [
     'Antecedentes y hechos extraídos',
     'Entidades y relaciones documentadas',
