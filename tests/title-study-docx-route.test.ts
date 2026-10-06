@@ -23,13 +23,11 @@ const report: TitleStudy = {
     id: 'finding-1',
     statement: 'Hallazgo validado.',
     supportingFactIds: ['fact-1'],
-    sourceDocumentIds: ['doc-1'],
   }],
   conclusions: [{
     id: 'conclusion-1',
     statement: 'Conclusión validada.',
     supportingFindingIds: ['finding-1'],
-    sourceDocumentIds: ['doc-1'],
   }],
 };
 
